@@ -1,0 +1,27 @@
+# Ignore executable and distribution files
+dist/
+build/
+*.exe
+
+# Ignore virtual environment (if any)
+.venv/
+env/
+
+# Ignore environment variables
+.env
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore log files
+*.log
+
+# Ignore IDE configs
+.idea/
+
+# Ignore local database and internal cleanup
+academy.db
+academy_template.db
+.last_cleanup.txt
