@@ -1,22 +1,30 @@
 Copyright (c) 2025 Aria Aramesh
 
-This software is proprietary and confidential.
-All rights reserved.
+This source code is provided for review and educational purposes only as part of the author's professional portfolio.
 
-Permission is granted to view the source code for **educational and reference** purposes only.
+You are allowed to:
+- View and explore the source code
+- Use it for personal or academic learning
+- Refer to it in your portfolio or hiring process
 
-You may NOT:
-- Use this software for commercial purposes
-- Redistribute or share any part of the source code or compiled application
-- Modify or publish the code publicly without written permission
+You are NOT allowed to:
+- Use this software in any commercial product or service
+- Reuse, redistribute, or publish the source code or any part of it
+- Modify or adapt the code for public or production use
 
-To request a license for other uses, contact the author.
+This project remains proprietary. For licensing, commercial use, or collaboration requests, contact the author directly.
 
 ---
 
-نرم‌افزار مدیریت آموزشگاه موسیقی توسط آریا آرامش طراحی و توسعه یافته است.
-هرگونه استفاده تجاری، بازنشر، یا انتشار عمومی از کد یا فایل اجرایی بدون کسب مجوز کتبی ممنوع است.
+این نرم‌افزار به عنوان بخشی از نمونه‌کار آریا آرامش منتشر شده است و صرفاً جهت بررسی و آموزش قابل مشاهده است.
 
-استفاده صرفاً برای بررسی آموزشی و غیرتجاری مجاز می‌باشد.
+اجازه دارید:
+- سورس کد را مشاهده و تحلیل کنید
+- برای اهداف آموزشی یا نمونه‌کار شخصی از آن استفاده کنید
 
-برای دریافت مجوز استفاده دیگر، لطفاً با نویسنده تماس بگیرید.
+اجازه ندارید:
+- از این نرم‌افزار یا بخشی از آن در پروژه‌های تجاری استفاده کنید
+- کد را بازنشر، بازتوزیع، یا منتشر کنید
+- تغییرات ایجاد شده را عمومی نمایید
+
+برای دریافت مجوز استفاده تجاری یا همکاری، لطفاً با توسعه‌دهنده تماس بگیرید.
