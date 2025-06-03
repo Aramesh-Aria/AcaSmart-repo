@@ -18,11 +18,11 @@ class ShamsiDatePopup(QDialog):
 
         self.selected_shamsi = None
 
-        # ویجت تقویم میلادی (نمایش و انتخاب تاریخ)
+        # تقویم گرافیکی (QCalendarWidget) برای انتخاب تاریخ میلادی
         self.calendar = QCalendarWidget()
         self.calendar.setGridVisible(True)  # نمایش خطوط مشبک در تقویم
 
-        # اگر تاریخ اولیه داده شده باشد، روی همان تاریخ تنظیم شود
+        # اگر تاریخ اولیه وجود داشته باشد، تنظیم آن به‌عنوان تاریخ انتخاب‌شده
         if initial_date:
             g_date = jdatetime.date.fromisoformat(initial_date).togregorian()
             self.calendar.setSelectedDate(QDate(g_date.year, g_date.month, g_date.day))
@@ -35,25 +35,27 @@ class ShamsiDatePopup(QDialog):
         self.label_shamsi = QLabel()
         self.layout().addWidget(self.label_shamsi)
 
+        # به‌روزرسانی برچسب پس از انتخاب تاریخ جدید
         self.update_shamsi_label()
         self.calendar.selectionChanged.connect(self.update_shamsi_label)
 
-        # دکمه تأیید انتخاب تاریخ
+        # دکمه تایید نهایی تاریخ
         btn_ok = QPushButton("تأیید")
         btn_ok.setDefault(True)  # ثبت تاریخ با زدن Enter
         btn_ok.clicked.connect(self.accept)
         self.layout().addWidget(btn_ok)
 
-        # جستجو و ثبت ویجت‌های داخلی انتخاب ماه (QComboBox) و سال (QSpinBox)
+        # متغیرها برای جعبه‌های انتخاب ماه و سال
         self.month_box = None
         self.year_box = None
 
+        # پیدا کردن ComboBox (ماه) و SpinBox (سال) از داخل QCalendarWidget
         combo_boxes = self.calendar.findChildren(QComboBox)
         spin_boxes = self.calendar.findChildren(QSpinBox)
 
         if combo_boxes:
             self.month_box = combo_boxes[0]
-            self.month_box.installEventFilter(self)  # مدیریت رفتار Enter روی ماه
+            self.month_box.installEventFilter(self)  # مدیریت رفتار Enter در ماه
 
         if spin_boxes:
             self.year_box = spin_boxes[0]
@@ -67,7 +69,7 @@ class ShamsiDatePopup(QDialog):
 
     def update_shamsi_label(self):
         """
-        به‌روزرسانی برچسب نمایشی بر اساس تاریخ انتخاب‌شده در تقویم میلادی
+        به‌روزرسانی متن برچسب تاریخ شمسی بر اساس انتخاب فعلی در تقویم
         """
         g_date = self.calendar.selectedDate().toPyDate()
         j_date = jdatetime.date.fromgregorian(date=g_date)
@@ -76,7 +78,7 @@ class ShamsiDatePopup(QDialog):
 
     def get_selected_date(self):
         """
-        دریافت تاریخ انتخاب‌شده (شمسی) برای استفاده بیرونی
+        خروجی گرفتن تاریخ انتخاب‌شده (به‌صورت شمسی)
         """
         return self.selected_shamsi
 
