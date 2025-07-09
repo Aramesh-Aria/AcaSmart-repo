@@ -22,6 +22,8 @@ from datetime import datetime
 
 
 class PaymentManager(QWidget):
+    pass
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("ثبت پرداخت‌ها و گزارش‌گیری مالی")
@@ -282,7 +284,10 @@ class PaymentManager(QWidget):
         query = self.input_search_student.text().lower().strip()
         self.list_students.clear()
         for row in self.students:
-            sid, _, name, teacher = row[:4]
+            if len(row) >= 4:
+                sid, _, name, teacher = row[:4]
+            else:
+                continue
             if query in name.lower() or query in teacher.lower():
                 item = QListWidgetItem(f"{name} (استاد: {teacher})")
                 item.setData(1, sid)
@@ -294,8 +299,9 @@ class PaymentManager(QWidget):
     def load_filters(self):
         self.combo_filter_class.clear()
         self.combo_filter_class.addItem("همه")
-        for cid, cname, *_ in self.classes:
-            self.combo_filter_class.addItem(cname)
+        for row in self.classes:
+            if len(row) >= 2:
+                cid, cname = row[0], row[1]
 
     def select_student(self, item):
         self.selected_student_id = item.data(1)
@@ -355,7 +361,11 @@ class PaymentManager(QWidget):
         global_q = self.input_search_all.text().lower().strip()
         sel_ptype = self.combo_filter_ptype.currentText()
 
-        for pid, sname, cname, amount, pdate, desc, ptype in raw:
+        for row in raw:
+            if len(row) < 7:
+                print(f"⚠️ ردیف ناقص: {row}")  # می‌تونی حذفش کنی بعداً
+                continue
+            pid, sname, cname, amount, pdate, desc, ptype = row
             try:
                 j = jdatetime.date.fromisoformat(pdate)
                 jdate = j.strftime("%Y/%m/%d")

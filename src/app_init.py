@@ -17,7 +17,10 @@ def initialize_database():
     with get_connection() as conn:
         c = conn.cursor()
         c.execute("SELECT COUNT(*) FROM users")
-        user_count = c.fetchone()[0]
+        try:
+            user_count = c.fetchone()[0]
+        except (TypeError, IndexError):
+            user_count = 0
 
         if user_count == 0:
             c.execute(

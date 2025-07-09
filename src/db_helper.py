@@ -22,13 +22,21 @@ DB_NAME = APP_DATA_DIR / "academy.db"
 if getattr(sys, 'frozen', False):
     base_path = Path(sys._MEIPASS)  # هنگام اجرای exe
 else:
-    base_path = Path(__file__).parent  # هنگام اجرای مستقیم
+    # هنگام اجرای مستقیم، به پوشه‌ی بالاتر برو تا academy_template.db را پیدا کنی
+    base_path = Path(__file__).parent.parent  # AmoozeshgahApp-repo directory
 
 TEMPLATE_DB_PATH = os.path.join(base_path, 'academy_template.db')
 
 # کپی اولیه در صورت نبود فایل دیتابیس
 if not DB_NAME.exists():
-    shutil.copy(TEMPLATE_DB_PATH, DB_NAME)
+    try:
+        shutil.copy(TEMPLATE_DB_PATH, DB_NAME)
+        print(f"✅ Database template copied from: {TEMPLATE_DB_PATH}")
+    except FileNotFoundError:
+        print(f"❌ Template database not found at: {TEMPLATE_DB_PATH}")
+        print(f"📁 Looking in: {base_path}")
+        print(f"📁 Available files: {list(base_path.glob('*.db'))}")
+        raise
 
 # تابع اتصال به دیتابیس
 def get_connection():

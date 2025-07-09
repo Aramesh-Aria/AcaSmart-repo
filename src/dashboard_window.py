@@ -7,7 +7,7 @@ from class_manager import ClassManager
 from session_manager import SessionManager
 import shutil
 from db_helper import fetch_teachers
-from payment_manager import PaymentManager
+from pay_manager import PaymentManager
 from settings_window import SettingsWindow
 from attendance_window import AttendanceManager
 from reports_window import ReportsWindow
@@ -24,6 +24,11 @@ class DashboardWindow(QWidget):
         layout.setSpacing(12)
         button_style = "font-size: 15px; padding: 10px;"
         self.db_path = Path.home() / "AppData" / "Local" / "Amoozeshgah" / "academy.db"
+        
+        if not self.db_path.exists():
+            QMessageBox.critical(self, "خطای دیتابیس", f"فایل دیتابیس یافت نشد:\n{self.db_path}")
+            self.close()
+            return
 
         # ----------- مدیریت‌ها ------------
         buttons_top = [
