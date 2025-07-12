@@ -2,6 +2,7 @@ import requests
 from db_helper import get_setting
 from dotenv import load_dotenv
 import os
+from pathlib import Path
 
 class SmsNotifier:
     def __init__(self):
@@ -11,6 +12,11 @@ class SmsNotifier:
         self.from_number = os.getenv("IPPANEL_FROM_NUMBER")
         self.pattern_code = os.getenv("IPPANEL_PATTERN_CODE")
         self.api_url = "http://edge.ippanel.com/v1/api/send"
+        
+        # مسیر مطمئن برای ذخیره لاگ (همان مسیر main.py)
+        self.log_dir = Path.home() / "AppData" / "Local" / "AcaSmart"
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+        self.log_path = self.log_dir / "error.log"
 
     def send_renew_term_notification(self, student_name, phone_number, class_name):
         if get_setting("sms_enabled", "فعال") == "غیرفعال":
@@ -51,9 +57,12 @@ class SmsNotifier:
                 f"کد وضعیت: {response.status_code}\n"
                 f"متن خطا: {response.text}"
             )
-            # نوشتن در فایل لاگ
-            with open("error.log", "a", encoding="utf-8") as f:
-                f.write(f"[SMS ERROR] {error_message}\n")
+            # نوشتن در فایل لاگ (مسیر مطمئن)
+            try:
+                with open(self.log_path, "a", encoding="utf-8") as f:
+                    f.write(f"[SMS ERROR] {error_message}\n")
+            except Exception as e:
+                print(f"❌ خطا در نوشتن لاگ: {e}")
             raise Exception(error_message)
 
         print(f"✅ پیامک برای {student_name} ارسال شد.")

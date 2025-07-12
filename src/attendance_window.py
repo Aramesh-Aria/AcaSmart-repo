@@ -155,7 +155,8 @@ class AttendanceManager(QWidget):
             # بررسی ثبت پیام برای این ترم
             notified = False
             try:
-                with sqlite3.connect("academy.db") as conn:
+                from db_helper import get_connection
+                with get_connection() as conn:
                     c = conn.cursor()
                     c.execute("""
                         SELECT 1 FROM notified_terms

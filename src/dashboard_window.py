@@ -7,10 +7,11 @@ from class_manager import ClassManager
 from session_manager import SessionManager
 import shutil
 from db_helper import fetch_teachers
-from payment_manager import PaymentManager
+from pay_manager import PaymentManager
 from settings_window import SettingsWindow
 from attendance_window import AttendanceManager
 from reports_window import ReportsWindow
+from sms_notification_window import SmsNotificationWindow
 from version import __version__
 from pathlib import Path
 
@@ -23,7 +24,12 @@ class DashboardWindow(QWidget):
         layout = QVBoxLayout()
         layout.setSpacing(12)
         button_style = "font-size: 15px; padding: 10px;"
-        self.db_path = Path.home() / "AppData" / "Local" / "Amoozeshgah" / "academy.db"
+        self.db_path = Path.home() / "AppData" / "Local" / "AcaSmart" / "acasmart.db"
+        
+        if not self.db_path.exists():
+            QMessageBox.critical(self, "خطای دیتابیس", f"فایل دیتابیس یافت نشد:\n{self.db_path}")
+            self.close()
+            return
 
         # ----------- مدیریت‌ها ------------
         buttons_top = [
@@ -49,6 +55,7 @@ class DashboardWindow(QWidget):
                 ("📥 بکاپ‌گیری از دیتابیس", self.backup_database),
                 ("📤 بازیابی بکاپ", self.restore_database),
                 ("⚙️ تنظیمات آموزشگاه",self.open_setting_manager),
+                ("📲 ارسال پیامک به هنرجویان",self.open_sms_notification_manager),
                 ("🔑 تغییر رمز عبور", self.open_change_password),
                 ("❌ خروج از برنامه", self.close),
             ]
@@ -103,7 +110,7 @@ class DashboardWindow(QWidget):
 
     def backup_database(self):
         options = QFileDialog.Options()
-        filename, _ = QFileDialog.getSaveFileName(self, "ذخیره بکاپ دیتابیس", "academy_backup.db",
+        filename, _ = QFileDialog.getSaveFileName(self, "ذخیره بکاپ دیتابیس", "acasmart_backup.db",
                                                   "SQLite Files (*.db)", options=options)
         if filename:
             try:
@@ -127,3 +134,7 @@ class DashboardWindow(QWidget):
     def open_reports(self):
         self.reports_window = ReportsWindow()
         self.reports_window.show()
+    
+    def open_sms_notification_manager(self):
+        self.open_sms_notification_window = SmsNotificationWindow()
+        self.open_sms_notification_window.show()
