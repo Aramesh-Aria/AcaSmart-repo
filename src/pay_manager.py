@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QDateEdit, QTextEdit, QMessageBox, QTableWidget,
     QTableWidgetItem, QHeaderView, QComboBox,QFileDialog
 )
-from PyQt5.QtCore import QDate,Qt
+from PyQt5.QtCore import QDate,Qt,QTimer
 from datetime import datetime, date
 from db_helper import (
     fetch_students_with_teachers, fetch_classes,
@@ -44,6 +44,7 @@ class PaymentManager(QWidget):
         self.classes = []
         self.is_editing = False
         self.editing_payment_id = None
+        self.skip_next_edit = False
 
         layout = QVBoxLayout()
 
@@ -576,21 +577,35 @@ class PaymentManager(QWidget):
         self.clear_form()
 
     def handle_delete_payment(self, row, column):
+        self.skip_next_edit = True
+
+        # اگر در حالت ویرایش هستیم و همان ردیف را می‌خواهیم حذف کنیم:
+        if self.is_editing:
+            editing_row_payment_id = self.editing_payment_id
+            clicked_payment_id = int(self.table_payments.item(row, 0).text())
+            if editing_row_payment_id == clicked_payment_id:
+                # ویرایش را لغو کن چون کاربر می‌خواهد حذف کند
+                self.is_editing = False
+                self.editing_payment_id = None
+                self.btn_add_payment.setText("✅ ثبت پرداخت")
+
         payment_id_item = self.table_payments.item(row, 0)
         if not payment_id_item:
             return
+
         payment_id = int(payment_id_item.text())
         reply = QMessageBox.question(
             self, "حذف پرداخت", "آیا از حذف این پرداخت مطمئن هستید؟",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No
         )
         if reply == QMessageBox.Yes:
-            if self.is_editing and self.editing_payment_id == int(payment_id_item.text()):
-                QMessageBox.warning(self, "هشدار", "ابتدا ویرایش پرداخت در حال انجام را کامل یا لغو کنید.")
-                return
             delete_payment(payment_id)
             self.load_payments()
             self.update_financial_labels()
+
+        # فلگ را بعد از مدت کوتاهی پاک کن
+        QTimer.singleShot(300, lambda: setattr(self, "skip_next_edit", False))
+
 
     def set_default_dates(self):
         # نمایش تمام پرداخت های هنرجو از این تاریخ
@@ -629,6 +644,9 @@ class PaymentManager(QWidget):
             """)
 
     def start_edit_payment(self, row, column):
+        if self.skip_next_edit:
+            self.skip_next_edit = False  # فقط یک بار پرش کن
+            return
         self.set_payment_button_enabled(True)
 
         # جلوگیری از شروع ویرایش هنگام کلیک روی سطر ناقص
