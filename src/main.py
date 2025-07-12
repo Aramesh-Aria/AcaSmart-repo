@@ -47,7 +47,7 @@ load_dotenv()
 # ---------- Global Error Handler ----------
 
 # مسیر مطمئن برای ذخیره لاگ (داخل پوشه‌ی کاربر)
-log_dir = Path.home() / "AppData" / "Local" / "Amoozeshgah"
+log_dir = Path.home() / "AppData" / "Local" / "AcaSmart"
 log_dir.mkdir(parents=True, exist_ok=True)
 log_path = log_dir / "error.log"
 
@@ -120,7 +120,7 @@ def clear_local_log_file():
 # ---------- Main App ----------
 if __name__ == "__main__":
     try:
-        print("🚀 Starting Amoozeshgah application...")
+        print("🚀 Starting AcaSmart application...")
         print(f"📁 Log directory: {log_dir}")
         print(f"📁 Current working directory: {os.getcwd()}")
         

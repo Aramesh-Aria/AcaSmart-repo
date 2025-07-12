@@ -14,7 +14,7 @@ class SmsNotifier:
         self.api_url = "http://edge.ippanel.com/v1/api/send"
         
         # مسیر مطمئن برای ذخیره لاگ (همان مسیر main.py)
-        self.log_dir = Path.home() / "AppData" / "Local" / "Amoozeshgah"
+        self.log_dir = Path.home() / "AppData" / "Local" / "AcaSmart"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_path = self.log_dir / "error.log"
 

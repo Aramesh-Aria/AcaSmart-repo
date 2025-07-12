@@ -13,19 +13,19 @@ import sys
 import sqlite3
 
 # محل مناسب برای ذخیره دیتابیس در AppData
-APP_DATA_DIR = Path.home() / "AppData" / "Local" / "Amoozeshgah"
+APP_DATA_DIR = Path.home() / "AppData" / "Local" / "AcaSmart"
 APP_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-DB_NAME = APP_DATA_DIR / "academy.db"
+DB_NAME = APP_DATA_DIR / "acasmart.db"
 
 # تعیین مسیر فایل template (از حالت فشرده شده یا دایرکتوری فعلی)
 if getattr(sys, 'frozen', False):
     base_path = Path(sys._MEIPASS)  # هنگام اجرای exe
 else:
-    # هنگام اجرای مستقیم، به پوشه‌ی بالاتر برو تا academy_template.db را پیدا کنی
-    base_path = Path(__file__).parent.parent  # AmoozeshgahApp-repo directory
+    # هنگام اجرای مستقیم، به پوشه‌ی بالاتر برو تا acasmart_template.db را پیدا کنی
+    base_path = Path(__file__).parent.parent  # AcaSmartApp-repo directory
 
-TEMPLATE_DB_PATH = os.path.join(base_path, 'academy_template.db')
+TEMPLATE_DB_PATH = os.path.join(base_path, 'acasmart_template.db')
 
 # کپی اولیه در صورت نبود فایل دیتابیس
 if not DB_NAME.exists():

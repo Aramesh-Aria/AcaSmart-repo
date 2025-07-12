@@ -10,6 +10,9 @@ env/
 # Ignore environment variables
 .env
 
+# Ignore environment variables
+main.spec
+
 # Ignore Python cache
 __pycache__/
 *.pyc
@@ -22,6 +25,6 @@ __pycache__/
 .idea/
 
 # Ignore local database and internal cleanup
-academy.db
-academy_template.db
+acasmart.db
+acasmart_template.db
 .last_cleanup.txt

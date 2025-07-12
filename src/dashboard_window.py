@@ -24,7 +24,7 @@ class DashboardWindow(QWidget):
         layout = QVBoxLayout()
         layout.setSpacing(12)
         button_style = "font-size: 15px; padding: 10px;"
-        self.db_path = Path.home() / "AppData" / "Local" / "Amoozeshgah" / "academy.db"
+        self.db_path = Path.home() / "AppData" / "Local" / "AcaSmart" / "acasmart.db"
         
         if not self.db_path.exists():
             QMessageBox.critical(self, "خطای دیتابیس", f"فایل دیتابیس یافت نشد:\n{self.db_path}")
@@ -110,7 +110,7 @@ class DashboardWindow(QWidget):
 
     def backup_database(self):
         options = QFileDialog.Options()
-        filename, _ = QFileDialog.getSaveFileName(self, "ذخیره بکاپ دیتابیس", "academy_backup.db",
+        filename, _ = QFileDialog.getSaveFileName(self, "ذخیره بکاپ دیتابیس", "acasmart_backup.db",
                                                   "SQLite Files (*.db)", options=options)
         if filename:
             try:
