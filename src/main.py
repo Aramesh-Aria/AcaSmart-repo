@@ -145,11 +145,11 @@ if __name__ == "__main__":
         window = LoginWindow()
         window.show()
         print("✅ GUI started successfully")
-        sys.exit(app.exec())
+        sys.exit(app.exec_())
         
     except Exception as e:
         print(f"❌ Critical error during startup: {e}")
         logging.error(f"Critical error during startup: {e}")
         # Print the full traceback to help debug
-        traceback.print_exec()
+        traceback.print_exc()
         raise

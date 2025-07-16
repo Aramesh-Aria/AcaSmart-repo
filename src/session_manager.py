@@ -337,7 +337,7 @@ class SessionManager(QWidget):
 
     def open_date_picker(self):
         dlg = ShamsiDatePopup(initial_date=self.selected_shamsi_date)
-        if dlg.exec() == QDialog.Accepted:
+        if dlg.exec_() == QDialog.Accepted:
             self.selected_shamsi_date = dlg.get_selected_date()
             self.last_selected_date = self.selected_shamsi_date
             self.date_btn.setText(f"📅 {self.selected_shamsi_date}")

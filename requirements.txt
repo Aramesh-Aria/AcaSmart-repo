@@ -1,9 +1,9 @@
 # Windows 7 Compatible Requirements
 # Note: Use Python 3.8 for Windows 7 compatibility
 jdatetime==4.1.1
-openpyxl==3.1.2
-pandas==1.5.3
-numpy==1.24.3
+openpyxl==3.0.10
+pandas==1.3.5
+numpy==1.21.6
 et-xmlfile==1.1.0
 python-dateutil==2.8.2
 jalali-core==1.0.0
@@ -13,5 +13,5 @@ ippanel==2.0.7
 python-dotenv==1.0.1
 pyinstaller==5.7.0
 auto-py-to-exe==2.20.0
-PySide6==6.2.4
-shiboken6==6.2.4
+PySide6==6.0.4
+shiboken6==6.0.4

@@ -32,10 +32,10 @@ class SmsNotificationWindow(QWidget):
         self.search_input.setStyleSheet("padding: 6px;")
         layout.addWidget(self.search_input)
 
-        select_all_btn = QPushButton("✔️ انتخاب همه / لغو همه")
-        select_all_btn.clicked.connect(self.toggle_select_all)
-        select_all_btn.setStyleSheet("padding: 6px;")
-        layout.addWidget(select_all_btn)
+        # select_all_btn = QPushButton("✔️ انتخاب همه / لغو همه")
+        # select_all_btn.clicked.connect(self.toggle_select_all)
+        # select_all_btn.setStyleSheet("padding: 6px;")
+        # layout.addWidget(select_all_btn)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)

@@ -392,7 +392,7 @@ class StudentManager(QWidget):
 
     def show_calendar_popup(self, event):
         dialog = ShamsiDatePopup(self)
-        if dialog.exec() == QDialog.Accepted:
+        if dialog.exec_() == QDialog.Accepted:
             selected_date = dialog.get_selected_date()
             self.input_birth_date.setText(selected_date)
             self.check_form_validity()

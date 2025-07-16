@@ -280,7 +280,7 @@ class AttendanceManager(QWidget):
 
     def open_date_picker(self):
         dlg = ShamsiDatePopup(initial_date=self.selected_shamsi_date)
-        if dlg.exec() == QDialog.Accepted:
+        if dlg.exec_() == QDialog.Accepted:
             shamsi_date = dlg.get_selected_date()
             self.selected_shamsi_date = shamsi_date
             self.date_btn.setText(f"📅 {shamsi_date}")
