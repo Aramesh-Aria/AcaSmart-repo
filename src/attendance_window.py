@@ -1,9 +1,9 @@
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-    QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QCheckBox,QDialog
+    QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QCheckBox, QDialog
 )
+from PySide6.QtCore import Qt
 import functools
-from PyQt5.QtCore import Qt
 import sqlite3
 
 from db_helper import (fetch_students_with_teachers_for_class,
@@ -280,7 +280,7 @@ class AttendanceManager(QWidget):
 
     def open_date_picker(self):
         dlg = ShamsiDatePopup(initial_date=self.selected_shamsi_date)
-        if dlg.exec_() == QDialog.Accepted:
+        if dlg.exec() == QDialog.Accepted:
             shamsi_date = dlg.get_selected_date()
             self.selected_shamsi_date = shamsi_date
             self.date_btn.setText(f"📅 {shamsi_date}")

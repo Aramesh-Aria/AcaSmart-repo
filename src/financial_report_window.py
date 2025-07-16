@@ -1,14 +1,16 @@
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QHeaderView,QHBoxLayout,QLineEdit,QComboBox
-,QPushButton,QFileDialog
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QHeaderView,
+    QHBoxLayout, QLineEdit, QComboBox, QPushButton, QFileDialog
 )
-from db_helper import get_all_student_terms_with_financials ,fetch_classes
+from PySide6.QtCore import Qt, QDate
+
+from db_helper import get_all_student_terms_with_financials, fetch_classes
 from utils import format_currency_with_unit
 from shamsi_date_picker import ShamsiDatePicker
-from PyQt5.QtCore import QDate
+
 import jdatetime
-from PyQt5.QtCore import Qt
 import openpyxl
+
 
 class FinancialReportWindow(QWidget):
     def __init__(self):
@@ -18,11 +20,9 @@ class FinancialReportWindow(QWidget):
         self.all_data = []  # همه داده‌ها ذخیره می‌شن برای فیلتر کردن
         self.build_ui()
 
-
     def build_ui(self):
         layout = QVBoxLayout()
         layout.setSpacing(10)
-
 
         title = QLabel("📊 گزارش مالی ترم‌های هنرجویان")
         title.setStyleSheet("font-size: 16px; font-weight: bold;")
@@ -68,7 +68,6 @@ class FinancialReportWindow(QWidget):
         self.date_from_picker = ShamsiDatePicker(": از تاریخ")
         self.date_to_picker = ShamsiDatePicker(": تا تاریخ")
 
-        # تنظیم پیش‌فرض: ۳ ماه پیش تا امروز
         today = QDate.currentDate()
         three_months_ago = today.addMonths(-3)
         self.date_from_picker.setDate(three_months_ago)
@@ -76,7 +75,6 @@ class FinancialReportWindow(QWidget):
 
         filter_layout.addWidget(self.date_from_picker)
         filter_layout.addWidget(self.date_to_picker)
-
 
         # جدول گزارش
         self.table = QTableWidget()
@@ -113,10 +111,8 @@ class FinancialReportWindow(QWidget):
             self.table.setItem(i, 6, QTableWidgetItem(format_currency_with_unit(row['tuition'])))
             self.table.setItem(i, 7, QTableWidgetItem(format_currency_with_unit(row['paid_tuition'])))
             self.table.setItem(i, 8, QTableWidgetItem(format_currency_with_unit(row['debt'])))
-            self.table.setItem(i, 9, QTableWidgetItem(row['status']))
 
             item_status = QTableWidgetItem(row['status'])
-
             if row['status'] == "تسویه":
                 item_status.setForeground(Qt.green)
             elif row['status'] == "بدهکار":
@@ -124,16 +120,14 @@ class FinancialReportWindow(QWidget):
 
             self.table.setItem(i, 9, item_status)
 
-            # آمار مجموع
             total_tuition += row['tuition']
             total_paid += row['paid_tuition']
             total_debt += row['debt']
 
-        # خلاصه آماری
         self.summary_label.setText(
             f"تعداد ترم‌ها: {len(data)}   |   مجموع شهریه: {format_currency_with_unit(total_tuition)}   |   مجموع پرداخت: {format_currency_with_unit(total_paid)}   |   مجموع بدهی: {format_currency_with_unit(total_debt)}"
         )
-        self.filtered_data = data  # ذخیره داده‌های فیلترشده برای خروجی اکسل
+        self.filtered_data = data
 
     def apply_filters(self):
         name_filter = self.input_student_name.text().strip()
@@ -141,7 +135,6 @@ class FinancialReportWindow(QWidget):
         status = self.combo_status.currentText()
         from_date = self.date_from_picker.get_miladi_str()
         to_date = self.date_to_picker.get_miladi_str()
-
 
         filtered = []
         for row in self.all_data:
@@ -166,12 +159,10 @@ class FinancialReportWindow(QWidget):
         self.combo_class.setCurrentIndex(0)
         self.combo_status.setCurrentIndex(0)
 
-        # بازنشانی بازه تاریخ به پیش‌فرض: از ۳ ماه قبل تا امروز
         self.date_from_picker.setDate(QDate.currentDate().addMonths(-3))
         self.date_to_picker.setDate(QDate.currentDate())
 
         self.populate_table(self.all_data)
-
 
     def export_to_excel(self):
         today_shamsi = jdatetime.date.today().strftime("%Y-%m-%d")
@@ -195,11 +186,9 @@ class FinancialReportWindow(QWidget):
         ws = wb.active
         ws.title = "Financial Report"
 
-        # نوشتن هدرها
         for col, header in enumerate(headers, 1):
             ws.cell(row=1, column=col, value=header)
 
-        # نوشتن داده‌ها
         for row_idx, row_data in enumerate(self.filtered_data, start=2):
             ws.cell(row=row_idx, column=1, value=row_data['student_name'])
             ws.cell(row=row_idx, column=2, value=row_data['class_name'])

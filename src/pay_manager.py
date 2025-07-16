@@ -1,9 +1,11 @@
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QLabel, QLineEdit, QPushButton, QListWidget, QListWidgetItem,
     QVBoxLayout, QHBoxLayout, QDateEdit, QTextEdit, QMessageBox, QTableWidget,
-    QTableWidgetItem, QHeaderView, QComboBox,QFileDialog
+    QTableWidgetItem, QHeaderView, QComboBox, QFileDialog, QFormLayout
 )
-from PyQt5.QtCore import QDate,Qt,QTimer
+from PySide6.QtCore import QDate, Qt, QTimer
+from PySide6.QtGui import QIntValidator, QColor
+
 from datetime import datetime, date
 from db_helper import (
     fetch_students_with_teachers, fetch_classes,
@@ -15,10 +17,8 @@ from db_helper import (
 from shamsi_date_popup import ShamsiDatePopup
 from shamsi_date_picker import ShamsiDatePicker
 import jdatetime
-from PyQt5.QtGui import QIntValidator,QColor
 from utils import format_currency_with_unit ,get_currency_unit,format_currency
 import pandas as pd
-from datetime import datetime
 
 
 class PaymentManager(QWidget):
@@ -65,7 +65,6 @@ class PaymentManager(QWidget):
         layout.addWidget(self.list_classes)
 
         # ---------- فرم پرداخت ----------
-        from PyQt5.QtWidgets import QFormLayout
         form_layout = QFormLayout()
         form_layout.setLabelAlignment(Qt.AlignRight)
 
@@ -291,7 +290,7 @@ class PaymentManager(QWidget):
                 continue
             if query in name.lower() or query in teacher.lower():
                 item = QListWidgetItem(f"{name} (استاد: {teacher})")
-                item.setData(1, sid)
+                item.setData(Qt.UserRole, sid)
                 self.list_students.addItem(item)
 
     def load_classes(self):
@@ -305,7 +304,7 @@ class PaymentManager(QWidget):
                 cid, cname = row[0], row[1]
 
     def select_student(self, item):
-        self.selected_student_id = item.data(1)
+        self.selected_student_id = item.data(Qt.UserRole)
         for row in self.students:
             sid, _, name, teacher = row[:4]
             if sid == self.selected_student_id:
@@ -317,7 +316,7 @@ class PaymentManager(QWidget):
         student_classes = fetch_registered_classes_for_student(self.selected_student_id)
         for cid, cname, tname, instr, day, start, end, room in student_classes:
             class_item = QListWidgetItem(f"{cname} ({day} {start}-{end}) - {tname}")
-            class_item.setData(1, cid)
+            class_item.setData(Qt.UserRole, cid)
             self.list_classes.addItem(class_item)
 
         # اگر فقط یک کلاس وجود داره، همون رو اتومات انتخاب کن
@@ -334,7 +333,7 @@ class PaymentManager(QWidget):
             self.set_payment_button_enabled(False)
 
     def select_class(self, item):
-        self.selected_class_id = item.data(1)
+        self.selected_class_id = item.data(Qt.UserRole)
         self.update_term_status()
         self.update_financial_labels()
         self.load_payments()
@@ -676,7 +675,7 @@ class PaymentManager(QWidget):
             student_classes = fetch_registered_classes_for_student(self.selected_student_id)
             for cid, cname, tname, instr, day, start, end, room in student_classes:
                 class_item = QListWidgetItem(f"{cname} ({day} {start}-{end}) - {tname}")
-                class_item.setData(1, cid)
+                class_item.setData(Qt.UserRole, cid)
                 self.list_classes.addItem(class_item)
                 if cid == self.selected_class_id:
                     self.list_classes.setCurrentItem(class_item)

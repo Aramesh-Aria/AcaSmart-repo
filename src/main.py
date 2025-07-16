@@ -78,7 +78,7 @@ class LoggerWriter:
 sys.stdout = LoggerWriter(logging.error)
 sys.stderr = LoggerWriter(logging.error)
 
-from PyQt5.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 from login_window import LoginWindow
 from app_init import initialize_database
 
@@ -145,11 +145,11 @@ if __name__ == "__main__":
         window = LoginWindow()
         window.show()
         print("✅ GUI started successfully")
-        sys.exit(app.exec_())
+        sys.exit(app.exec())
         
     except Exception as e:
         print(f"❌ Critical error during startup: {e}")
         logging.error(f"Critical error during startup: {e}")
         # Print the full traceback to help debug
-        traceback.print_exc()
+        traceback.print_exec()
         raise

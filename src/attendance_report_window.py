@@ -1,15 +1,16 @@
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QTableWidget,QTableWidgetItem, QHeaderView,QHeaderView,
-    QLineEdit, QComboBox, QPushButton, QHBoxLayout,QFileDialog,QMessageBox
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QHeaderView,
+    QLineEdit, QComboBox, QPushButton, QHBoxLayout, QFileDialog, QMessageBox
 )
-from PyQt5.QtCore import Qt
+from PySide6.QtCore import Qt, QDate
+
 from db_helper import get_attendance_report_rows
 from datetime import datetime
 import openpyxl
 import jdatetime
+
 from shamsi_date_picker import ShamsiDatePicker
 from shamsi_date_popup import ShamsiDatePopup
-from PyQt5.QtCore import QDate
 
 
 class AttendanceReportWindow(QWidget):
@@ -19,7 +20,6 @@ class AttendanceReportWindow(QWidget):
         self.setGeometry(250, 150, 1300, 600)
         self.build_ui()
 
-
     def build_ui(self):
         layout = QVBoxLayout()
         layout.setSpacing(10)
@@ -28,7 +28,6 @@ class AttendanceReportWindow(QWidget):
         title.setStyleSheet("font-size: 16px; font-weight: bold;")
         layout.addWidget(title)
 
-        # فیلتر ها
         filter_layout = QHBoxLayout()
 
         self.input_student_name = QLineEdit()
@@ -45,7 +44,6 @@ class AttendanceReportWindow(QWidget):
         self.combo_term_status.addItem("فقط فعال", "active")
         self.combo_term_status.addItem("فقط پایان‌یافته", "finished")
 
-        # دکمه‌ها
         btn_filter = QPushButton("اعمال فیلتر")
         btn_filter.clicked.connect(self.apply_filters)
 
@@ -66,7 +64,6 @@ class AttendanceReportWindow(QWidget):
         self.date_from_picker = ShamsiDatePicker(": از تاریخ ترم")
         self.date_to_picker = ShamsiDatePicker(": تا تاریخ ترم")
 
-        # مقدار پیش‌فرض: سه ماه قبل تا امروز
         today = QDate.currentDate()
         three_months_ago = today.addMonths(-3)
         self.date_from_picker.setDate(three_months_ago)
@@ -76,7 +73,6 @@ class AttendanceReportWindow(QWidget):
         filter_layout.addWidget(self.date_to_picker)
 
         layout.addLayout(filter_layout)
-
 
         self.table = QTableWidget()
         layout.addWidget(self.table)
@@ -89,7 +85,6 @@ class AttendanceReportWindow(QWidget):
         self.load_data()
         self.table.setSortingEnabled(True)
 
-
     def load_data(self):
         rows = get_attendance_report_rows()
         self.all_data = rows
@@ -99,7 +94,6 @@ class AttendanceReportWindow(QWidget):
         self.combo_class.clear()
         self.combo_class.addItem("همه کلاس‌ها", None)
 
-        # پر کردن ComboBoxها
         teacher_names = set()
         class_names = set()
         for row in rows:
@@ -111,15 +105,6 @@ class AttendanceReportWindow(QWidget):
 
         for c in sorted(class_names):
             self.combo_class.addItem(c, c)
-
-        # ✅ فقط تاریخ‌های مرتبط با ترم هنرجوها
-        valid_dates = set()
-        for row in rows:
-            start = row['start_date']
-            end = row['end_date'] or "2100-01-01"
-            for date in row['attendance'].keys():
-                if start <= date <= end:
-                    valid_dates.add(date)
 
         self.populate_table(self.all_data)
         self.status_label.setText(f"تعداد نتایج: {len(self.all_data)}")
@@ -150,7 +135,6 @@ class AttendanceReportWindow(QWidget):
 
             filtered.append(row)
 
-        # ✅ اگر هیچ رکوردی نبود، پیام بده
         if not filtered:
             QMessageBox.information(self, "بدون نتیجه", "هیچ رکوردی مطابق با فیلترهای انتخاب‌شده یافت نشد.")
 
@@ -158,7 +142,6 @@ class AttendanceReportWindow(QWidget):
         self.status_label.setText(f"تعداد نتایج: {len(filtered)}")
 
     def populate_table(self, data):
-        # استخراج تاریخ‌های منحصر به فرد فقط از داده‌های فیلترشده
         all_dates = set()
         for row in data:
             start = row['start_date']
@@ -170,14 +153,11 @@ class AttendanceReportWindow(QWidget):
 
         headers = ["هنرجو", "استاد", "کلاس", "ساز", "شروع ترم", "پایان ترم"] + sorted_dates
 
-        # 🔧 پاکسازی کامل جدول
         self.table.clearContents()
         self.table.setRowCount(0)
-        self.table.setColumnCount(0)
-
         self.table.setColumnCount(len(headers))
         self.table.setHorizontalHeaderLabels(headers)
-        # رنگ پس‌زمینه هدر برای ستون‌های تاریخ
+
         for col in range(6, len(headers)):
             item = self.table.horizontalHeaderItem(col)
             if not item:
@@ -186,7 +166,6 @@ class AttendanceReportWindow(QWidget):
             item.setBackground(Qt.lightGray)
 
         self.table.setRowCount(len(data))
-
         header = self.table.horizontalHeader()
         for col in range(len(headers)):
             if col == 0:
@@ -237,22 +216,19 @@ class AttendanceReportWindow(QWidget):
         ws = wb.active
         ws.title = "Attendance Report"
 
-        # هدر جدول
         for col, header in enumerate(
                 [self.table.horizontalHeaderItem(i).text() for i in range(self.table.columnCount())], start=1):
             ws.cell(row=1, column=col, value=header)
 
-        # داده‌ها
         for row in range(self.table.rowCount()):
             for col in range(self.table.columnCount()):
                 item = self.table.item(row, col)
                 if item:
                     ws.cell(row=row + 2, column=col + 1, value=item.text())
 
-        # ⬅️ بعد از نوشتن داده‌ها: تنظیم عرض ستون‌ها
         for column_cells in ws.columns:
             max_length = 0
-            column = column_cells[0].column_letter  # نام ستون (A, B, ...)
+            column = column_cells[0].column_letter
             for cell in column_cells:
                 try:
                     if cell.value:

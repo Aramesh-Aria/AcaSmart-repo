@@ -1,10 +1,5 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton
-from PyQt5.QtCore import Qt
-from financial_report_window import FinancialReportWindow
-from attendance_report_window import AttendanceReportWindow
-from student_term_summary_window import StudentTermSummaryWindow
-from contacts_window import ContactsWindow
-from teacher_summary_window import TeacherSummaryWindow
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton
+from PySide6.QtCore import Qt
 
 class ReportsWindow(QWidget):
     def __init__(self):
@@ -34,21 +29,26 @@ class ReportsWindow(QWidget):
         self.setLayout(layout)
 
     def open_financial_report(self):
+        from financial_report_window import FinancialReportWindow
         self.financial_window = FinancialReportWindow()
         self.financial_window.show()
 
-    def open_attendance_report(self):
+    def open_attendance_report(self):    
+        from attendance_report_window import AttendanceReportWindow
         self.attendance_report_window = AttendanceReportWindow()
         self.attendance_report_window.show()
 
     def open_student_report(self):
+        from student_term_summary_window import StudentTermSummaryWindow
         self.student_term_summary_report_window = StudentTermSummaryWindow()
         self.student_term_summary_report_window.show()
 
     def open_student_contacts(self):
+        from contacts_window import ContactsWindow
         self.contacts_window = ContactsWindow()
         self.contacts_window.show()
 
     def open_teacher_report(self):
+        from teacher_summary_window import TeacherSummaryWindow
         self.teachers_summary_report_window = TeacherSummaryWindow()
         self.teachers_summary_report_window.show()

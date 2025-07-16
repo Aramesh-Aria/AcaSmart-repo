@@ -1,11 +1,5 @@
 import sqlite3
 from datetime import datetime, timedelta
-
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QDateEdit,
-    QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox
-)
-
 from pathlib import Path
 import shutil
 import os
