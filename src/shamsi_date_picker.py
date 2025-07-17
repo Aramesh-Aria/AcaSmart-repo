@@ -1,12 +1,12 @@
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QLabel, QPushButton,QHBoxLayout
 
 )
-from PyQt5.QtCore import QDate
+from PySide6.QtCore import QDate
 
 from shamsi_date_popup import ShamsiDatePopup
 import jdatetime
-
+from datetime import date
 class ShamsiDatePicker(QWidget):
     """
     ویجت ساده انتخاب تاریخ شمسی برای فرم‌ها.
@@ -64,6 +64,6 @@ class ShamsiDatePicker(QWidget):
         تنظیم تاریخ به صورت میلادی، و آپدیت تاریخ شمسی و متن دکمه.
         """
         self.selected_gregorian = qdate
-        g_date = qdate.toPyDate()
+        g_date = date(qdate.year(), qdate.month(), qdate.day())
         self.selected_shamsi = jdatetime.date.fromgregorian(date=g_date).strftime("%Y-%m-%d")
         self.button.setText(self.selected_shamsi)

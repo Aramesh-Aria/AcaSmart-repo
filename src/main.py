@@ -78,7 +78,7 @@ class LoggerWriter:
 sys.stdout = LoggerWriter(logging.error)
 sys.stderr = LoggerWriter(logging.error)
 
-from PyQt5.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 from login_window import LoginWindow
 from app_init import initialize_database
 

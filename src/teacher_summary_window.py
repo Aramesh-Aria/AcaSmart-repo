@@ -1,12 +1,12 @@
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTableWidget, QTableWidgetItem,
     QHeaderView, QPushButton, QFileDialog, QComboBox, QSizePolicy
 )
-from PyQt5.QtCore import Qt
+from PySide6.QtCore import Qt
+
 from db_helper import get_teacher_summary_rows, fetch_teachers_simple
 import openpyxl
 import jdatetime
-
 
 
 class TeacherSummaryWindow(QWidget):
@@ -18,7 +18,6 @@ class TeacherSummaryWindow(QWidget):
         layout = QVBoxLayout()
         layout.addLayout(self.create_filter_box())
 
-        # جدول
         self.table = QTableWidget()
         self.table.setColumnCount(9)
         self.table.setHorizontalHeaderLabels([
@@ -28,7 +27,6 @@ class TeacherSummaryWindow(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.table)
 
-        # خلاصه
         self.summary_label = QLabel()
         layout.addWidget(self.summary_label)
 
@@ -57,7 +55,6 @@ class TeacherSummaryWindow(QWidget):
         export_btn = QPushButton("📤 خروجی اکسل")
         export_btn.clicked.connect(self.export_to_excel)
 
-        # تنظیم فاصله بین ویجت‌ها
         for widget in [self.combo_teacher, self.combo_day, btn_filter, btn_clear, export_btn]:
             widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
@@ -125,13 +122,11 @@ class TeacherSummaryWindow(QWidget):
         ws = wb.active
         ws.title = "Teachers Summary"
 
-        # هدر
         for col in range(self.table.columnCount()):
             header = self.table.horizontalHeaderItem(col)
             if header:
                 ws.cell(row=1, column=col + 1, value=header.text())
 
-        # داده‌ها
         for row in range(self.table.rowCount()):
             for col in range(self.table.columnCount()):
                 item = self.table.item(row, col)

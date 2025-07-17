@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QFormLayout, QLineEdit, QPushButton, QMessageBox
+from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QPushButton, QMessageBox
 from utils import hash_password
 from db_helper import get_connection
 
@@ -60,7 +60,6 @@ class ChangeCredentialsWindow(QWidget):
         conn = get_connection()
         c = conn.cursor()
 
-        # بررسی صحت رمز فعلی با استفاده از نام کاربری لاگین‌شده
         c.execute("SELECT password FROM users WHERE mobile=?", (self.logged_in_mobile,))
         row = c.fetchone()
 
@@ -69,7 +68,6 @@ class ChangeCredentialsWindow(QWidget):
             conn.close()
             return
 
-        # حذف تمام رکوردهای قبلی
         c.execute("DELETE FROM users")
 
         final_mobile = new_mobile if change_mobile else self.logged_in_mobile

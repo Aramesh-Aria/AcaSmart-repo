@@ -1,11 +1,11 @@
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QCalendarWidget, QPushButton,
-    QComboBox, QSpinBox, QWidget, QShortcut
+    QComboBox, QSpinBox, QWidget
 )
-from PyQt5.QtGui import QKeySequence
-from PyQt5.QtCore import QDate, Qt
+from PySide6.QtGui import QKeySequence,QShortcut
+from PySide6.QtCore import QDate, Qt
 import jdatetime
-
+import datetime
 
 class ShamsiDatePopup(QDialog):
     def __init__(self, parent=None, initial_date=None):
@@ -71,7 +71,8 @@ class ShamsiDatePopup(QDialog):
         """
         به‌روزرسانی متن برچسب تاریخ شمسی بر اساس انتخاب فعلی در تقویم
         """
-        g_date = self.calendar.selectedDate().toPyDate()
+        qdate = self.calendar.selectedDate()
+        g_date = datetime.date(qdate.year(), qdate.month(), qdate.day())
         j_date = jdatetime.date.fromgregorian(date=g_date)
         self.selected_shamsi = j_date.strftime("%Y-%m-%d")
         self.label_shamsi.setText(f"📅 تاریخ انتخاب‌شده (شمسی): {self.selected_shamsi}")

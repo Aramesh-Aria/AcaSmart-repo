@@ -1,8 +1,8 @@
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,
     QHeaderView, QLineEdit, QHBoxLayout
 )
-from PyQt5.QtCore import Qt
+from PySide6.QtCore import Qt
 from db_helper import fetch_all_contacts
 
 
@@ -15,12 +15,10 @@ class ContactsWindow(QWidget):
         layout = QVBoxLayout()
         layout.setSpacing(10)
 
-        # عنوان
         title = QLabel("📒 لیست شماره تماس هنرجویان و اساتید")
         title.setStyleSheet("font-size: 16px; font-weight: bold;")
         layout.addWidget(title)
 
-        # فیلتر جستجو
         search_layout = QHBoxLayout()
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("🔍 جستجو بر اساس نام...")
@@ -28,7 +26,6 @@ class ContactsWindow(QWidget):
         search_layout.addWidget(self.search_input)
         layout.addLayout(search_layout)
 
-        # جدول
         self.table = QTableWidget()
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(["نام", "کد ملی", "شماره تماس", "نقش"])

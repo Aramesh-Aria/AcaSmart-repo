@@ -1,9 +1,9 @@
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-    QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QCheckBox,QDialog
+    QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QCheckBox, QDialog
 )
+from PySide6.QtCore import Qt
 import functools
-from PyQt5.QtCore import Qt
 import sqlite3
 
 from db_helper import (fetch_students_with_teachers_for_class,

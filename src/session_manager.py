@@ -1,10 +1,8 @@
-import sqlite3
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QLabel, QLineEdit, QPushButton, QListWidget, QListWidgetItem,
-    QVBoxLayout, QTimeEdit, QMessageBox,QDialog
+    QVBoxLayout, QTimeEdit, QMessageBox, QDialog
 )
-from PyQt5.QtCore import  QTime
-
+from PySide6.QtCore import QTime, Qt
 from db_helper import (
     fetch_students_with_teachers, fetch_classes,
     add_session, fetch_sessions_by_class, delete_session,
@@ -153,7 +151,7 @@ class SessionManager(QWidget):
         for cid, cname, teacher_name, day in classes:
             count = student_counts.get(cid, 0)
             item = QListWidgetItem(f"{cname} (استاد: {teacher_name}، روز: {day}) - {count} هنرجو جلسه دارد")
-            item.setData(1, cid)
+            item.setData(Qt.UserRole, cid)
             self.list_classes.addItem(item)
 
     def search_students(self):
@@ -162,11 +160,11 @@ class SessionManager(QWidget):
         for sid, national_code, name, teacher in self.students_data:
             if query in name.lower() or query in national_code.lower():
                 item = QListWidgetItem(f"{name} - کدملی: {national_code}")
-                item.setData(1, sid)  # ذخیره student_id صحیح
+                item.setData(Qt.UserRole, sid)  # ذخیره student_id صحیح
                 self.list_search_results.addItem(item)
 
     def select_student(self, item):
-        self.selected_student_id = item.data(1)
+        self.selected_student_id = item.data(Qt.UserRole)
 
         # Save teacher name for this student
         for sid, national_code, name, teacher in self.students_data:
@@ -177,7 +175,7 @@ class SessionManager(QWidget):
         self.filter_class_list()
 
     def select_class(self, item):
-        self.selected_class_id = item.data(1)
+        self.selected_student_id = item.data(Qt.UserRole)
         # تنظیم خودکار ساعت جلسه بر اساس ساعت شروع کلاس
         for cls in fetch_classes():
             if cls[0] == self.selected_class_id:

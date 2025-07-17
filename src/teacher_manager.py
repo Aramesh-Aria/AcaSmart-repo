@@ -1,14 +1,15 @@
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-                             QListWidget, QListWidgetItem, QMessageBox,QFormLayout,QToolButton, QStyle,
-                             QComboBox,QDialog)
-
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
+    QListWidget, QListWidgetItem, QMessageBox, QFormLayout, QToolButton,
+    QStyle, QComboBox, QDialog
+)
+from PySide6.QtCore import Qt
 from db_helper import (fetch_teachers, insert_teacher, delete_teacher_by_id,
                        is_teacher_assigned_to_students, get_teacher_by_id,
                        update_teacher_by_id,is_national_code_exists,is_national_code_exists_for_other,
                        add_instrument_to_teacher,remove_instrument_from_teacher,get_instruments_for_teacher,get_teacher_id_by_national_code)
 
 from shamsi_date_popup import ShamsiDatePopup
-from PyQt5.QtCore import Qt
 import jdatetime
 import re
 
@@ -60,7 +61,7 @@ class TeacherManager(QWidget):
         # جنسیت
         self.combo_gender = QComboBox()
         self.combo_gender.setPlaceholderText("جنسیت استاد")
-        self.combo_gender.addItems(["مذکر", "مونث"])
+        self.combo_gender.addItems(["آقا", "خانم"])
         self.combo_gender.setCurrentIndex(0)
         self.combo_gender.currentIndexChanged.connect(self.check_form_validity)
 

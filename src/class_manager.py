@@ -1,15 +1,16 @@
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QLabel, QLineEdit, QComboBox, QPushButton,
     QListWidget, QListWidgetItem, QVBoxLayout, QHBoxLayout,
     QFormLayout, QTimeEdit, QMessageBox
 )
-from PyQt5.QtCore import QTime,Qt,QSize
+
 from db_helper import (
     create_class, fetch_teachers_with_instruments, fetch_classes,
     class_exists, delete_class_by_id, is_class_has_sessions,
     get_instruments_for_teacher, get_class_by_id, update_class_by_id,does_teacher_have_time_conflict
 )
-from PyQt5.QtGui import QColor
+from PySide6.QtCore import QTime, Qt, QSize
+from PySide6.QtGui import QColor
 
 class ClassManager(QWidget):
     def __init__(self):
@@ -164,20 +165,6 @@ class ClassManager(QWidget):
             self.combo_teacher.addItem(display_text)
             self.teachers_map[display_text] = tid
 
-    def update_instruments_for_teacher(self):
-
-        self.combo_instrument.clear()
-
-        teacher_text = self.combo_teacher.currentText()
-
-        teacher_id = self.teachers_map.get(teacher_text)
-
-        if teacher_id:
-
-            insts = get_instruments_for_teacher(teacher_id)
-
-            self.combo_instrument.addItems(insts or ["❌ هیچ سازی ثبت نشده"])
-
     def load_classes(self):
         selected_day = self.filter_day.currentText()
         filter_instrument = self.filter_instrument.text().strip().lower()
@@ -227,7 +214,7 @@ class ClassManager(QWidget):
 
             item = QListWidgetItem()
             item.setSizeHint(label.sizeHint())
-            item.setData(1, class_id)
+            item.setData(Qt.UserRole, class_id)
 
             self.list_classes.addItem(item)
             self.list_classes.setItemWidget(item, label)
@@ -235,7 +222,7 @@ class ClassManager(QWidget):
         self.lbl_class_count.setText(f"تعداد نتایج: {len(filtered)} کلاس")
 
     def load_class_into_form(self, item):
-        class_id = item.data(1)
+        class_id = item.data(Qt.UserRole)
         self.selected_class_id = class_id
 
         # بارگذاری اطلاعات کلاس از دیتابیس
@@ -348,7 +335,7 @@ class ClassManager(QWidget):
         self.load_classes()
 
     def delete_class(self, item):
-        class_id = item.data(1)
+        class_id = item.data(Qt.UserRole)
         class_name = item.text()
 
         if is_class_has_sessions(class_id):

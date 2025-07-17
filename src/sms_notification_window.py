@@ -1,8 +1,8 @@
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QListWidget,
-    QListWidgetItem, QHBoxLayout, QMessageBox, QCheckBox, QScrollArea
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea,
+    QCheckBox, QMessageBox, QHBoxLayout
 )
-from PyQt5.QtCore import Qt
+from PySide6.QtCore import Qt
 from db_helper import fetch_students
 from sms_notifier import SmsNotifier
 
@@ -32,15 +32,14 @@ class SmsNotificationWindow(QWidget):
         self.search_input.setStyleSheet("padding: 6px;")
         layout.addWidget(self.search_input)
 
-        # دکمه انتخاب همه / لغو همه
-        select_all_btn = QPushButton("✔️ انتخاب همه / لغو همه")
-        select_all_btn.clicked.connect(self.toggle_select_all)
-        select_all_btn.setStyleSheet("padding: 6px;")
-        layout.addWidget(select_all_btn)
+        # select_all_btn = QPushButton("✔️ انتخاب همه / لغو همه")
+        # select_all_btn.clicked.connect(self.toggle_select_all)
+        # select_all_btn.setStyleSheet("padding: 6px;")
+        # layout.addWidget(select_all_btn)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setFixedHeight(400)  # محدود کردن ارتفاع
+        scroll.setFixedHeight(400)
         self.list_container = QWidget()
         self.list_layout = QVBoxLayout()
         self.list_layout.setSpacing(4)
@@ -77,7 +76,9 @@ class SmsNotificationWindow(QWidget):
 
     def refresh_student_list(self, filtered=None):
         for i in reversed(range(self.list_layout.count())):
-            self.list_layout.itemAt(i).widget().setParent(None)
+            widget = self.list_layout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
         self.checkboxes.clear()
 
         data = filtered if filtered is not None else self.students

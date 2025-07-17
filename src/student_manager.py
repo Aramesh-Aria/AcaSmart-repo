@@ -1,8 +1,8 @@
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QMessageBox, QListWidget, QListWidgetItem, QComboBox, QFormLayout,QDialog, QToolButton, QStyle
+    QMessageBox, QListWidget, QListWidgetItem, QComboBox, QFormLayout, QDialog, QToolButton, QStyle
 )
-from PyQt5.QtCore import Qt
+from PySide6.QtCore import Qt
 
 from db_helper import (insert_student, student_national_code_exists,get_student_by_id,
                        update_student_by_id,delete_student_by_id,fetch_students,
@@ -50,7 +50,7 @@ class StudentManager(QWidget):
 
         self.combo_gender = QComboBox()
         self.combo_gender.setPlaceholderText("جنسیت")
-        self.combo_gender.addItems(["مذکر", "مونث"])
+        self.combo_gender.addItems(["آقا", "خانم"])
         self.combo_gender.setCurrentIndex(0)
         self.combo_gender.currentTextChanged.connect(self.check_form_validity)
 
@@ -87,7 +87,7 @@ class StudentManager(QWidget):
         self.search_input.textChanged.connect(lambda text: self.search_students(text))
         # جستجو بر اساس جنسیت
         self.filter_gender = QComboBox()
-        self.filter_gender.addItems(["همه", "مذکر", "مونث"])
+        self.filter_gender.addItems(["همه", "آقا", "خانم"])
         self.filter_gender.currentTextChanged.connect(lambda: self.search_students(self.search_input.text()))
         # جستجو بر اساس کد ملی
         self.filter_national_code = QLineEdit()
