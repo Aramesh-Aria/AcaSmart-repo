@@ -10,6 +10,14 @@ class DashboardWindow(QWidget):
         self.logged_in_mobile = logged_in_mobile
         self.setWindowTitle("Admin Dashboard")
         self.setGeometry(400, 50, 400, 400)
+        
+        # Apply theme-based icon
+        try:
+            from theme_manager import apply_theme_icon
+            apply_theme_icon(self)
+        except Exception as e:
+            print(f"⚠️ Could not apply theme icon to dashboard window: {e}")
+        
         layout = QVBoxLayout()
         layout.setSpacing(12)
         button_style = "font-size: 15px; padding: 10px;"

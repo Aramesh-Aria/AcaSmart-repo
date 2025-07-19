@@ -10,6 +10,13 @@ class LoginWindow(QMainWindow):
         self.setWindowTitle("Admin Login")
         self.setGeometry(400, 50, 350, 150)
 
+        # Apply theme-based icon
+        try:
+            from theme_manager import apply_theme_icon
+            apply_theme_icon(self)
+        except Exception as e:
+            print(f"⚠️ Could not apply theme icon to login window: {e}")
+
         central_widget = QWidget()
         form_layout = QFormLayout()
 

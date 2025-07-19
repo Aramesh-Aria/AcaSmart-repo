@@ -142,6 +142,15 @@ if __name__ == "__main__":
         
         print("🎨 Starting GUI...")
         app = QApplication(sys.argv)
+        
+        # Apply theme-based icon
+        try:
+            from theme_manager import apply_theme_icon
+            theme = apply_theme_icon()
+            print(f"🎨 Applied {theme} theme icon")
+        except Exception as e:
+            print(f"⚠️ Could not apply theme icon: {e}")
+        
         window = LoginWindow()
         window.show()
         print("✅ GUI started successfully")
