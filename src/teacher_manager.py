@@ -110,7 +110,7 @@ class TeacherManager(QWidget):
 
         #Search teachers form
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("جستجو بر اساس نام یا ساز تخصصی")
+        self.search_input.setPlaceholderText("جستجو بر اساس نام یا ساز تدریسی استاد")
         self.search_input.textChanged.connect(self.search_teachers)
 
         #QListWidget لیست اساتید رو نشون می‌ده

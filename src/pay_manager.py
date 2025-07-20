@@ -51,7 +51,7 @@ class PaymentManager(QWidget):
         # ---------- فیلتر اولیه ----------
         layout.addWidget(QLabel("جستجوی هنرجو:"))
         self.input_search_student = QLineEdit()
-        self.input_search_student.setPlaceholderText("نام یا استاد...")
+        self.input_search_student.setPlaceholderText("نام هنرجو یا استاد...")
         self.input_search_student.textChanged.connect(self.search_students)
         layout.addWidget(self.input_search_student)
 

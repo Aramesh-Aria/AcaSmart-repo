@@ -95,7 +95,7 @@ class StudentManager(QWidget):
         self.filter_national_code.textChanged.connect(lambda: self.search_students(self.search_input.text()))
         # مرتب سازی جسجتو با combobox
         self.sort_by = QComboBox()
-        self.sort_by.addItems(["مرتب‌سازی بر اساس نام", "مرتب‌سازی بر اساس سن", "مرتب‌سازی بر اساس کد ملی"])
+        self.sort_by.addItems(["مرتب‌سازی بر اساس حروف الفبا", "مرتب‌سازی بر اساس سن", "مرتب‌سازی بر اساس کد ملی"])
         self.sort_by.currentIndexChanged.connect(lambda: self.search_students(self.search_input.text()))
 
         # لیست هنرجویان
