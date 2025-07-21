@@ -3,6 +3,7 @@ from PySide6.QtCore import Qt
 import shutil
 from version import __version__
 from pathlib import Path
+import logging
 
 class DashboardWindow(QWidget):
     def __init__(self, logged_in_mobile):
@@ -117,9 +118,12 @@ class DashboardWindow(QWidget):
                                                   "SQLite Files (*.db)", options=options)
         if filename:
             try:
+                logging.info(f"📥 عملیات بکاپ‌گیری آغاز شد. مسیر دیتابیس مبدا: {self.db_path}")
                 shutil.copyfile(self.db_path, filename)
+                logging.info(f"✅ فایل بکاپ با موفقیت در {filename} ذخیره شد.")
                 QMessageBox.information(self, "بکاپ‌گیری موفق", f"فایل بکاپ با موفقیت ذخیره شد:\n{filename}")
             except Exception as e:
+                logging.error(f"❌ خطا در بکاپ‌گیری: {str(e)}")
                 QMessageBox.critical(self, "خطا در بکاپ‌گیری", f"مشکلی در ذخیره فایل بکاپ پیش آمد:\n{str(e)}")
 
     def restore_database(self):

@@ -58,8 +58,8 @@ class UTF8FileHandler(logging.FileHandler):
 
 # Configure logging for Python 3.8 compatibility
 logging.basicConfig(
-    level=logging.ERROR,
-    format='%(asctime)s - %(message)s',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[UTF8FileHandler(str(log_path))]
 )
 
@@ -75,7 +75,7 @@ class LoggerWriter:
     def flush(self):
         pass
 
-sys.stdout = LoggerWriter(logging.error)
+sys.stdout = LoggerWriter(logging.info)
 sys.stderr = LoggerWriter(logging.error)
 
 from PySide6.QtWidgets import QApplication

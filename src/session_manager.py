@@ -34,6 +34,9 @@ class SessionManager(QWidget):
         self.is_editing = False
         self.selected_session_id = None
 
+        self.last_selected_time = None
+        self.last_time_per_class = {}  # کلاس به ساعت آخر ثبت‌شده
+
         layout = QVBoxLayout()
 
         # Search students
@@ -134,6 +137,7 @@ class SessionManager(QWidget):
         self.filter_class_list()
         self.search_students()
         self.time_session.setTime(QTime(12, 0))
+        self.last_selected_time = None
 
     def load_students(self):
         self.students_data = fetch_students_with_teachers()
@@ -175,14 +179,26 @@ class SessionManager(QWidget):
         self.filter_class_list()
 
     def select_class(self, item):
-        self.selected_student_id = item.data(Qt.UserRole)
-        # تنظیم خودکار ساعت جلسه بر اساس ساعت شروع کلاس
-        for cls in fetch_classes():
-            if cls[0] == self.selected_class_id:
-                start_time = cls[5]
+        self.selected_class_id = item.data(Qt.UserRole)
+        # گرفتن آخرین ساعت ثبت‌شده برای این کلاس
+        last_time = self.last_time_per_class.get(self.selected_class_id)
+
+        # اگر ساعت دستی قبلاً انتخاب شده بود (از همین جلسه)، از آن استفاده کن
+        if self.last_selected_time:
+            self.time_session.setTime(self.last_selected_time)
+
+        # اگر جلسه‌ای برای این کلاس ثبت شده بود، از آخرین جلسه آن استفاده کن
+        elif last_time:
+            self.time_session.setTime(last_time)
+
+        # اگر هیچ‌کدام نبود، ساعت شروع کلاس را لود کن
+        else:
+            matched_class = next((cls for cls in fetch_classes() if cls[0] == self.selected_class_id), None)
+            if matched_class:
+                start_time = matched_class[5]
                 if start_time:
                     self.time_session.setTime(QTime.fromString(start_time, "HH:mm"))
-                break
+
 
         self.load_sessions()  # Load sessions for selected class
 
@@ -219,6 +235,8 @@ class SessionManager(QWidget):
         try:
             add_session(self.selected_class_id, self.selected_student_id, date, time)
             QMessageBox.information(self, "موفق", f"جلسه برای هنرجو با موفقیت در تاریخ {date} و ساعت {time} ثبت شد.")
+            self.last_selected_time = self.time_session.time()
+            self.last_time_per_class[self.selected_class_id] = self.last_selected_time
         except sqlite3.IntegrityError:
             QMessageBox.warning(self, "جلسه تکراری", "این جلسه قبلاً ثبت شده است یا تداخل زمانی دارد.")
             return
@@ -257,6 +275,9 @@ class SessionManager(QWidget):
         delete_session(session_id)
         self.load_sessions()
         QMessageBox.information(self, "موفق", "جلسه و ترم مرتبط با موفقیت حذف شدند.")
+
+        self.last_selected_time = self.time_session.time()
+        self.last_time_per_class[self.selected_class_id] = self.last_selected_time
         self.clear_form()
 
     def filter_class_list(self):
