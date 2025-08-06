@@ -6,11 +6,10 @@ from PySide6.QtCore import Qt
 import functools
 import sqlite3
 
-from db_helper import (fetch_students_with_teachers_for_class,
-                       get_student_term,fetch_attendance_by_date,count_attendance,get_setting,
+from db_helper import (get_student_term,fetch_attendance_by_date,count_attendance,get_setting,
             delete_future_sessions,delete_sessions_for_expired_terms,
-            fetch_classes_on_weekday,insert_attendance_with_date,get_term_id_by_student_class_and_date,get_term_dates,
-            get_student_contact,get_class_and_teacher_name,has_renew_sms_been_sent, mark_renew_sms_sent
+            fetch_classes_on_weekday,insert_attendance_with_date,get_term_dates,
+            get_student_contact,get_class_and_teacher_name,has_renew_sms_been_sent, mark_renew_sms_sent,fetch_students_sessions_for_class_on_date,count_attendance_by_term
 )
 from shamsi_date_popup import ShamsiDatePopup
 import jdatetime
@@ -56,9 +55,10 @@ class AttendanceManager(QWidget):
         # --------- جدول حضور ----------
         # جدول حضور: ID مخفی، نام هنرجو، چک‌باکس حاضر، چک‌باکس غائب
         self.table = QTableWidget()
-        self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["ID", "نام هنرجو", "حاضر", "غائب"])
+        self.table.setColumnCount(6)
+        self.table.setHorizontalHeaderLabels(["ID", "نام هنرجو", "ساعت", "حاضر", "غائب", "term_id"])
         self.table.setColumnHidden(0, True)
+        self.table.setColumnHidden(5, True)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.table)
 
@@ -136,13 +136,11 @@ class AttendanceManager(QWidget):
         selected_date = self.selected_shamsi_date
         self.table.setRowCount(0)
         limit = int(get_setting("term_session_count", 12))
+        notify_session_number = limit - 1
 
-        for sid, name, teacher in fetch_students_with_teachers_for_class(self.selected_class_id):
-            term_id = get_term_id_by_student_class_and_date(sid, self.selected_class_id, selected_date)
-            if not term_id:
-                continue
+        for sid, name, teacher, session_time, term_id in fetch_students_sessions_for_class_on_date(self.selected_class_id, selected_date):
 
-            done = count_attendance(sid, self.selected_class_id)
+            done = count_attendance_by_term(sid, self.selected_class_id, term_id)
 
             row = self.table.rowCount()
             self.table.insertRow(row)
@@ -151,7 +149,11 @@ class AttendanceManager(QWidget):
             id_item = QTableWidgetItem(str(sid))
             id_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
             self.table.setItem(row, 0, id_item)
-
+            
+            # ستون مخفی term_id
+            term_item = QTableWidgetItem(str(term_id))
+            term_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+            self.table.setItem(row, 5, term_item)  # ستون جدید
             # بررسی ثبت پیام برای این ترم
             notified = False
             try:
@@ -167,14 +169,28 @@ class AttendanceManager(QWidget):
                 print(f"⚠️ خطا در بررسی وضعیت ارسال پیام: {e}")
 
             # ستون نام هنرجو + وضعیت پیامک
-            display_name = name + " ✅" if notified else name
-            name_item = QTableWidgetItem(display_name)
+            display_name = name
+            name_item = QTableWidgetItem()
             name_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
             name_item.setToolTip(f"جلسات ثبت‌شده: {done} از {limit}")
+
             if has_renew_sms_been_sent(sid, term_id):
+                display_name += "  ✅"
                 name_item.setForeground(Qt.green)
-                name_item.setText(f"{name}  ✅")
+            else:
+                # بررسی اینکه آیا ترم به انتها رسیده ولی پیامک ارسال نشده
+                if done >= notify_session_number and not has_renew_sms_been_sent(sid, term_id):
+                    display_name += "  ❌"
+                    name_item.setForeground(Qt.red)
+
+            name_item.setText(display_name)
             self.table.setItem(row, 1, name_item)
+
+            
+            # ستون ساعت جلسه
+            time_item = QTableWidgetItem(session_time)
+            time_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+            self.table.setItem(row, 2, time_item)
 
             # چک‌باکس‌ها (حاضر / غایب)
             record = fetch_attendance_by_date(sid, self.selected_class_id, selected_date, term_id)
@@ -197,8 +213,8 @@ class AttendanceManager(QWidget):
             elif record is False:
                 absent_chk.setChecked(True)
 
-            self.table.setCellWidget(row, 2, present_chk)
-            self.table.setCellWidget(row, 3, absent_chk)
+            self.table.setCellWidget(row, 3, present_chk)
+            self.table.setCellWidget(row, 4, absent_chk)
             self.table.setRowHeight(row, 25)
 
     def _on_present_changed(self, other_chk, state):
@@ -226,13 +242,16 @@ class AttendanceManager(QWidget):
 
         for row in range(self.table.rowCount()):
             sid = int(self.table.item(row, 0).text())
-            present = self.table.cellWidget(row, 2).isChecked()
-            absent = self.table.cellWidget(row, 3).isChecked()
+            present_chk = self.table.cellWidget(row, 3)
+            absent_chk = self.table.cellWidget(row, 4)
+            present = present_chk.isChecked() if present_chk else False
+            absent = absent_chk.isChecked() if absent_chk else False
 
             try:
-                term_id = get_term_id_by_student_class_and_date(sid, self.selected_class_id, selected_date)
-                if not term_id:
+                term_id_item = self.table.item(row, 5)
+                if term_id_item is None:
                     continue
+                term_id = int(term_id_item.text())
 
                 term = get_term_dates(term_id)
                 if not term:
@@ -244,15 +263,25 @@ class AttendanceManager(QWidget):
                 if present or absent:
                     is_present = 1 if present else 0
                     insert_attendance_with_date(sid, self.selected_class_id, term_id, selected_date, is_present)
-                    total = count_attendance(sid, self.selected_class_id)
+                    total = count_attendance_by_term(sid, self.selected_class_id, term_id)
 
                     if total == notify_session_number and not has_renew_sms_been_sent(sid, term_id):
                         name, phone = get_student_contact(sid)
                         if phone:
                             class_name, _ = get_class_and_teacher_name(self.selected_class_id)
+
+                            # گرفتن تاریخ و ساعت جلسه برای ذخیره در notified_terms
+                            session_date = selected_date  # همین متغیری که در save_attendance داری
+                            session_time = self.table.item(row, 2).text() if self.table.item(row, 2) else None
+
                             try:
+                                # ارسال پیامک
                                 self.notifier.send_renew_term_notification(name, phone, class_name)
+
+                                # علامت‌گذاری ارسال پیامک
                                 mark_renew_sms_sent(sid, term_id)
+
+
                             except Exception as e:
                                 print(f"❌ خطا در ارسال پیامک به {name}: {e}")
                                 failed_sms.append(name)

@@ -4,17 +4,17 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import QTime, Qt
 from db_helper import (
-    fetch_students_with_teachers, fetch_classes,
+    fetch_students_with_teachers,
     add_session, fetch_sessions_by_class, delete_session,
     fetch_classes_for_student, has_weekly_time_conflict, update_session,
     get_day_and_time_for_class, is_class_slot_taken,
     insert_student_term_if_not_exists,
-    delete_sessions_for_expired_terms,get_student_count_per_class,
-get_unnotified_expired_terms,mark_terms_as_notified,get_term_id_by_student_and_class,
-delete_term_if_no_payments
+    delete_sessions_for_expired_terms,get_session_count_per_class,
+get_unnotified_expired_terms,mark_terms_as_notified,delete_term_if_no_payments,get_last_term_end_date,get_session_by_id,delete_sessions_for_term
 )
 from shamsi_date_popup import ShamsiDatePopup
 import jdatetime
+import sqlite3
 
 class SessionManager(QWidget):
     def __init__(self):
@@ -74,6 +74,7 @@ class SessionManager(QWidget):
         layout.addWidget(QLabel("ساعت جلسه:"))
         self.time_session = QTimeEdit()
         self.time_session.setTime(QTime(12, 0))
+        self.time_session.timeChanged.connect(self.on_time_changed)
         layout.addWidget(self.time_session)
 
         # دکمه افزودن جلسه
@@ -109,35 +110,60 @@ class SessionManager(QWidget):
             self.select_student(first_item)
 
     def check_and_notify_term_ends(self):
-
         expired = get_unnotified_expired_terms()
+        if not expired:
+            return
 
-        if expired:
-            message = "هنرجویان زیر ترم‌شان به پایان رسیده است و از لیست کلاس حذف شدند:\n"
-            for sid, cid, name, code, class_name, day, term_id in expired:
-                message += f"\n• {name} | کد ملی: {code} | کلاس: {class_name} ({day})"
+        message = "هنرجویان زیر ترم‌شان به پایان رسیده است و از لیست کلاس حذف شدند:\n"
+        to_mark = []
 
-            # ⛳️ اول نمایش بده
-            QMessageBox.information(self, "پایان ترم‌ها", message)
+        for student_id, class_id, student_name, national_code, class_name, day, term_id, session_date, session_time in expired:
+            message += f"\n• {student_name} | کدملی: {national_code} | {class_name} ({day}) — {session_date} ساعت {session_time}"
+            to_mark.append((term_id, student_id, class_id, session_date, session_time))
 
-            # ✅ بعد علامت‌گذاری کن که پیام نمایش داده شده
-            mark_terms_as_notified([(term_id, sid, cid) for sid, cid, _, _, _, _, term_id in expired])
+        # ⛳️ اول نمایش بده
+        QMessageBox.information(self, "پایان ترم‌ها", message)
 
+        # ✅ بعد علامت‌گذاری کن که پیام نمایش داده شده
+        mark_terms_as_notified(to_mark)
+
+        #  حذف جلسات مربوط به این ترم
+        for term_id, *_ in to_mark:
+            delete_sessions_for_term(term_id)
     def clear_form(self):
         """Reset date/time and editing state without clearing student/class list"""
         self.input_search_student.clear()
         self.input_search_class.clear()
         self.selected_shamsi_date = self.last_selected_date
         self.date_btn.setText(f"📅 تاریخ شروع ترم: {self.selected_shamsi_date}")
-        # ساعت کلاس را حفظ کن، فقط در صورت نیاز به مقداردهی مجدد مقدار بده
         self.is_editing = False
         self.btn_add_session.setText("➕ افزودن جلسه")
         self.selected_session_id = None
-        # نتایج جستجو را مجدد فیلتر کن تا لیست به‌روزرسانی شود
         self.filter_class_list()
         self.search_students()
-        self.time_session.setTime(QTime(12, 0))
+        
+        # تنظیم ساعت بر اساس کلاس انتخاب‌شده
+        if self.selected_class_id:
+            class_day, class_time = get_day_and_time_for_class(self.selected_class_id)
+            if class_time:
+                try:
+                    self.time_session.setTime(QTime.fromString(class_time, "HH:mm"))
+                except:
+                    self.time_session.setTime(QTime(12, 0))
+            else:
+                self.time_session.setTime(QTime(12, 0))
+        else:
+            self.time_session.setTime(QTime(12, 0))
+        
         self.last_selected_time = None
+
+    def on_time_changed(self):
+        """Remember the time when user changes it"""
+        if self.selected_class_id:
+            self.last_selected_time = self.time_session.time()
+            self.last_time_per_class[self.selected_class_id] = self.last_selected_time
+            # Reset the global last_selected_time so it doesn't override class start times
+            self.last_selected_time = None
 
     def load_students(self):
         self.students_data = fetch_students_with_teachers()
@@ -150,11 +176,11 @@ class SessionManager(QWidget):
             return
 
         classes = fetch_classes_for_student(self.selected_student_id)
-        student_counts = get_student_count_per_class()
+        session_counts = get_session_count_per_class()
 
         for cid, cname, teacher_name, day in classes:
-            count = student_counts.get(cid, 0)
-            item = QListWidgetItem(f"{cname} (استاد: {teacher_name}، روز: {day}) - {count} هنرجو جلسه دارد")
+            count = session_counts.get(cid, 0)
+            item = QListWidgetItem(f"{cname} (استاد: {teacher_name}، روز: {day}) - {count} جلسه ثبت شده")
             item.setData(Qt.UserRole, cid)
             self.list_classes.addItem(item)
 
@@ -167,42 +193,56 @@ class SessionManager(QWidget):
                 item.setData(Qt.UserRole, sid)  # ذخیره student_id صحیح
                 self.list_search_results.addItem(item)
 
+
     def select_student(self, item):
         self.selected_student_id = item.data(Qt.UserRole)
 
-        # Save teacher name for this student
+        # ذخیره نام استاد
         for sid, national_code, name, teacher in self.students_data:
             if sid == self.selected_student_id:
                 self.selected_student_teacher_name = teacher
                 break
+
         self.load_student_classes()
         self.filter_class_list()
 
+        # ✅ اگر کلاس‌ها لود شدند، اولین کلاس رو انتخاب و ساعت رو آپدیت کن
+        if self.list_classes.count() > 0:
+            first_class_item = self.list_classes.item(0)
+            self.list_classes.setCurrentItem(first_class_item)
+            # Reset last_selected_time when switching students to ensure class start time is loaded
+            self.last_selected_time = None
+            self.select_class(first_class_item)
+
     def select_class(self, item):
         self.selected_class_id = item.data(Qt.UserRole)
+        
         # گرفتن آخرین ساعت ثبت‌شده برای این کلاس
         last_time = self.last_time_per_class.get(self.selected_class_id)
 
-        # اگر ساعت دستی قبلاً انتخاب شده بود (از همین جلسه)، از آن استفاده کن
-        if self.last_selected_time:
-            self.time_session.setTime(self.last_selected_time)
-
-        # اگر جلسه‌ای برای این کلاس ثبت شده بود، از آخرین جلسه آن استفاده کن
+        # اول سعی کن ساعت شروع کلاس را لود کن
+        class_day, class_start_time = get_day_and_time_for_class(self.selected_class_id)
+        if class_start_time:
+            try:
+                self.time_session.setTime(QTime.fromString(class_start_time, "HH:mm"))
+                # اگر این کلاس قبلاً ساعت دستی داشت، آن را حفظ کن
+                if last_time:
+                    self.last_time_per_class[self.selected_class_id] = self.time_session.time()
+            except:
+                # اگر فرمت زمان مشکل داشت، ادامه بده
+                pass
+        # اگر ساعت شروع کلاس موجود نبود یا مشکل داشت
         elif last_time:
+            # اگر این کلاس قبلاً ساعت دستی داشت، از آن استفاده کن
             self.time_session.setTime(last_time)
-
-        # اگر هیچ‌کدام نبود، ساعت شروع کلاس را لود کن
         else:
-            matched_class = next((cls for cls in fetch_classes() if cls[0] == self.selected_class_id), None)
-            if matched_class:
-                start_time = matched_class[5]
-                if start_time:
-                    self.time_session.setTime(QTime.fromString(start_time, "HH:mm"))
+            # ساعت پیش‌فرض
+            self.time_session.setTime(QTime(12, 0))
 
-
-        self.load_sessions()  # Load sessions for selected class
-
+        self.load_sessions()
+          # Load sessions for selected class
     def add_session_to_class(self):
+        # بررسی انتخاب هنرجو و کلاس
         if not self.selected_class_id or not self.selected_student_id:
             QMessageBox.warning(self, "خطا", "لطفاً هنرجو و کلاس را انتخاب کنید.")
             return
@@ -215,13 +255,46 @@ class SessionManager(QWidget):
         date = self.selected_shamsi_date
         time = self.time_session.time().toString("HH:mm")
 
-        class_day, _ = get_day_and_time_for_class(self.selected_class_id)
+        class_day, class_start_time = get_day_and_time_for_class(self.selected_class_id)
         session_time = self.time_session.time().toString("HH:mm")
+
+        # بررسی اینکه ساعت جلسه قبل از شروع کلاس نباشد
+        if class_start_time:
+            try:
+                class_start_qtime = QTime.fromString(class_start_time, "HH:mm")
+                session_qtime = self.time_session.time()
+                if session_qtime < class_start_qtime:
+                    QMessageBox.warning(self, "خطا", "ساعت شروع جلسه نمی‌تواند قبل از شروع کلاس مربوطه باشد.")
+                    return
+            except:
+                pass  # اگر فرمت زمان مشکل داشت، ادامه بده
 
         # حالت ویرایش
         if self.is_editing:
             self.update_session()
             return
+
+        # قبل از ثبت جلسه، اطمینان حاصل کن که ترم وجود دارد
+        start_time = self.time_session.time().toString("HH:mm")
+        self.selected_term_id = insert_student_term_if_not_exists(
+            self.selected_student_id,
+            self.selected_class_id,
+            date,
+            start_time
+        )
+
+
+        if self.selected_term_id is None:
+            last_term_end_date = get_last_term_end_date(self.selected_student_id, self.selected_class_id)
+            if last_term_end_date:
+                QMessageBox.warning(self, "عدم امکان ایجاد ترم جدید",
+                    f"ترم قبلی هنرجو در این کلاس در تاریخ {last_term_end_date} به پایان رسیده است.\n"
+                    f"امکان ثبت ترم جدید از تاریخ {last_term_end_date} به بعد وجود دارد.")
+            else:
+                QMessageBox.warning(self, "عدم امکان ایجاد ترم جدید",
+                    "امکان ایجاد ترم جدید در تاریخ انتخاب‌شده وجود ندارد.")
+            return
+
 
         # بررسی اینکه آیا زمان جلسه خالی است یا خیر
         if is_class_slot_taken(self.selected_class_id, date, time):
@@ -237,12 +310,20 @@ class SessionManager(QWidget):
             QMessageBox.information(self, "موفق", f"جلسه برای هنرجو با موفقیت در تاریخ {date} و ساعت {time} ثبت شد.")
             self.last_selected_time = self.time_session.time()
             self.last_time_per_class[self.selected_class_id] = self.last_selected_time
-        except sqlite3.IntegrityError:
+        except sqlite3.IntegrityError as e:
+            print("🔴 IntegrityError:", e)
+
+            # 🧨 اگر جلسه درج نشد، ترم ساخته‌شده را حذف کن (مشروط به اینکه پرداختی نداشته باشد)
+            delete_term_if_no_payments(self.selected_student_id, self.selected_class_id, self.selected_term_id)
+
             QMessageBox.warning(self, "جلسه تکراری", "این جلسه قبلاً ثبت شده است یا تداخل زمانی دارد.")
             return
 
+
         self.load_sessions()
-        self.last_selected_date = self.selected_shamsi_date  # این خط عملاً بی‌تأثیره چون بالاتر هم هست
+        self.update_class_list()
+        self.update_summary_bar()
+        self.last_selected_date = self.selected_shamsi_date
 
     def load_sessions(self):
         self.list_sessions.clear()
@@ -261,10 +342,14 @@ class SessionManager(QWidget):
                                      QMessageBox.Yes | QMessageBox.No)
         if reply != QMessageBox.Yes:
             return
-
+        
+        session_info = get_session_by_id(session_id)
+        if not session_info:
+            QMessageBox.warning(self, "خطا", "اطلاعات جلسه یافت نشد.")
+            return
+        student_id, class_id, term_id = session_info
         # قبل از حذف جلسه، بررسی کن که ترم پرداختی دارد یا نه
-        term_id = get_term_id_by_student_and_class(self.selected_student_id, self.selected_class_id)
-        has_payment = not delete_term_if_no_payments(self.selected_student_id, self.selected_class_id, term_id)
+        has_payment = not delete_term_if_no_payments(student_id, class_id, term_id)
 
         if has_payment:
             QMessageBox.warning(self, "حذف ممکن نیست",
@@ -274,10 +359,13 @@ class SessionManager(QWidget):
         # اگر پرداختی ندارد، حذف جلسه و پیام موفقیت
         delete_session(session_id)
         self.load_sessions()
+        self.update_class_list()
+        self.update_summary_bar()
         QMessageBox.information(self, "موفق", "جلسه و ترم مرتبط با موفقیت حذف شدند.")
 
         self.last_selected_time = self.time_session.time()
         self.last_time_per_class[self.selected_class_id] = self.last_selected_time
+
         self.clear_form()
 
     def filter_class_list(self):
@@ -311,8 +399,20 @@ class SessionManager(QWidget):
         date = self.selected_shamsi_date
         time = self.time_session.time().toString("HH:mm")
 
-        class_day, _ = get_day_and_time_for_class(self.selected_class_id)
+        class_day, class_start_time = get_day_and_time_for_class(self.selected_class_id)
         session_time = self.time_session.time().toString("HH:mm")
+
+        # بررسی اینکه ساعت جلسه قبل از شروع کلاس نباشد
+        if class_start_time:
+            try:
+                class_start_qtime = QTime.fromString(class_start_time, "HH:mm")
+                session_qtime = self.time_session.time()
+                if session_qtime < class_start_qtime:
+                    QMessageBox.warning(self, "خطا", "ساعت شروع جلسه نمی‌تواند قبل از شروع کلاس مربوطه باشد.")
+                    return
+            except:
+                # اگر فرمت زمان مشکل داشت، ادامه بده
+                pass
 
         # بررسی تداخل هفتگی
         if has_weekly_time_conflict(self.selected_student_id, class_day, session_time,
@@ -329,19 +429,26 @@ class SessionManager(QWidget):
         if not self.selected_class_id or not self.selected_student_id:
             QMessageBox.warning(self, "خطا", "لطفاً ابتدا هنرجو و کلاس را انتخاب کنید.")
             return
+        
+        session_info = get_session_by_id(self.selected_session_id)
+        if not session_info:
+            QMessageBox.warning(self, "خطا", "اطلاعات جلسه یافت نشد.")
+            return
+
+        student_id, class_id, term_id = session_info
 
         try:
             update_session(
-                self.selected_session_id,
-                self.selected_class_id,
-                self.selected_student_id,
-                date,
-                time
+            self.selected_session_id,
+            class_id,
+            student_id,
+            date,
+            time
             )
             QMessageBox.information(self, "موفق", "جلسه با موفقیت ویرایش شد.")
 
             # اگر هنرجو هنوز ترمی نداشته، بساز
-            insert_student_term_if_not_exists(self.selected_student_id, self.selected_class_id, date)
+            insert_student_term_if_not_exists(self.selected_student_id, self.selected_class_id, date, time)
 
         except sqlite3.IntegrityError:
             QMessageBox.warning(self, "خطا", "امکان ویرایش به دلیل تداخل یا جلسه تکراری وجود ندارد.")
@@ -362,3 +469,13 @@ class SessionManager(QWidget):
             self.selected_shamsi_date = dlg.get_selected_date()
             self.last_selected_date = self.selected_shamsi_date
             self.date_btn.setText(f"📅 {self.selected_shamsi_date}")
+
+    def update_class_list(self):
+        """بروزرسانی لیست کلاس‌های هنرجو و تعداد جلسات ثبت‌شده"""
+        self.load_student_classes()
+
+    def update_summary_bar(self):
+     """در صورت وجود نوار وضعیت، اطلاعات جلسات یا ترم‌ها را بروزرسانی می‌کند"""
+    # فرض: self.statusBar یا یک QLabel دارید، آنجا اطلاعات جدید قرار می‌گیرد
+    pass  # اگر وجود ندارد، لازم نیست چیزی بنویسی
+

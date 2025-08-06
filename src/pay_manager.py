@@ -10,9 +10,9 @@ from datetime import datetime, date
 from db_helper import (
     fetch_students_with_teachers, fetch_classes,
     insert_payment, fetch_payments, get_total_paid_for_term, delete_payment, get_setting,
-    count_attendance, fetch_teachers_simple,get_student_term,fetch_extra_payments_for_term,
+     fetch_teachers_simple,get_student_term,fetch_extra_payments_for_term,
     get_term_id_by_student_and_class,count_attendance_for_term,fetch_registered_classes_for_student,
-    update_payment_by_id
+    update_payment_by_id, get_terms_for_payment_management
 )
 from shamsi_date_popup import ShamsiDatePopup
 from shamsi_date_picker import ShamsiDatePicker
@@ -40,6 +40,7 @@ class PaymentManager(QWidget):
         self.selected_student_id = None
         self.selected_student_teacher = None
         self.selected_class_id = None
+        self.selected_term_id = None
         self.students = []
         self.classes = []
         self.is_editing = False
@@ -64,6 +65,12 @@ class PaymentManager(QWidget):
         self.list_classes.itemClicked.connect(self.select_class)
         layout.addWidget(self.list_classes)
 
+        # ---------- انتخاب ترم ----------
+        layout.addWidget(QLabel("انتخاب ترم:"))
+        self.combo_terms = QComboBox()
+        self.combo_terms.currentIndexChanged.connect(self.select_term)
+        layout.addWidget(self.combo_terms)
+
         # ---------- فرم پرداخت ----------
         form_layout = QFormLayout()
         form_layout.setLabelAlignment(Qt.AlignRight)
@@ -86,7 +93,7 @@ class PaymentManager(QWidget):
         self.input_description.setPlaceholderText("مثلاً بابت ثبت‌نام ترم زمستان...")
         self.input_description.setFixedHeight(60)
         form_layout.addRow("📝 توضیحات:", self.input_description)
-
+        self.combo_type.currentIndexChanged.connect(self.update_financial_labels)
         layout.addLayout(form_layout)
         layout.addSpacing(8)
 
@@ -228,6 +235,7 @@ class PaymentManager(QWidget):
         self.selected_student_id = None
         self.selected_student_teacher = None
         self.selected_class_id = None
+        self.selected_term_id = None
         self.term_start = None
         self.term_end = None
         self.term_expired = True
@@ -236,6 +244,7 @@ class PaymentManager(QWidget):
         self.input_search_student.clear()
         self.list_students.clear()
         self.list_classes.clear()
+        self.combo_terms.clear()
         self.input_amount.setText(str(self.term_fee))
 
         self.input_min_amount.clear()
@@ -334,6 +343,65 @@ class PaymentManager(QWidget):
 
     def select_class(self, item):
         self.selected_class_id = item.data(Qt.UserRole)
+        self.load_terms()
+        self.update_term_status()
+        self.update_financial_labels()
+        self.load_payments()
+
+    def load_terms(self):
+        """بارگذاری تمام ترم‌های هنرجو در کلاس انتخاب‌شده"""
+        self.combo_terms.clear()
+        self.selected_term_id = None
+        
+        if not (self.selected_student_id and self.selected_class_id):
+            return
+            
+        terms = get_terms_for_payment_management(self.selected_student_id, self.selected_class_id)
+        
+        if not terms:
+            self.combo_terms.addItem("هیچ ترمی یافت نشد", None)
+            return
+            
+        for term in terms:
+            term_id = term['term_id']
+            start_date = term['start_date']
+            end_date = term['end_date']
+            status = term['status']
+            term_status = term['term_status']
+            total_paid = term['total_paid']
+            debt = term['debt']
+            
+            # نمایش اطلاعات ترم
+            display_text = f"ترم {start_date}"
+            if end_date:
+                display_text += f" تا {end_date}"
+            display_text += f" - {term_status}"
+            
+            # نمایش وضعیت پرداخت
+            if debt == 0:
+                payment_status = "تسویه شده"
+            elif debt > 0:
+                payment_status = f"بدهکار: {format_currency_with_unit(debt)}"
+            else:
+                payment_status = "خطا"
+                
+            display_text += f" - {payment_status}"
+            if total_paid > 0:
+                display_text += f" (پرداخت: {format_currency_with_unit(total_paid)})"
+                
+            self.combo_terms.addItem(display_text, term_id)
+        
+        # انتخاب اولین ترم به عنوان پیش‌فرض
+        if self.combo_terms.count() > 0:
+            self.combo_terms.setCurrentIndex(0)
+
+    def select_term(self, index):
+        """انتخاب ترم و به‌روزرسانی اطلاعات مالی"""
+        if index >= 0:
+            self.selected_term_id = self.combo_terms.itemData(index)
+        else:
+            self.selected_term_id = None
+        
         self.update_term_status()
         self.update_financial_labels()
         self.load_payments()
@@ -425,9 +493,9 @@ class PaymentManager(QWidget):
 
                 # رنگ‌بندی سلول بسته به نوع پرداخت
                 if payment_type == "extra":
-                    item.setBackground(QColor("#fff59d"))  # زرد ملایم
+                    item.setBackground(QColor("#FFD54F"))  # زرد ملایم
                 elif payment_type == "tuition":
-                    item.setBackground(QColor("#c8e6c9"))  # سبز ملایم
+                    item.setBackground(QColor("#81C784"))  # سبز ملایم
 
                 self.table_payments.setItem(row, col, item)
                 self.table_payments.setCellWidget(row, 6, None)  # پاک کردن احتمالی ویجت‌ها قبلی
@@ -435,9 +503,9 @@ class PaymentManager(QWidget):
             # ستون ۶ رو که فارسی‌سازی نوع پرداخت هست جداگانه ست می‌کنیم
             item = QTableWidgetItem(str(row_data[7]))
             if payment_type == "extra":
-                item.setBackground(QColor("#fff59d"))
+                item.setBackground(QColor("#FFD54F"))
             elif payment_type == "tuition":
-                item.setBackground(QColor("#c8e6c9"))
+                item.setBackground(QColor("#81C784"))
             self.table_payments.setItem(row, 6, item)
 
     def _to_int(self, text):
@@ -464,7 +532,7 @@ class PaymentManager(QWidget):
             self.term_expired = True
 
     def update_financial_labels(self):
-        """به‌روزرسانی اطلاعات مالی و جلسات برای ترم فعال."""
+        """به‌روزرسانی اطلاعات مالی و جلسات برای ترم انتخاب‌شده."""
         self.lbl_total.setText("")
         self.lbl_remaining.setText("")
         self.set_payment_button_enabled(False)
@@ -472,28 +540,26 @@ class PaymentManager(QWidget):
         if not (self.selected_student_id and self.selected_class_id):
             return
 
-        term_id = get_term_id_by_student_and_class(self.selected_student_id, self.selected_class_id)
-        if not term_id:
+        if not self.selected_term_id:
             self.term_missing = True
             self.term_expired = True
-            self.lbl_total.setText("هنرجو در این کلاس ثبت نشده است")
+            self.lbl_total.setText("لطفاً یک ترم را انتخاب کنید")
             return
 
         self.term_missing = False
-        done = count_attendance_for_term(term_id)
+        done = count_attendance_for_term(self.selected_term_id)
         limit = int(get_setting("term_session_count", 12))
         self.term_expired = (done >= limit)
 
-        if self.term_expired:
-            self.lbl_total.setText("ترم تکمیل شده است")
-            self.set_payment_button_enabled(False)
-            return
-
-        # ترم جاری فعال
-        total = get_total_paid_for_term(term_id)
+        # اطلاعات مالی ترم انتخاب‌شده
+        total = get_total_paid_for_term(self.selected_term_id)
         rem_money = self.term_fee - total
         rem_sessions = limit - done
-        self.lbl_total.setText(f"جلسات: {done} از {limit} — پرداخت: {format_currency_with_unit(total)}")
+        
+        # تعیین وضعیت ترم
+        term_status = "تکمیل شده" if self.term_expired else "فعال"
+        
+        self.lbl_total.setText(f"ترم {term_status} — جلسات: {done} از {limit} — پرداخت: {format_currency_with_unit(total)}")
         self.lbl_total.setStyleSheet("font-size:13px; color: #555555;")
 
         # مانده شهریه رنگ‌بندی شود
@@ -507,14 +573,28 @@ class PaymentManager(QWidget):
         self.lbl_remaining.setText(f"مانده شهریه: {format_currency_with_unit(rem_money)} — جلسات باقی: {rem_sessions}")
         self.lbl_remaining.setStyleSheet(f"font-size:13px; color:{color}; margin-bottom:10px;")
 
-        self.set_payment_button_enabled(True)
+        # نوع پرداخت انتخاب‌شده رو بگیر
+        ptype = self.combo_type.currentText()
+        if ptype == "شهریه":
+            # فقط وقتی شهریه بدهکار هست دکمه فعال شه
+            can_pay = rem_money > 0
+        else:
+            # برای پرداخت مازاد همیشه فعال باشه
+            can_pay = True
+        self.set_payment_button_enabled(can_pay)
 
 
     def add_payment(self):
-        # اگر در حال ویرایش نیستیم، بررسی‌های ترم را انجام بده
-        if not self.is_editing and (self.term_expired or not (self.selected_student_id and self.selected_class_id)):
-            QMessageBox.warning(self, "خطا", "کاربر فاقد ترم جاری است یا انتخاب ناقص است.")
-            return
+
+        ptype = 'tuition' if self.combo_type.currentText() == "شهریه" else 'extra'
+
+        if not self.is_editing and ptype == 'tuition':
+            total_paid = get_total_paid_for_term(self.selected_term_id) if self.selected_term_id else 0
+            remaining = self.term_fee - total_paid
+            if remaining <= 0 or not (self.selected_student_id and self.selected_class_id):
+                QMessageBox.warning(self, "خطا", "این ترم یا تسویه شده یا انتخاب ناقص است.")
+                return
+
 
         try:
             amount = int(self.input_amount.text())
@@ -528,26 +608,31 @@ class PaymentManager(QWidget):
 
         # فقط در حالت درج جدید بررسی و دریافت term_id انجام شود
         if not self.is_editing:
-            term_id = get_term_id_by_student_and_class(self.selected_student_id, self.selected_class_id)
-            if not term_id:
-                QMessageBox.warning(self, "خطا", "ترم فعال یافت نشد.")
+            if not self.selected_term_id:
+                QMessageBox.warning(self, "خطا", "لطفاً یک ترم را انتخاب کنید.")
                 return
 
-            # فقط بررسی مانده در حالت شهریه و پرداخت جدید
+            # بررسی مانده در حالت شهریه و پرداخت جدید
             if ptype == 'tuition':
-                total_paid = get_total_paid_for_term(term_id)
+                total_paid = get_total_paid_for_term(self.selected_term_id)
                 remaining = self.term_fee - total_paid
+                
+                if remaining <= 0:
+                    QMessageBox.warning(self, "خطا", "این ترم قبلاً به طور کامل پرداخت شده است.")
+                    return
+                    
                 if amount > remaining:
                     QMessageBox.warning(
                         self, "خطا",
                         f"مبلغ واردشده از مانده شهریه بیشتر است ({format_currency_with_unit(remaining)} باقی‌مانده)."
                     )
+                    return
 
             # درج پرداخت جدید
             insert_payment(
                 self.selected_student_id,
                 self.selected_class_id,
-                term_id,
+                self.selected_term_id,
                 amount,
                 date_str,
                 ptype,
