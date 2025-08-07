@@ -281,6 +281,8 @@ def create_tables():
         conn.commit()
 
     migrate_attendance_unique_constraint()  # اجرای مهاجرت بعد از ساخت جداول
+    migrate_student_terms_fk_to_sessions()
+
 
 def migrate_attendance_unique_constraint():
     """Upgrade attendance table to have UNIQUE(student_id, class_id, term_id, date) instead of old constraint."""
@@ -334,6 +336,64 @@ def migrate_attendance_unique_constraint():
 
         conn.commit()
         print("✅ مهاجرت جدول attendance با موفقیت انجام شد.")
+
+def migrate_student_terms_fk_to_sessions():
+    with get_connection() as conn:
+        c = conn.cursor()
+
+        # اگر قبلاً FK موردنظر اضافه شده، کاری نکن
+        c.execute("PRAGMA foreign_key_list('student_terms');")
+        fk_list = c.fetchall()
+        if any(row[2] == 'sessions' and row[3] == 'term_id' for row in fk_list):
+            print("ℹ️ FK student_terms.term_id → sessions(id) قبلاً وجود دارد.")
+            return
+
+        print("🔄 شروع مهاجرت student_terms برای افزودن FK به sessions(id)...")
+
+        # جدول جدید با قید FK
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS student_terms_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id INTEGER NOT NULL,
+                class_id INTEGER NOT NULL,
+                start_date TEXT NOT NULL,
+                end_date TEXT,
+                term_id INTEGER,
+                start_time TEXT,
+                created_at TEXT DEFAULT (datetime('now','localtime')),
+                updated_at TEXT DEFAULT (datetime('now','localtime')),
+                FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE ON UPDATE CASCADE,
+                FOREIGN KEY(class_id)   REFERENCES classes(id)  ON DELETE CASCADE ON UPDATE CASCADE,
+                FOREIGN KEY(term_id)    REFERENCES sessions(id) ON DELETE SET NULL ON UPDATE CASCADE
+            );
+        """)
+
+        # انتقال ایمن داده‌ها:
+        # اگر term_id معتبر نباشد (جلسه‌ای با آن id وجود نداشته باشد)، به NULL ست می‌شود.
+        c.execute("""
+            INSERT INTO student_terms_new (id, student_id, class_id, start_date, end_date, term_id, start_time, created_at, updated_at)
+            SELECT st.id,
+                   st.student_id,
+                   st.class_id,
+                   st.start_date,
+                   st.end_date,
+                   CASE WHEN EXISTS (SELECT 1 FROM sessions s WHERE s.id = st.term_id)
+                        THEN st.term_id
+                        ELSE NULL
+                   END AS term_id,
+                   st.start_time,
+                   st.created_at,
+                   st.updated_at
+            FROM student_terms st;
+        """)
+
+        # جایگزینی جدول
+        c.execute("DROP TABLE student_terms;")
+        c.execute("ALTER TABLE student_terms_new RENAME TO student_terms;")
+
+        conn.commit()
+        print("✅ FK term_id → sessions(id) با ON DELETE SET NULL و ON UPDATE CASCADE اضافه شد.")
+
 # <-------------------------------  Utility Functions  ------------------------------------------------->
 
 def is_national_code_exists(table, national_code):
