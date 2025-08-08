@@ -60,21 +60,21 @@ class StudentTermSummaryWindow(QWidget):
         self.btn_filter = QPushButton("اعمال فیلتر")
         self.btn_filter.clicked.connect(lambda: self.load_data(apply_filters=True))
 
-        layout.addWidget(QLabel("🎓 هنرجو:"))
+        layout.addWidget(QLabel("🎓: هنرجو"))
         layout.addWidget(self.input_student)
-        layout.addWidget(QLabel("👨‍🏫 استاد:"))
+        layout.addWidget(QLabel("👨‍🏫: استاد"))
         layout.addWidget(self.combo_teacher)
-        layout.addWidget(QLabel("🎼 ساز:"))
+        layout.addWidget(QLabel("🎼: ساز"))
         layout.addWidget(self.combo_instrument)
-        layout.addWidget(QLabel("🏫 کلاس:"))
+        layout.addWidget(QLabel("🏫: کلاس"))
         layout.addWidget(self.combo_class)
-        layout.addWidget(QLabel("🗓️ روز:"))
+        layout.addWidget(QLabel("🗓️: روز"))
         layout.addWidget(self.combo_day)
-        layout.addWidget(QLabel("از تاریخ:"))
+        layout.addWidget(QLabel(": از تاریخ"))
         layout.addWidget(self.date_from)
-        layout.addWidget(QLabel("تا تاریخ:"))
+        layout.addWidget(QLabel(": تا تاریخ"))
         layout.addWidget(self.date_to)
-        layout.addWidget(QLabel("ترم:"))
+        layout.addWidget(QLabel(": ترم"))
         layout.addWidget(self.combo_term_status)
         layout.addWidget(self.btn_filter)
 
@@ -138,19 +138,35 @@ class StudentTermSummaryWindow(QWidget):
                 date_to=date_to,
                 term_status=term_status
             )
-
+        self.table.setSortingEnabled(False)
         self.table.setRowCount(len(rows))
         for row_idx, row_data in enumerate(rows):
-            for col_idx, value in enumerate(row_data):
-                item = QTableWidgetItem(str(value))
+            # row_data ساختار فعلی: [student_name, national_code, class_name, class_id, teacher_name, instrument,
+            #                        day, start_time, start_date, end_date, total, present, absent, ratio]
+            class_id = row_data[3]
+
+            # مقادیر قابل نمایش = همه‌ی فیلدها به‌جز class_id
+            display = row_data[:3] + row_data[4:]  # طول = 13 ستون جدول (با هدرها مچ است)
+
+            for col_idx, value in enumerate(display):
+                item = QTableWidgetItem(str(value if value is not None else "—"))
                 item.setTextAlignment(Qt.AlignCenter)
                 self.table.setItem(row_idx, col_idx, item)
 
+            # ذخیره‌ی class_id روی سلول «نام کلاس» (ستون 2)
+            row = self.table.currentRow()
+            if row >= 0:
+                cls_id = self.table.item(row, 2).data(Qt.UserRole)
+                index = self.combo_class.findData(cls_id)
+                if index >= 0:
+                    self.combo_class.setCurrentIndex(index)
+        
+        self.table.setSortingEnabled(True)
         self.summary_label.setText(f"تعداد نتایج: {len(rows)}")
 
     def load_filter_options(self):
         self.combo_teacher.addItems([t[1] for t in fetch_teachers_simple()])
-        self.combo_class.addItem("همه", None)
+
         for cid, cname, *_ in fetch_classes():
             self.combo_class.addItem(cname, cid)
 

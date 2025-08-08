@@ -1723,12 +1723,12 @@ def get_student_term_summary_rows(student_name='', teacher_name='', class_name='
     if teacher_name:
         query += " AND t.name LIKE ?"
         params.append(f"%{teacher_name}%")
-    if class_name:
-        query += " AND c.name LIKE ?"
-        params.append(f"%{class_name}%")
     if class_id:
         query += " AND c.id = ?"
         params.append(class_id)
+    elif class_name:
+        query += " AND c.name LIKE ?"
+        params.append(f"%{class_name}%")
     if instrument_name:
         query += " AND c.instrument LIKE ?"
         params.append(f"%{instrument_name}%")
