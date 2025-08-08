@@ -109,6 +109,7 @@ class StudentTermSummaryWindow(QWidget):
             class_name = self.combo_class.currentText()
             instrument_name = self.combo_instrument.currentText()
             day = self.combo_day.currentText()
+            class_id = self.combo_class.currentData()
 
             if teacher_name == "همه": teacher_name = ""
             if class_name == "همه": class_name = ""
@@ -130,6 +131,7 @@ class StudentTermSummaryWindow(QWidget):
                 student_name=student_name,
                 teacher_name=teacher_name,
                 class_name=class_name,
+                class_id=class_id, 
                 instrument_name=instrument_name,
                 day=day,
                 date_from=date_from,
@@ -148,7 +150,9 @@ class StudentTermSummaryWindow(QWidget):
 
     def load_filter_options(self):
         self.combo_teacher.addItems([t[1] for t in fetch_teachers_simple()])
-        self.combo_class.addItems([c[1] for c in fetch_classes()])
+        self.combo_class.addItem("همه", None)
+        for cid, cname, *_ in fetch_classes():
+            self.combo_class.addItem(cname, cid)
 
         instruments = set()
         for c in fetch_classes():

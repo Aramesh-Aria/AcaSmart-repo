@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QDate
 
-from db_helper import get_attendance_report_rows
+from db_helper import get_attendance_report_rows,fetch_classes
 from datetime import datetime
 import openpyxl
 import jdatetime
@@ -93,6 +93,8 @@ class AttendanceReportWindow(QWidget):
 
         self.combo_class.clear()
         self.combo_class.addItem("همه کلاس‌ها", None)
+        for cid, cname, *_ in fetch_classes():
+            self.combo_class.addItem(cname, cid)
 
         teacher_names = set()
         class_names = set()
@@ -103,8 +105,7 @@ class AttendanceReportWindow(QWidget):
         for t in sorted(teacher_names):
             self.combo_teacher.addItem(t, t)
 
-        for c in sorted(class_names):
-            self.combo_class.addItem(c, c)
+
 
         self.populate_table(self.all_data)
         self.status_label.setText(f"تعداد نتایج: {len(self.all_data)}")
@@ -124,7 +125,7 @@ class AttendanceReportWindow(QWidget):
                 continue
             if teacher_filter and row['teacher_name'] != teacher_filter:
                 continue
-            if class_filter and row['class_name'] != class_filter:
+            if class_filter and row['class_id'] != class_filter:
                 continue
             if term_status_filter == "active" and row['end_date']:
                 continue

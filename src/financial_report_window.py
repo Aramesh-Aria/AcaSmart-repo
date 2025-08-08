@@ -140,7 +140,7 @@ class FinancialReportWindow(QWidget):
         for row in self.all_data:
             if name_filter and name_filter not in row['student_name']:
                 continue
-            if class_id and row['class_name'] != self.combo_class.currentText():
+            if class_id and row['class_id'] != class_id:
                 continue
             if status != "همه وضعیت‌ها" and row['status'] != status:
                 continue

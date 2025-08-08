@@ -271,12 +271,13 @@ def create_tables():
         c.execute("CREATE INDEX IF NOT EXISTS idx_payments_class_id ON payments(class_id);")
         c.execute("CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(payment_date);")
 
-        # Initial configuration is done only once when creating a new database
-        c.execute("DELETE FROM settings")  # Only if you want to reset the settings from scratch every time
-        c.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("currency_unit", "toman"))
-        c.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("sms_enabled", "فعال"))
-        c.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("term_session_count", "12"))
-        c.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("term_tuition", "6000000"))
+        # فقط وقتی دیتابیس تازه ساخته شده و جدول خالیه، مقادیر پیش‌فرض رو وارد کن
+        c.execute("SELECT COUNT(*) FROM settings")
+        if c.fetchone()[0] == 0:
+            c.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("currency_unit", "toman"))
+            c.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("sms_enabled", "فعال"))
+            c.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("term_session_count", "12"))
+            c.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("term_tuition", "6000000"))
 
         conn.commit()
 
@@ -909,33 +910,30 @@ def does_teacher_have_time_conflict(teacher_id, day, start_time, end_time, exclu
         return c.fetchone()[0] > 0
 
 #<-----------------------------  SESSION FUNCTIONS  --------------------------------------->
-
 def add_session(class_id, student_id, date, time):
     conn = get_connection()
     c = conn.cursor()
 
-    # 1. بررسی وجود ترم فعال
-    term_id = get_term_id_by_student_and_class(student_id, class_id)
-
+    # اطمینان از وجود ترم
     term_id = insert_student_term_if_not_exists(student_id, class_id, date, time)
-    
-    # اگر به دلایلی مثل وجود جلسه در همان تاریخ، ترم ساخته نشد
     if not term_id:
         print(f"⛔️ جلسه افزوده نشد، زیرا امکان ایجاد ترم جدید برای {student_id=} در {date=} وجود ندارد.")
         conn.close()
-        return None  # خروج بدون ثبت جلسه
-    
-    # ثبت term_id در جدول student_terms برای استفاده دیباگ
-    c.execute("UPDATE student_terms SET term_id = ? WHERE id = ?", (term_id, term_id))
+        return None
+
     try:
-        # 3. ثبت جلسه
+        # ثبت جلسه
         c.execute("""
             INSERT INTO sessions (class_id, student_id, term_id, date, time)
             VALUES (?, ?, ?, ?, ?)
         """, (class_id, student_id, term_id, date, time))
+        session_id = c.lastrowid
+
+        # حالا session_id رو به عنوان term_id در student_terms ذخیره کن
+        c.execute("UPDATE student_terms SET term_id = ? WHERE id = ?", (session_id, term_id))
 
         conn.commit()
-        return term_id  # ✅ موفقیت‌آمیز
+        return term_id
     except sqlite3.IntegrityError:
         print("⛔️ جلسه تکراری یا خطا در درج.")
         return None
@@ -1182,8 +1180,9 @@ def fetch_payments(student_id=None, class_id=None, date_from=None, date_to=None,
     دریافت لیست پرداخت‌ها با فیلترهای اختیاری.
     """
     query = """
-        SELECT payments.id, students.name, classes.name,
-               payments.amount, payments.payment_date, payments.description, payments.payment_type
+        SELECT payments.id, students.name, classes.name, 
+               payments.amount, payments.payment_date, payments.description, payments.payment_type,
+               classes.id AS class_id
         FROM payments
         JOIN students ON payments.student_id = students.id
         JOIN classes ON payments.class_id = classes.id
@@ -1613,6 +1612,7 @@ def get_all_student_terms_with_financials():
                 "student_name": student_name,
                 "national_code": national_code,
                 "class_name": class_name,
+                "class_id": class_id,
                 "instrument": instrument,
                 "teacher_name": teacher_name,
                 "start_date": start_date,
@@ -1644,6 +1644,7 @@ def get_attendance_report_rows():
                 s.name as student_name,
                 t.start_date,
                 t.end_date,
+                cls.id as class_id,          -- اضافه شد
                 cls.name as class_name,
                 cls.instrument,
                 tr.name as teacher_name
@@ -1659,7 +1660,7 @@ def get_attendance_report_rows():
 
         # مرحله ۲: گرفتن حضور و غیاب هر ترم
         for (term_id, student_name, start_date, end_date,
-             class_name, instrument, teacher_name) in terms:
+             class_id, class_name, instrument, teacher_name) in terms:
 
             c.execute("""
                 SELECT date, is_present
@@ -1677,6 +1678,7 @@ def get_attendance_report_rows():
             result.append({
                 "student_name": student_name,
                 "teacher_name": teacher_name,
+                "class_id": class_id,         # اضافه شد
                 "class_name": class_name,
                 "instrument": instrument,
                 "start_date": start_date,
@@ -1688,9 +1690,7 @@ def get_attendance_report_rows():
 
 # todo: student term summary function
 
-def get_student_term_summary_rows(student_name='', teacher_name='', class_name='',
-                                   instrument_name='', day='', date_from='', date_to='',
-                                   term_status=''):
+def get_student_term_summary_rows(student_name='', teacher_name='', class_name='',class_id='',instrument_name='', day='', date_from='', date_to='',term_status=''):
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -1700,6 +1700,7 @@ def get_student_term_summary_rows(student_name='', teacher_name='', class_name='
             s.id AS student_id,
             s.name AS student_name,
             s.national_code,
+            c.id AS class_id,
             c.name AS class_name,
             t.name AS teacher_name,
             c.instrument,
@@ -1725,6 +1726,9 @@ def get_student_term_summary_rows(student_name='', teacher_name='', class_name='
     if class_name:
         query += " AND c.name LIKE ?"
         params.append(f"%{class_name}%")
+    if class_id:
+        query += " AND c.id = ?"
+        params.append(class_id)
     if instrument_name:
         query += " AND c.instrument LIKE ?"
         params.append(f"%{instrument_name}%")
@@ -1754,7 +1758,7 @@ def get_student_term_summary_rows(student_name='', teacher_name='', class_name='
     result = []
     for term in terms:
         (
-            term_id, student_id, student_name, national_code,
+            term_id, student_id, student_name, national_code,class_id,
             class_name, teacher_name, instrument, day, start_time,
             start_date, end_date
         ) = term
@@ -1775,6 +1779,7 @@ def get_student_term_summary_rows(student_name='', teacher_name='', class_name='
             student_name,
             national_code,
             class_name,
+            class_id,
             teacher_name,
             instrument,
             day,
