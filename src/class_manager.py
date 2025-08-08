@@ -192,23 +192,35 @@ class ClassManager(QWidget):
         week_order = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"]
         filtered.sort(key=lambda x: week_order.index(x[4]) if x[4] in week_order else 7)
 
+        # رنگ‌ها برای هر روز
+        day_colors = {
+            "شنبه": "#ADD8E6",      # آبی روشن
+            "یکشنبه": "#FFD580",    # نارنجی روشن
+            "دوشنبه": "#E6E6FA",    # بنفش روشن
+            "سه‌شنبه": "#FFFACD",   # لیمویی
+            "چهارشنبه": "#FFC0CB",  # صورتی روشن
+            "پنجشنبه": "#D3D3D3",   # خاکستری روشن
+            "جمعه": "#F5DEB3",      # بژ روشن
+        }
+
         self.list_classes.clear()
 
         for cls in filtered:
             class_id, name, teacher_name, instrument, day, start_time, end_time, room = cls
 
             main_text = f"<b>{name}</b> - <span style='color:#444'>{teacher_name} - {instrument}</span>"
-            detail_text = f"<span style='font-size:11px; color:#888'>{day} {start_time} - {end_time} | اتاق: {room}</span>"
+            detail_text = f"<span style='font-size:11px; color:#555'>{day} {start_time} - {end_time} | اتاق: {room}</span>"
 
             label = QLabel(f"{main_text}<br>{detail_text}")
             label.setTextFormat(Qt.RichText)
-            label.setStyleSheet("""
+            label.setStyleSheet(f"""
                 padding: 10px;
                 line-height: 1.6;
                 font-size: 13px;
-                border: 1px solid #ddd;
+                border: 1px solid #ccc;
                 border-radius: 6px;
                 margin-bottom: 6px;
+                background-color: {day_colors.get(day, "#FFFFFF")};
             """)
             label.setAttribute(Qt.WA_TransparentForMouseEvents)
 

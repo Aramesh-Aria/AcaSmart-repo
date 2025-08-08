@@ -178,11 +178,42 @@ class SessionManager(QWidget):
         classes = fetch_classes_for_student(self.selected_student_id)
         session_counts = get_session_count_per_class()
 
+        # ترتیب روزهای هفته
+        week_order = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"]
+        classes.sort(key=lambda x: week_order.index(x[3]) if x[3] in week_order else 7)
+
+        # 🎨 رنگ‌ها برای هر روز هفته (بدون سبز و قرمز)
+        day_colors = {
+            "شنبه": "#ADD8E6",      # آبی روشن
+            "یکشنبه": "#FFD580",    # نارنجی روشن
+            "دوشنبه": "#E6E6FA",    # بنفش روشن
+            "سه‌شنبه": "#FFFACD",   # لیمویی
+            "چهارشنبه": "#FFC0CB",  # صورتی روشن
+            "پنجشنبه": "#D3D3D3",   # خاکستری روشن
+            "جمعه": "#F5DEB3",      # بژ روشن
+        }
+
         for cid, cname, teacher_name, day in classes:
             count = session_counts.get(cid, 0)
-            item = QListWidgetItem(f"{cname} (استاد: {teacher_name}، روز: {day}) - {count} جلسه ثبت شده")
+
+            # ساخت QLabel با رنگ پس‌زمینه مخصوص روز
+            label = QLabel(f"<b>{cname}</b> - <span style='color:#444'>استاد: {teacher_name}</span><br>"
+                        f"<span style='font-size:11px; color:#555'>روز: {day} | {count} جلسه ثبت شده</span>")
+            label.setTextFormat(Qt.RichText)
+            label.setStyleSheet(f"""
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                background-color: {day_colors.get(day, "#FFFFFF")};
+            """)
+            label.setAttribute(Qt.WA_TransparentForMouseEvents)
+
+            item = QListWidgetItem()
+            item.setSizeHint(label.sizeHint())
             item.setData(Qt.UserRole, cid)
+
             self.list_classes.addItem(item)
+            self.list_classes.setItemWidget(item, label)
 
     def search_students(self):
         query = self.input_search_student.text().lower().strip()
@@ -238,6 +269,8 @@ class SessionManager(QWidget):
         else:
             # ساعت پیش‌فرض
             self.time_session.setTime(QTime(12, 0))
+            
+        self.highlight_selected_class(item)
 
         self.load_sessions()
           # Load sessions for selected class
@@ -479,3 +512,12 @@ class SessionManager(QWidget):
     # فرض: self.statusBar یا یک QLabel دارید، آنجا اطلاعات جدید قرار می‌گیرد
     pass  # اگر وجود ندارد، لازم نیست چیزی بنویسی
 
+    def highlight_selected_class(self, selected_item):
+        for i in range(self.list_classes.count()):
+            item = self.list_classes.item(i)
+            widget = self.list_classes.itemWidget(item)
+            if item == selected_item:
+                widget.setStyleSheet(widget.styleSheet() + "border: 2px solid #0000FF;")  # آبی پررنگ
+            else:
+                # حذف Border انتخاب
+                widget.setStyleSheet(widget.styleSheet().replace("border: 2px solid #0000FF;", "border: 1px solid #ccc;"))

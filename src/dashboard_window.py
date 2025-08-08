@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QFileDialog, QMessageBox, QLabel
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QFileDialog, QMessageBox, QLabel,QApplication
 from PySide6.QtCore import Qt
 import shutil
 from version import __version__
@@ -10,7 +10,7 @@ class DashboardWindow(QWidget):
         super().__init__()
         self.logged_in_mobile = logged_in_mobile
         self.setWindowTitle("Admin Dashboard")
-        self.setGeometry(400, 50, 400, 400)
+        self.resize(1100, 650)  # اندازه ثابت داشبورد
         
         # Apply theme-based icon
         try:
@@ -20,7 +20,7 @@ class DashboardWindow(QWidget):
             print(f"⚠️ Could not apply theme icon to dashboard window: {e}")
         
         layout = QVBoxLayout()
-        layout.setSpacing(12)
+        layout.setSpacing(8)
         button_style = "font-size: 15px; padding: 10px;"
         self.db_path = Path.home() / "AppData" / "Local" / "AcaSmart" / "acasmart.db"
 
@@ -66,11 +66,26 @@ class DashboardWindow(QWidget):
             layout.addWidget(btn)
 
         version_label = QLabel(f"نسخه نرم‌افزار: {__version__}")
-        version_label.setStyleSheet("color: gray; font-size: 12px; margin-top: 15px;")
+        version_label.setStyleSheet("color: gray; font-size: 12px; margin-top: 5px;")
         version_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(version_label)
+        
+        info_label = QLabel("ایمیل سازنده جهت ارتباط: aramesh_aria@yahoo.com")
+        info_label.setStyleSheet("color: gray; font-size: 12px; margin-top: 2px;")
+        info_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(info_label)
 
         self.setLayout(layout)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        # گرفتن ابعاد صفحه
+        screen_geometry = QApplication.primaryScreen().availableGeometry()
+        # محاسبه مختصات مرکز
+        x = (screen_geometry.width() - self.width()) // 2
+        y = (screen_geometry.height() - self.height()) // 2
+        # جابه‌جایی به مرکز
+        self.move(x, y)
 
     def open_student_manager(self):
         from student_manager import StudentManager

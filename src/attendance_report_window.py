@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (
     QLineEdit, QComboBox, QPushButton, QHBoxLayout, QFileDialog, QMessageBox
 )
 from PySide6.QtCore import Qt, QDate
-
+from PySide6.QtGui import QColor
 from db_helper import get_attendance_report_rows,fetch_classes
 from datetime import datetime
 import openpyxl
@@ -188,10 +188,11 @@ class AttendanceReportWindow(QWidget):
                 status = row['attendance'].get(date, "")
                 item = QTableWidgetItem(status)
                 if status == "حاضر":
-                    item.setForeground(Qt.green)
+                    item.setForeground(QColor("#006400"))  # سبز خیلی پررنگ (DarkGreen)
                 elif status == "غایب":
-                    item.setForeground(Qt.red)
+                    item.setForeground(QColor("#B22222"))  # قرمز پررنگ
                 self.table.setItem(i, j, item)
+
 
     def reset_filters(self):
         self.input_student_name.clear()

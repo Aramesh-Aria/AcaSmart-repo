@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout, QLineEdit, QComboBox, QPushButton, QFileDialog
 )
 from PySide6.QtCore import Qt, QDate
+from PySide6.QtGui import QColor
 
 from db_helper import get_all_student_terms_with_financials, fetch_classes
 from utils import format_currency_with_unit
@@ -114,9 +115,9 @@ class FinancialReportWindow(QWidget):
 
             item_status = QTableWidgetItem(row['status'])
             if row['status'] == "تسویه":
-                item_status.setForeground(Qt.green)
+                item_status.setForeground(QColor("#006400"))  # سبز خیلی پررنگ (DarkGreen)
             elif row['status'] == "بدهکار":
-                item_status.setForeground(Qt.red)
+                item_status.setForeground(QColor("#B22222"))  # قرمز پررنگ (Firebrick)
 
             self.table.setItem(i, 9, item_status)
 

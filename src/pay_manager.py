@@ -318,11 +318,11 @@ class PaymentManager(QWidget):
 
         # مانده شهریه رنگ‌بندی شود
         if rem_money == 0:
-            color = "green"
+            color = "rgb(0, 128, 0)" # سبز پررنگ
         elif rem_money <= self.term_fee / 2:
-            color = "#e6a800"  # زرد/نارنجی
+            color = "rgb(255, 140, 0)"  # زرد/نارنجی
         else:
-            color = "red"
+            color = "rgb(178, 34, 34)"   # قرمز پررنگ
 
         self.lbl_remaining.setText(f"مانده شهریه: {format_currency_with_unit(rem_money)} — جلسات باقی: {rem_sessions}")
         self.lbl_remaining.setStyleSheet(f"font-size:13px; color:{color}; margin-bottom:10px;")
