@@ -7,7 +7,8 @@ build/
 .venv/
 env/
 .venv_x86
-
+.venv-macos-x86
+.venv-macos-arm64
 # Ignore environment variables
 .env
 
@@ -29,3 +30,6 @@ __pycache__/
 acasmart.db
 acasmart_template.db
 .last_cleanup.txt
+
+.vscode
+.wheels
