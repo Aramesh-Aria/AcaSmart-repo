@@ -6,6 +6,7 @@ build/
 # Ignore virtual environment (if any)
 .venv/
 env/
+.venv_x86
 
 # Ignore environment variables
 .env

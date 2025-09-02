@@ -2,7 +2,7 @@ import requests
 from db_helper import get_setting
 from dotenv import load_dotenv
 import os
-from pathlib import Path
+from paths import APP_DATA_DIR
 
 class SmsNotifier:
     def __init__(self):
@@ -14,10 +14,10 @@ class SmsNotifier:
         self.api_url = "http://edge.ippanel.com/v1/api/send"
         
         # مسیر مطمئن برای ذخیره لاگ (همان مسیر main.py)
-        self.log_dir = Path.home() / "AppData" / "Local" / "AcaSmart"
+        self.log_dir = APP_DATA_DIR
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_path = self.log_dir / "error.log"
-
+        
     def send_renew_term_notification(self, student_name, phone_number, class_name):
         if get_setting("sms_enabled", "فعال") == "غیرفعال":
             print("ℹ️ ارسال پیامک غیرفعال است.")

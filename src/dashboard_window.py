@@ -2,7 +2,8 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QFileDialog, QM
 from PySide6.QtCore import Qt
 import shutil
 from version import __version__
-from pathlib import Path
+from paths import DB_PATH
+from db_helper import get_connection 
 import logging
 
 class DashboardWindow(QWidget):
@@ -22,7 +23,7 @@ class DashboardWindow(QWidget):
         layout = QVBoxLayout()
         layout.setSpacing(8)
         button_style = "font-size: 15px; padding: 10px;"
-        self.db_path = Path.home() / "AppData" / "Local" / "AcaSmart" / "acasmart.db"
+        self.db_path = DB_PATH  # فقط برای نمایش/استفاده‌ی read-only از مسیر
 
         if not self.db_path.exists():
             QMessageBox.critical(self, "خطای دیتابیس", f"فایل دیتابیس یافت نشد:\n{self.db_path}")

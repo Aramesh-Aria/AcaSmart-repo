@@ -1,40 +1,10 @@
 import sqlite3
 from datetime import datetime, timedelta
-from pathlib import Path
-import shutil
-import os
-import sys
-import sqlite3
-
-# محل مناسب برای ذخیره دیتابیس در AppData
-APP_DATA_DIR = Path.home() / "AppData" / "Local" / "AcaSmart"
-APP_DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-DB_NAME = APP_DATA_DIR / "acasmart.db"
-
-# تعیین مسیر فایل template (از حالت فشرده شده یا دایرکتوری فعلی)
-if getattr(sys, 'frozen', False):
-    base_path = Path(sys._MEIPASS)  # هنگام اجرای exe
-else:
-    # هنگام اجرای مستقیم، به پوشه‌ی بالاتر برو تا acasmart_template.db را پیدا کنی
-    base_path = Path(__file__).parent.parent  # AcaSmartApp-repo directory
-
-TEMPLATE_DB_PATH = os.path.join(base_path, 'acasmart_template.db')
-
-# کپی اولیه در صورت نبود فایل دیتابیس
-if not DB_NAME.exists():
-    try:
-        shutil.copy(TEMPLATE_DB_PATH, DB_NAME)
-        print(f"✅ Database template copied from: {TEMPLATE_DB_PATH}")
-    except FileNotFoundError:
-        print(f"❌ Template database not found at: {TEMPLATE_DB_PATH}")
-        print(f"📁 Looking in: {base_path}")
-        print(f"📁 Available files: {list(base_path.glob('*.db'))}")
-        raise
+from paths import DB_PATH
 
 # تابع اتصال به دیتابیس
 def get_connection():
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
     conn.execute("PRAGMA synchronous = NORMAL")
@@ -1378,15 +1348,14 @@ def delete_term_if_no_payments(student_id, class_id, term_id):
     return True
 
 def update_payment_by_id(payment_id, amount, date, payment_type, description):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute("""
-        UPDATE payments
-        SET amount = ?, payment_date = ?, payment_type = ?, description = ?, updated_at = datetime('now','localtime')
-        WHERE id = ?
-    """, (amount, date, payment_type, description, payment_id))
-    conn.commit()
-    conn.close()
+    with get_connection() as conn:
+        conn.execute("""
+            UPDATE payments
+            SET amount = ?, payment_date = ?, payment_type = ?, description = ?, updated_at = datetime('now','localtime')
+            WHERE id = ?
+        """, (amount, date, payment_type, description, payment_id))
+        conn.commit()
+
 
 
 def fetch_students_sessions_for_class_on_date(class_id, selected_date):
