@@ -2,7 +2,9 @@
 dist/
 build/
 *.exe
-
+dist_AcaSmart-mac-arm64.app
+dist_AcaSmart-mac-x86_64.app
+stage
 # Ignore virtual environment (if any)
 .venv/
 env/
@@ -14,7 +16,7 @@ env/
 
 # Ignore environment variables
 main.spec
-
+mac.spec
 # Ignore Python cache
 __pycache__/
 *.pyc
