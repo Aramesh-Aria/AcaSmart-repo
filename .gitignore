@@ -1,37 +1,59 @@
-# Ignore executable and distribution files
+# ==== Build / Distribution ====
 dist/
 build/
-*.exe
-dist_AcaSmart-mac-arm64.app
-dist_AcaSmart-mac-x86_64.app
-stage
-# Ignore virtual environment (if any)
+stage/
+*.dmg
+*.pkg
+*.app/
+dist_*.app/
+
+# ==== Python ====
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+*.whl
+
+# ==== Virtual Envs ====
 .venv/
+venv/
 env/
-.venv_x86
-.venv-macos-x86
-.venv-macos-arm64
-# Ignore environment variables
+.venv*/         # پوشش .venv-macos-arm64 ، .venv-macos-x86 و...
+venv*/
+env*/
+.venv_x86/
+.venv-macos-arm64/
+.venv-macos-x86/
+
+# ==== Logs & Tools Caches ====
+*.log
+.pytest_cache/
+.mypy_cache/
+.coverage*
+htmlcov/
+
+# ==== OS / IDE ====
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+.vscode/
+.idea/
+*.code-workspace
+
+# ==== Secrets / Local config ====
 .env
 
-# Ignore environment variables
-main.spec
-mac.spec
-# Ignore Python cache
-__pycache__/
-*.pyc
-*.pyo
-
-# Ignore log files
-*.log
-
-# Ignore IDE configs
-.idea/
-
-# Ignore local database and internal cleanup
+# ==== Project-specific ====
+.wheels/
+# DB محلی runtime را نریز داخل گیت:
 acasmart.db
-acasmart_template.db
-.last_cleanup.txt
+# توجه: acasmart_template.db را IGNORE نکن تا داخل ریپو بماند
 
-.vscode
-.wheels
+# ==== Windows-only large binaries ====
+Setup_files/VC_redist.x64.exe
+*.exe
+*.dll
