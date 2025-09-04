@@ -6,7 +6,7 @@ stage/
 *.pkg
 *.app/
 dist_*.app/
-
+notes.txt
 # ==== Python ====
 __pycache__/
 *.py[cod]

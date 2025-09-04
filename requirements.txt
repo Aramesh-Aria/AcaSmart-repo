@@ -1,11 +1,9 @@
-# ------- Core (همه پلتفرم‌ها) -------
 jdatetime==4.1.1
 jalali-core==1.0.0
 et-xmlfile==1.1.0
 ippanel==2.0.7
 python-dotenv==1.0.1
 
-# dateutil / cachetools / protobuf بر اساس نسخه پایتون
 python-dateutil==2.8.2; python_version < "3.10"
 python-dateutil==2.9.0.post0; python_version >= "3.10"
 
@@ -27,17 +25,12 @@ pandas==2.2.2; python_version >= "3.10"
 openpyxl==3.1.5; python_version >= "3.10"
 
 # ------- GUI (Qt) -------
-# گزینه Legacy برای Python 3.8 (طبق تجربه قبلی تو با 6.0.4)
 PySide6==6.0.4; python_version < "3.9"
 shiboken6==6.0.4; python_version < "3.9"
 
-# گزینه Modern برای Python 3.10+
 PySide6==6.7.3; python_version >= "3.10"
 shiboken6==6.7.3; python_version >= "3.10"
 
-# (در صورت نیاز به سازگاری سخت‌گیرانه‌تر با Win7/8 می‌تونی به‌جای PySide6 از PySide2 استفاده کنی:)
-# PySide2==5.15.2.1; python_version < "3.9"
-# shiboken2==5.15.2.1; python_version < "3.9"
 
 # ------- Build / Packaging -------
 pyinstaller==5.7.0; python_version < "3.9"
