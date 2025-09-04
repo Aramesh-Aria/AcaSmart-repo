@@ -1,5 +1,6 @@
 import hashlib
 from db_helper import get_setting
+from typing import Union  
 
 def hash_password(plain: str) -> str:
     """Return SHA256 hex digest of the input."""
@@ -17,7 +18,7 @@ def _currency_is_rial() -> bool:
 def currency_label() -> str:
     return "ریال" if _currency_is_rial() else "تومان"
 
-def format_currency_with_unit(amount_toman: int | float) -> str:
+def format_currency_with_unit(amount_toman: Union[int, float]) -> str:  # ← فقط همین تغییر
     """Format an amount stored in *toman* for display in current UI unit."""
     try:
         if _currency_is_rial():
