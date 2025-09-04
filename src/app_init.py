@@ -10,8 +10,6 @@ from utils import hash_password
 from paths import DB_PATH, APP_DATA_DIR, resource_path
 from db_helper import ensure_bool_setting
 
-ensure_bool_setting("sms_enabled", default=True) 
-
 def initialize_database():
     # ۱) اگر دیتابیس هنوز ساخته نشده، از روی تمپلیت کپی کن
     if not DB_PATH.exists():
@@ -33,12 +31,14 @@ def initialize_database():
     # ۲) ساخت جداول (در صورت نیاز)
     create_tables()
 
-    # ۳) بارگذاری متغیرهای محیطی
+    # ۳) حالا که جداول تضمین شدند، سراغ تنظیمات برو
+    ensure_bool_setting("sms_enabled", default=True) 
+    # ۴) بارگذاری متغیرهای محیطی
     load_dotenv()  # اگر لازم بود، بعداً می‌تونی نسخهٔ چند-مسیره‌اش رو جایگزین کنی
     admin_mobile = (os.getenv("ADMIN_MOBILE") or "").strip()
     admin_password = (os.getenv("ADMIN_PASSWORD") or "").strip()
 
-    # ۳-الف) ارور شفاف اگر پسورد تعیین نشده/خالی است
+    # الف) ارور شفاف اگر پسورد تعیین نشده/خالی است
     if not admin_password:
         raise RuntimeError(
             "❌ ADMIN_PASSWORD not set in .env file! "
@@ -47,7 +47,7 @@ def initialize_database():
 
     hashed = hash_password(admin_password)
 
-    # ۴) اضافه کردن ادمین پیش‌فرض اگر جدول users خالی بود
+    # ۵) اضافه کردن ادمین پیش‌فرض اگر جدول users خالی بود
     with get_connection() as conn:
         c = conn.cursor()
         c.execute("SELECT COUNT(*) FROM users")

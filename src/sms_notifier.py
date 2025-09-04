@@ -24,7 +24,7 @@ class SmsNotifier:
         # پیش‌فرض: فعال
         return get_setting_bool("sms_enabled", True)
 
-    def send_pattern(self, phone_number: str, student_name: str, class_name: str, session_time: str):
+    def send_renew_term_notification(self, student_name, phone_number, class_name):
         # 1) اگر ارسال پیامک غیرفعال است، بی‌سر و صدا برگرد
         if not self.is_enabled():
             try:

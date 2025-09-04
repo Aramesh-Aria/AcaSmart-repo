@@ -2,10 +2,18 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QCalendarWidget, QPushButton,
     QComboBox, QSpinBox, QWidget
 )
-from PySide6.QtGui import QKeySequence,QShortcut
-from PySide6.QtCore import QDate, Qt
+from PySide6.QtGui import QKeySequence,QShortcut,QKeyEvent
+from PySide6.QtCore import QDate, Qt,QEvent
 import jdatetime
 import datetime
+
+# --- Qt compatibility (PySide6 6.0.4 ↔ 6.7.x) ---
+try:
+    KEY_PRESS = QEvent.Type.KeyPress
+except AttributeError:
+    KEY_PRESS = QEvent.KeyPress
+# -------------------------------------------------
+
 
 class ShamsiDatePopup(QDialog):
     def __init__(self, parent=None, initial_date=None):
@@ -85,23 +93,28 @@ class ShamsiDatePopup(QDialog):
 
     def eventFilter(self, source, event):
         """
-        مدیریت فشردن کلید Enter در ویجت‌های سال، ماه و تقویم
+        مدیریت فشردن Enter در ویجت‌های سال، ماه و تقویم
         """
-        if event.type() == event.KeyPress and event.key() in [Qt.Key_Return, Qt.Key_Enter]:
-            if source == self.year_box:
-                # اگر کاربر در فیلد سال Enter زد → فقط از آن خارج شود
-                self.calendar.setFocus()
-                return True
-            elif source == self.month_box:
-                # اگر در فیلد ماه Enter زد → تأیید شود
-                self.accept()
-                return True
-            elif self.calendar.hasFocus():
-                # اگر فوکوس روی تقویم است → بررسی اعتبار و تأیید
-                selected_date = self.calendar.selectedDate()
-                if selected_date.isValid():
+        et = event.type()
+
+        if et == KEY_PRESS:
+            key = event.key()  # اینجا امنه چون نوع رو چک کردیم
+            if key in (Qt.Key_Return, Qt.Key_Enter):
+                if source is self.year_box:
+                    # اگر فوکوس روی سال است فقط از آن خارج شو
+                    self.calendar.setFocus()
+                    return True
+                elif source is self.month_box:
+                    # اگر در ماه Enter زد → تأیید
                     self.accept()
                     return True
+                elif self.calendar.hasFocus() or source is self.calendar:
+                    # اگر فوکوس روی تقویم است → تأیید در صورت اعتبار
+                    selected_date = self.calendar.selectedDate()
+                    if selected_date.isValid():
+                        self.accept()
+                        return True
+
         return super().eventFilter(source, event)
 
     def try_accept(self):
