@@ -6,8 +6,8 @@ block_cipher = None
 datas = [
     ('../Setup_files/acasmart_template.db', '.'),
     ('../Setup_files/.env', '.'),
-    ('../black_background_icon.png', '.'),
-    ('../white_background_icon.png', '.'),
+    ('../static/white_background_icon.icns', '.'),
+    ('../static/white_background_icon.png', '.'),
     *collect_data_files('dotenv'),
     *collect_data_files('openpyxl'),
 ]
@@ -65,7 +65,7 @@ exe = EXE(
 app = BUNDLE(
     exe,
     name='AcaSmart.app',
-    icon='../white_background_icon.icns',  # آیکن مک از پوشه Setup_files
+    icon='../static/white_background_icon.icns',  # آیکن مک از پوشه Setup_files
     bundle_identifier='com.acasmart.app',
     info_plist={
         'NSHighResolutionCapable': True,
