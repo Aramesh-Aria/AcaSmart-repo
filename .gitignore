@@ -52,7 +52,8 @@ Thumbs.db
 # DB محلی runtime را نریز داخل گیت:
 acasmart.db
 # توجه: acasmart_template.db را IGNORE نکن تا داخل ریپو بماند
-
+acasmart_backup.db
+acasmart_backup_1.db
 # ==== Windows-only large binaries ====
 Setup_files/VC_redist.x64.exe
 *.exe
