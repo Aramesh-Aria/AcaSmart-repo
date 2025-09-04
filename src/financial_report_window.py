@@ -114,11 +114,15 @@ class FinancialReportWindow(QWidget):
             self.table.setItem(i, 8, QTableWidgetItem(format_currency_with_unit(row['debt'])))
 
             item_status = QTableWidgetItem(row['status'])
-            if row['status'] == "تسویه":
-                item_status.setForeground(QColor("#006400"))  # سبز خیلی پررنگ (DarkGreen)
-            elif row['status'] == "بدهکار":
-                item_status.setForeground(QColor("#B22222"))  # قرمز پررنگ (Firebrick)
 
+            if row['status'] == "تسویه":
+                item_status.setBackground(QColor("#81C784"))  # سبز مثل نمونه «شهریه»
+                item_status.setForeground(QColor("#0B3D17"))
+            elif row['status'] == "بدهکار":
+                item_status.setBackground(QColor("#E57373"))  # قرمز ملایم
+                item_status.setForeground(QColor("#5D1919"))
+
+            item_status.setTextAlignment(Qt.AlignCenter)
             self.table.setItem(i, 9, item_status)
 
             total_tuition += row['tuition']

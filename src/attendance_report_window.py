@@ -187,10 +187,19 @@ class AttendanceReportWindow(QWidget):
             for j, date in enumerate(sorted_dates, start=6):
                 status = row['attendance'].get(date, "")
                 item = QTableWidgetItem(status)
+                # if status == "حاضر":
+                #     item.setForeground(QColor("#006400"))  # سبز خیلی پررنگ (DarkGreen)
+                # elif status == "غایب":
+                #     item.setForeground(QColor("#B22222"))  # قرمز پررنگ
+                # جدید: کل باکس رنگی + ترازبندی
                 if status == "حاضر":
-                    item.setForeground(QColor("#006400"))  # سبز خیلی پررنگ (DarkGreen)
+                    item.setBackground(QColor("#81C784"))   # سبز (هم‌رنگ نمونه شهریه)
+                    item.setForeground(QColor("#0B3D17"))   # سبز خیلی تیره برای کنتراست
                 elif status == "غایب":
-                    item.setForeground(QColor("#B22222"))  # قرمز پررنگ
+                    item.setBackground(QColor("#E57373"))   # قرمز ملایم
+                    item.setForeground(QColor("#5D1919"))   # قرمز خیلی تیره برای کنتراست
+                item.setTextAlignment(Qt.AlignCenter)
+                
                 self.table.setItem(i, j, item)
 
 
