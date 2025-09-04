@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QPushButton, QMessageBox, QComboBox
-from db_helper import get_setting, set_setting
+from db_helper import get_setting, set_setting, get_setting_bool, set_setting_bool
 
 class SettingsWindow(QWidget):
     def __init__(self):
@@ -33,8 +33,9 @@ class SettingsWindow(QWidget):
         # تنظیم پیامک فعال یا غیرفعال
         self.combo_sms_enabled = QComboBox()
         self.combo_sms_enabled.addItems(["فعال", "غیرفعال"])
-        current_sms_setting = get_setting("sms_enabled", "فعال")
-        self.combo_sms_enabled.setCurrentText(current_sms_setting if current_sms_setting in ["فعال", "غیرفعال"] else "فعال")
+        # current_sms_setting = get_setting("sms_enabled", "فعال")
+        is_sms_on = get_setting_bool("sms_enabled", True)  # پیش‌فرض فعال
+        self.combo_sms_enabled.setCurrentIndex(0 if is_sms_on else 1)
         layout.addRow(": ارسال پیامک", self.combo_sms_enabled)
 
         # دکمه ذخیره
@@ -69,7 +70,9 @@ class SettingsWindow(QWidget):
         set_setting("term_fee", fee)
         set_setting("term_session_count", sessions)
         set_setting("currency_unit", self.combo_currency.currentText())
-        set_setting("sms_enabled", self.combo_sms_enabled.currentText())
+        # set_setting("sms_enabled", self.combo_sms_enabled.currentText())
+        # ذخیره‌ی بولی به‌صورت 0/1
+        set_setting_bool("sms_enabled", self.combo_sms_enabled.currentIndex() == 0)
 
         QMessageBox.information(self, "موفق", "تنظیمات با موفقیت ذخیره شد.")
         self.close()

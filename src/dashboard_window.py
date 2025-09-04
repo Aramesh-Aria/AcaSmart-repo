@@ -71,7 +71,7 @@ class DashboardWindow(QWidget):
         version_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(version_label)
         
-        info_label = QLabel("ایمیل سازنده جهت ارتباط: aramesh_aria@yahoo.com")
+        info_label = QLabel("ایمیل توسعه دهنده جهت ارتباط: aramesh_aria@yahoo.com")
         info_label.setStyleSheet("color: gray; font-size: 12px; margin-top: 2px;")
         info_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(info_label)

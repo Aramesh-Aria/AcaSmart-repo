@@ -1,5 +1,5 @@
 import requests
-from db_helper import get_setting
+from db_helper import  get_setting_bool
 from dotenv import load_dotenv
 import os
 from paths import APP_DATA_DIR
@@ -11,16 +11,36 @@ class SmsNotifier:
         self.api_key = os.getenv("IPPANEL_API_KEY")
         self.from_number = os.getenv("IPPANEL_FROM_NUMBER")
         self.pattern_code = os.getenv("IPPANEL_PATTERN_CODE")
-        self.api_url = "http://edge.ippanel.com/v1/api/send"
+        self.api_url = "https://edge.ippanel.com/v1/api/send"
         
         # مسیر مطمئن برای ذخیره لاگ (همان مسیر main.py)
         self.log_dir = APP_DATA_DIR
         self.log_dir.mkdir(parents=True, exist_ok=True)
-        self.log_path = self.log_dir / "error.log"
-        
-    def send_renew_term_notification(self, student_name, phone_number, class_name):
-        if get_setting("sms_enabled", "فعال") == "غیرفعال":
-            print("ℹ️ ارسال پیامک غیرفعال است.")
+        self.log_path = os.path.join(APP_DATA_DIR, "acasmart.log")
+    
+
+    def is_enabled(self) -> bool:
+        '''check if auto sms send is enabled'''
+        # پیش‌فرض: فعال
+        return get_setting_bool("sms_enabled", True)
+
+    def send_pattern(self, phone_number: str, student_name: str, class_name: str, session_time: str):
+        # 1) اگر ارسال پیامک غیرفعال است، بی‌سر و صدا برگرد
+        if not self.is_enabled():
+            try:
+                with open(self.log_path, "a", encoding="utf-8") as f:
+                    f.write("[SMS SKIPPED] ارسال پیامک غیرفعال بود. ارسال انجام نشد.\n")
+            except Exception as e:
+                print(f"⚠️ خطا در نوشتن لاگ (skip): {e}")
+            return  # هیچ ارسال/درخواستی انجام نشود
+
+        # 2) ولیدیشن حداقلی تنظیمات ENV
+        if not self.api_key or not self.from_number or not self.pattern_code:
+            try:
+                with open(self.log_path, "a", encoding="utf-8") as f:
+                    f.write("[SMS ERROR] اطلاعات IPPanel ناقص است (API_KEY/ FROM_NUMBER/ PATTERN_CODE).\n")
+            except Exception as e:
+                print(f"⚠️ خطا در نوشتن لاگ (env): {e}")
             return
 
         # تبدیل شماره به فرمت +98
