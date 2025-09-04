@@ -12,7 +12,7 @@ from db_helper import (
 from shamsi_date_popup import ShamsiDatePopup
 from shamsi_date_picker import ShamsiDatePicker
 import jdatetime
-from utils import format_currency_with_unit ,get_currency_unit,format_currency
+from utils import format_currency_with_unit ,get_currency_unit,format_currency,parse_user_amount_to_toman
 from payment_report_window import PaymentReportWindow
 
 class PaymentManager(QWidget):
@@ -343,7 +343,12 @@ class PaymentManager(QWidget):
         ptype = 'tuition' if self.combo_type.currentText() == "شهریه" else 'extra'
 
         try:
-            amount = int(self.input_amount.text())
+            # amount = int(self.input_amount.text())
+            raw_text = self.input_amount.text()
+            amount = parse_user_amount_to_toman(raw_text)
+            if amount <= 0:
+                QMessageBox.warning(self, "خطا", "مبلغ باید بزرگتر از صفر باشد.")
+                return
         except ValueError:
             QMessageBox.warning(self, "خطا", "مبلغ باید عددی باشد.")
             return
