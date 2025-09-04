@@ -27,7 +27,8 @@ env*/
 .venv_x86/
 .venv-macos-arm64/
 .venv-macos-x86/
-
+.venv-win-amd64/
+.venv-win7-amd64/
 # ==== Logs & Tools Caches ====
 *.log
 .pytest_cache/
