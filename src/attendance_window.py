@@ -9,7 +9,7 @@ import sqlite3
 from db_helper import (get_student_term,fetch_attendance_by_date,count_attendance,get_setting,
             delete_future_sessions,delete_sessions_for_expired_terms,
             fetch_classes_on_weekday,insert_attendance_with_date,get_term_dates,
-            get_student_contact,get_class_and_teacher_name,has_renew_sms_been_sent, mark_renew_sms_sent,fetch_students_sessions_for_class_on_date,count_attendance_by_term
+            get_student_contact,get_class_and_teacher_name,has_renew_sms_been_sent, mark_renew_sms_sent,fetch_students_sessions_for_class_on_date,count_attendance_by_term,delete_attendance
 )
 from shamsi_date_popup import ShamsiDatePopup
 import jdatetime
@@ -55,8 +55,8 @@ class AttendanceManager(QWidget):
         # --------- جدول حضور ----------
         # جدول حضور: ID مخفی، نام هنرجو، چک‌باکس حاضر، چک‌باکس غائب
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["ID", "نام هنرجو", "ساعت", "حاضر", "غائب", "term_id"])
+        self.table.setColumnCount(7)
+        self.table.setHorizontalHeaderLabels(["ID", "نام هنرجو", "ساعت", "حاضر", "غائب", "term_id", "عملیات"])
         self.table.setColumnHidden(0, True)
         self.table.setColumnHidden(5, True)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -217,6 +217,33 @@ class AttendanceManager(QWidget):
             self.table.setCellWidget(row, 4, absent_chk)
             self.table.setRowHeight(row, 25)
 
+            # --- ستون 6: عملیات / حذف ---
+            btn_delete = QPushButton("❌ حذف")
+            btn_delete.setToolTip("حذف حضور ثبت‌شده در این تاریخ")
+
+            # اگر رکوردی برای این روز ثبت نشده، دکمه را غیرفعال کن
+            btn_delete.setEnabled(record is not None)
+
+            # اتصال رویداد کلیک با آرگومان‌های لازم
+            btn_delete.clicked.connect(
+                functools.partial(
+                    self.delete_attendance_row,
+                    sid,                       # student_id
+                    self.selected_class_id,    # class_id
+                    term_id,                   # term_id
+                    selected_date              # shamsi_date
+                )
+            )
+
+            op_layout = QHBoxLayout()
+            op_layout.addWidget(btn_delete)
+            op_layout.setContentsMargins(0, 0, 0, 0)
+            op_layout.setAlignment(Qt.AlignCenter)
+
+            op_widget = QWidget()
+            op_widget.setLayout(op_layout)
+            self.table.setCellWidget(row, 6, op_widget)
+
     def _on_present_changed(self, other_chk, state):
         if state == Qt.Checked:
             other_chk.setChecked(False)
@@ -305,6 +332,34 @@ class AttendanceManager(QWidget):
         else:
             QMessageBox.information(self, "موفق", "حضور و غیاب با موفقیت ذخیره شد.")
 
+        self.load_attendance()
+        
+    def delete_attendance_row(self, student_id, class_id, term_id, shamsi_date):
+        if class_id is None or not shamsi_date or term_id is None:
+            QMessageBox.warning(self, "خطا", "اطلاعات حذف کامل نیست.")
+            return
+
+        reply = QMessageBox.question(
+            self,
+            "حذف حضور",
+            "آیا از حذف حضور این هنرجو در تاریخ انتخاب‌شده مطمئن هستید؟",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            affected = delete_attendance(student_id, class_id, term_id, shamsi_date)
+            if affected:
+                QMessageBox.information(self, "موفق", "حضور حذف شد.")
+            else:
+                QMessageBox.information(self, "اطلاعات", "رکوردی برای حذف یافت نشد.")
+        except Exception as e:
+            QMessageBox.critical(self, "خطا", f"حذف با خطا مواجه شد:\n{e}")
+            return
+
+        # رفرش جدول تا وضعیت چک‌باکس‌ها و دکمه‌ها به‌روز شود
         self.load_attendance()
 
     def open_date_picker(self):

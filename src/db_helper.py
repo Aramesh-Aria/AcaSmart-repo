@@ -1474,6 +1474,17 @@ def insert_attendance_with_date(student_id, class_id, term_id, date, is_present)
     
     # پاس دادن term_id مستقیم به تابع
     check_and_set_term_end_by_id(term_id, student_id, class_id, date)
+    
+def delete_attendance(student_id, class_id, term_id, date_str):
+    """حذف یک رکورد حضور بر اساس هنرجو/کلاس/ترم/تاریخ (رشته شمسی)."""
+    with get_connection() as conn:
+        c = conn.cursor()
+        c.execute("""
+            DELETE FROM attendance
+            WHERE student_id = ? AND class_id = ? AND term_id = ? AND date = ?
+        """, (student_id, class_id, term_id, date_str))
+        conn.commit()
+        return c.rowcount  # برای اطلاع از تعداد رکوردهای حذف‌شده
 
 def fetch_attendance_by_date(student_id, class_id, date_str, term_id=None):
     """
