@@ -800,48 +800,53 @@ def get_day_and_time_for_class(class_id):
         return c.fetchone() or (None, None)
     
 def insert_student_term_if_not_exists(student_id, class_id, start_date, start_time):
-
     """
-    ترم جدید فقط اگر در همان تاریخ، جلسه‌ای از هنرجوی دیگر در همان ساعت نداشته باشد،
-    و همچنین از تاریخ پایان ترم قبلی زودتر نباشد، ثبت می‌شود.
+    ترم جدید فقط اگر:
+      1) اسلات هفتگیِ استاد (روز هفته + ساعت) قبلاً به هنرجوی دیگری نخورده باشد؛
+      2) در همان تاریخ/ساعت برای کلاس جلسهٔ دیگری ثبت نشده باشد؛
+      3) از تاریخ پایان ترم قبلی زودتر نباشد؛
+    ثبت می‌شود.
     """
     with get_connection() as conn:
         c = conn.cursor()
 
-        # بررسی اینکه آیا ترمی با همین start_date وجود دارد یا نه
+        # ⛔️ سناریو B: ممنوعیت اسلات هفتگیِ استاد در کل ترم (روزِ هفته + ساعت)
+        if has_teacher_weekly_time_conflict(class_id, start_time):
+            return None
+
+        # آیا همین ترم (با همین start_date و start_time) قبلاً وجود دارد؟
         c.execute("""
             SELECT id
             FROM student_terms
             WHERE student_id = ?
-            AND class_id   = ?
-            AND start_date = ?
-            AND start_time = ?
-            AND end_date IS NULL
+              AND class_id   = ?
+              AND start_date = ?
+              AND start_time = ?
+              AND end_date IS NULL
         """, (student_id, class_id, start_date, start_time))
         existing = c.fetchone()
         if existing:
             return existing[0]
 
-         # بررسی اینکه آیا جلسه‌ای از هنرجوی دیگر در این روز و ساعت وجود دارد
-
+        # در همان تاریخ/ساعت، جلسهٔ دیگری برای این کلاس ثبت شده باشد → بلاک
         c.execute("""
-            SELECT COUNT(*) FROM sessions
-            WHERE class_id = ? AND date = ? AND time = ? AND student_id != ?
-        """, (class_id, start_date, start_time, student_id))
-        conflict_count = c.fetchone()[0]
-        if conflict_count > 0:
-            return None  # تداخل با هنرجوی دیگر
+            SELECT COUNT(*)
+            FROM sessions
+            WHERE class_id = ? AND date = ? AND time = ?
+        """, (class_id, start_date, start_time))
+        if c.fetchone()[0] > 0:
+            return None
 
-        # ⛳️ بررسی تاریخ پایان آخرین ترم هنرجو
+        # ⛳️ اگر ترم قبلی پایان داشته و start_date جدید قبل از آن است → بلاک
         c.execute("""
-            SELECT end_date FROM student_terms
+            SELECT end_date
+            FROM student_terms
             WHERE student_id = ? AND class_id = ? AND end_date IS NOT NULL
             ORDER BY end_date DESC LIMIT 1
         """, (student_id, class_id))
         row = c.fetchone()
         if row:
             last_end_date = row[0]
-            # فقط اگر تاریخ شروع جدید **قبل** از پایان قبلی باشه، اجازه نمی‌ده
             if start_date < last_end_date:
                 return None
 
@@ -851,9 +856,7 @@ def insert_student_term_if_not_exists(student_id, class_id, start_date, start_ti
             VALUES (?, ?, ?, ?, NULL)
         """, (student_id, class_id, start_date, start_time))
 
-        print(f"📌 Checking for term: sid={student_id}, cid={class_id}, date={start_date}, time={start_time}")
-
-        conn.commit()   
+        conn.commit()
         return c.lastrowid
 
 def delete_future_sessions(student_id, class_id, session_date):
@@ -952,13 +955,20 @@ def fetch_sessions_by_class(class_id):
     with get_connection() as conn:
         c = conn.cursor()
         c.execute("""
-            SELECT sessions.id, students.name, date, time, duration
-            FROM sessions
-            JOIN students ON sessions.student_id = students.id
-            WHERE class_id = ?
-            ORDER BY date, time
+            SELECT s.id, st.name, s.date, s.time, s.duration
+            FROM sessions AS s
+            JOIN students AS st ON s.student_id = st.id
+            WHERE s.class_id = ?
+            ORDER BY
+                CAST(substr(TRIM(s.time), 1, 2) AS INTEGER),
+                CAST(substr(TRIM(s.time), 4, 2) AS INTEGER),
+                CAST(substr(TRIM(s.date), 1, 4) AS INTEGER),
+                CAST(substr(TRIM(s.date), 6, 2) AS INTEGER),
+                CAST(substr(TRIM(s.date), 9, 2) AS INTEGER)
+
         """, (class_id,))
         return c.fetchall()
+
 
 def delete_session(session_id):
     with get_connection() as conn:
@@ -1166,6 +1176,39 @@ def get_session_by_id(session_id):
             WHERE id = ?
         """, (session_id,))
         return c.fetchone()
+
+def has_teacher_weekly_time_conflict(class_id, session_time, exclude_session_id=None):
+    """
+    آیا استادِ این کلاس، در همین روزِ هفته و همین ساعت، جلسهٔ دیگری (برای هر هنرجویی) دارد؟
+    - class_id: کلاس انتخابی
+    - session_time: رشته "HH:MM"
+    - exclude_session_id: در مود ویرایش، شناسه‌ی جلسه‌ای که داریم ادیتش می‌کنیم (برای جلوگیری از false positive)
+    """
+    with get_connection() as conn:
+        c = conn.cursor()
+        # روز هفته و استادِ کلاسِ جدید
+        c.execute("SELECT teacher_id, day FROM classes WHERE id = ?", (class_id,))
+        row = c.fetchone()
+        if not row:
+            return False
+        teacher_id, weekday = row
+
+        query = """
+            SELECT s.id
+            FROM sessions s
+            JOIN classes c2 ON c2.id = s.class_id
+            WHERE c2.teacher_id = ?
+              AND c2.day = ?
+              AND s.time = ?
+        """
+        params = [teacher_id, weekday, session_time]
+
+        if exclude_session_id:
+            query += " AND s.id != ?"
+            params.append(exclude_session_id)
+
+        c.execute(query, params)
+        return c.fetchone() is not None
 
 #<-----------------------------  PAYMENT FUNCTIONS  --------------------------------------->
 

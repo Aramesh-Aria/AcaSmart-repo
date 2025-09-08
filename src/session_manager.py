@@ -10,12 +10,15 @@ from db_helper import (
     get_day_and_time_for_class, is_class_slot_taken,
     insert_student_term_if_not_exists,
     delete_sessions_for_expired_terms,get_session_count_per_class,
-get_unnotified_expired_terms,mark_terms_as_notified,delete_term_if_no_payments,get_last_term_end_date,get_session_by_id,delete_sessions_for_term
+get_unnotified_expired_terms,mark_terms_as_notified,delete_term_if_no_payments,get_last_term_end_date,get_session_by_id,delete_sessions_for_term,has_teacher_weekly_time_conflict
 )
 from shamsi_date_popup import ShamsiDatePopup
 import jdatetime
 import sqlite3
-
+import inspect
+from db_helper import fetch_sessions_by_class as _fsbc
+print("### SessionManager loaded from:", __file__)
+print("### fetch_sessions_by_class from:", inspect.getsourcefile(_fsbc))
 class SessionManager(QWidget):
     def __init__(self):
         super().__init__()
@@ -91,6 +94,7 @@ class SessionManager(QWidget):
         # Sessions list
         layout.addWidget(QLabel("جلسات این کلاس (برای حذف دوبار کلیک کنید):"))
         self.list_sessions = QListWidget()
+        self.list_sessions.setSortingEnabled(False) # Qt خودش با متن سورت نکند
         self.list_sessions.itemDoubleClicked.connect(self.delete_session_from_class)
         self.list_sessions.itemClicked.connect(self.load_session_for_editing)
         layout.addWidget(self.list_sessions)
@@ -337,6 +341,13 @@ class SessionManager(QWidget):
         if has_weekly_time_conflict(self.selected_student_id, class_day, session_time):
             QMessageBox.warning(self, "تداخل هفتگی", "هنرجو در این روز و ساعت کلاس دیگری دارد.")
             return
+        
+        # چک اسلات هفتگی استاد
+        if has_teacher_weekly_time_conflict(self.selected_class_id, session_time):
+            QMessageBox.warning(self, "تداخل با برنامهٔ استاد",
+                "این استاد در همین روزِ هفته و همین ساعت، هنرجوی دیگری دارد.")
+            return
+
 
         try:
             add_session(self.selected_class_id, self.selected_student_id, date, time)
@@ -359,13 +370,31 @@ class SessionManager(QWidget):
         self.last_selected_date = self.selected_shamsi_date
 
     def load_sessions(self):
+        self.list_sessions.setSortingEnabled(False)
         self.list_sessions.clear()
         if not self.selected_class_id:
             return
-        for row in fetch_sessions_by_class(self.selected_class_id):
-            s_item = QListWidgetItem(f"{row[1]} - {row[2]} ساعت {row[3]}")
-            s_item.setData(1, row[0])
-            self.list_sessions.addItem(s_item)
+
+        rows = fetch_sessions_by_class(self.selected_class_id)
+
+        def to_minutes(t: str) -> int:
+            t = str(t).strip().translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹","0123456789"))
+            hh, mm = t.split(":"); return int(hh)*60 + int(mm)
+
+        # قبلاً: rows = sorted(rows, key=lambda r: (str(r[2]).strip(), to_minutes(r[3])))
+        # الان: سورت «اول زمان، بعد تاریخ»:
+        rows = sorted(rows, key=lambda r: (to_minutes(r[3]), str(r[2]).strip()))
+
+        print("### ORDER PREVIEW:")
+        for r in rows:
+            print("   ", r[2], r[3], "→ id", r[0])
+
+        for s_id, student_name, date_str, time_str, _ in rows:
+            # منسجم: تاریخ جلوتر بیاید تا با سورت ذهنی هم‌راستا باشد
+            text = f"{date_str} ساعت {time_str} - {student_name}"
+            item = QListWidgetItem(text)
+            item.setData(1, s_id)
+            self.list_sessions.addItem(item)
 
     def delete_session_from_class(self, item):
         session_id = item.data(1)
@@ -451,6 +480,12 @@ class SessionManager(QWidget):
         if has_weekly_time_conflict(self.selected_student_id, class_day, session_time,
                                     exclude_session_id=self.selected_session_id):
             QMessageBox.warning(self, "تداخل هفتگی", "هنرجو در این روز و ساعت کلاس دیگری دارد.")
+            return
+        
+        # چک اسلات هفتگی استاد
+        if has_teacher_weekly_time_conflict(self.selected_class_id, time, exclude_session_id=self.selected_session_id):
+            QMessageBox.warning(self, "تداخل با برنامهٔ استاد",
+                "این استاد در همین روزِ هفته و همین ساعت، هنرجوی دیگری دارد.")
             return
 
         # بررسی تداخل زمان با هنرجوی دیگر
