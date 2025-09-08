@@ -87,7 +87,6 @@
 * زبان برنامه‌نویسی: Python 3.8.10
 * رابط کاربری: PySide6
 * دیتابیس: SQLite
-* زمان‌بندی و تقویم: `jdatetime`, `QCalendar`
 * نصب و توزیع: Inno Setup + PyInstaller
 
 ---
