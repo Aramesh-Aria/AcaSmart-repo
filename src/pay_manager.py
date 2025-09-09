@@ -14,6 +14,7 @@ from shamsi_date_picker import ShamsiDatePicker
 import jdatetime
 from utils import format_currency_with_unit ,get_currency_unit,format_currency,parse_user_amount_to_toman
 from payment_report_window import PaymentReportWindow
+from fa_collation import sort_records_fa, contains_fa, nd
 
 class PaymentManager(QWidget):
     
@@ -158,21 +159,37 @@ class PaymentManager(QWidget):
 
 
     def load_students(self):
-        self.students = fetch_students_with_teachers()
+        rows = fetch_students_with_teachers()  # [(sid, national_code, name, teacher), ...]
+        # سورت بر اساس نام (index=2) و در صورت تساوی بر اساس کدملی (index=1)
+        self.students = sort_records_fa(rows, name_index=2, tiebreak_index=1)
         self.search_students()
 
     def search_students(self):
-        query = self.input_search_student.text().lower().strip()
+        raw = self.input_search_student.text().strip()
+        q_name_or_teacher = raw            # contains_fa خودش نرمال‌سازی ی/ي، ک/ك، اعراب/ZWNJ را انجام می‌دهد
+        q_code = nd(raw)                   # اگر کاربر کدملی با ارقام فارسی/لاتین بزند
+
         self.list_students.clear()
+
+        filtered = []
         for row in self.students:
-            if len(row) >= 4:
-                sid, _, name, teacher = row[:4]
-            else:
+            if len(row) < 4:
                 continue
-            if query in name.lower() or query in teacher.lower():
-                item = QListWidgetItem(f"{name} (استاد: {teacher})")
-                item.setData(Qt.UserRole, sid)
-                self.list_students.addItem(item)
+            sid, national_code, name, teacher = row[:4]
+
+            # تطبیق: نام/استاد به صورت فارسی، و کدملی با یکسان‌سازی ارقام
+            if (contains_fa(name, q_name_or_teacher) or
+                contains_fa(teacher, q_name_or_teacher) or
+                (q_code and q_code in nd(national_code))):
+                filtered.append((sid, national_code, name, teacher))
+
+        # نتیجه‌ی فیلترشده را دوباره طبق نام فارسی بچین تا خروجی پایدار و درست باشد
+        filtered = sort_records_fa(filtered, name_index=2, tiebreak_index=1)
+
+        for sid, national_code, name, teacher in filtered:
+            item = QListWidgetItem(f"{name} (استاد: {teacher})")
+            item.setData(Qt.UserRole, sid)
+            self.list_students.addItem(item)
 
     def load_classes(self):
         self.classes = fetch_classes()

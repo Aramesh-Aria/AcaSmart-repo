@@ -15,10 +15,8 @@ get_unnotified_expired_terms,mark_terms_as_notified,delete_term_if_no_payments,g
 from shamsi_date_popup import ShamsiDatePopup
 import jdatetime
 import sqlite3
-import inspect
-from db_helper import fetch_sessions_by_class as _fsbc
-print("### SessionManager loaded from:", __file__)
-print("### fetch_sessions_by_class from:", inspect.getsourcefile(_fsbc))
+from fa_collation import sort_records_fa, contains_fa,nd
+
 class SessionManager(QWidget):
     def __init__(self):
         super().__init__()
@@ -170,7 +168,9 @@ class SessionManager(QWidget):
             self.last_selected_time = None
 
     def load_students(self):
-        self.students_data = fetch_students_with_teachers()
+        rows = fetch_students_with_teachers()  # [(sid, national_code, name, teacher), ...]
+        # سورت بر اساس نام فارسی (index=2) و در صورت تساوی بر اساس کدملی (index=1)
+        self.students_data = sort_records_fa(rows, name_index=2, tiebreak_index=1)
         self.search_students()
 
     def load_student_classes(self):
@@ -220,15 +220,27 @@ class SessionManager(QWidget):
             self.list_classes.setItemWidget(item, label)
 
     def search_students(self):
-        query = self.input_search_student.text().lower().strip()
+        raw = self.input_search_student.text().strip()
+        q_name = raw           # contains_fa خودش نرمال‌سازی فارسی را انجام می‌دهد
+        q_code = nd(raw)       # ← ارقام را یکسان کن
+
         self.list_search_results.clear()
+
+        # فیلتر
+        filtered = []
         for sid, national_code, name, teacher in self.students_data:
-            if query in name.lower() or query in national_code.lower():
-                item = QListWidgetItem(f"{name} - کدملی: {national_code}")
-                item.setData(Qt.UserRole, sid)  # ذخیره student_id صحیح
-                self.list_search_results.addItem(item)
+            if contains_fa(name, q_name) or (q_code and q_code in nd(national_code)):
+                filtered.append((sid, national_code, name, teacher))
 
+        # سورت نتایج بر اساس نام فارسی
+        filtered = sort_records_fa(filtered, name_index=2, tiebreak_index=1)
 
+        # نمایش
+        for sid, national_code, name, teacher in filtered:
+            item = QListWidgetItem(f"{name} - کدملی: {national_code}")
+            item.setData(Qt.UserRole, sid)
+            self.list_search_results.addItem(item)
+            
     def select_student(self, item):
         self.selected_student_id = item.data(Qt.UserRole)
 

@@ -12,6 +12,8 @@ from db_helper import (fetch_teachers, insert_teacher, delete_teacher_by_id,
 from shamsi_date_popup import ShamsiDatePopup
 import jdatetime
 import re
+from fa_collation import sort_records_fa, contains_fa, fa_collator
+from functools import cmp_to_key
 
 class TeacherManager(QWidget):
     def __init__(self):
@@ -211,13 +213,17 @@ class TeacherManager(QWidget):
 
     def load_teachers(self):
         self.list_teachers.clear()
-        rows = fetch_teachers()
+        rows = fetch_teachers()  # [(teacher_id, name), ...]
+        # ← سورت بر اساس نام فارسی؛ در صورت تساوی، بر اساس ID
+        rows = sort_records_fa(rows, name_index=1, tiebreak_index=0)
         self.teachers_data = rows
 
-        for row in rows:
-            teacher_id, name = row
-            instruments = get_instruments_for_teacher(teacher_id)
-            instruments_text = "، ".join(sorted(instruments)) if instruments else "بدون ساز"
+        for teacher_id, name in rows:
+            instruments = get_instruments_for_teacher(teacher_id) or []
+            # سورت فارسی برای سازها (زیبا و یکدست)
+            instruments_sorted = sorted(instruments, key=cmp_to_key(fa_collator.compare))
+            instruments_text = "، ".join(instruments_sorted) if instruments_sorted else "بدون ساز"
+
             item = QListWidgetItem(f"{name} - ({instruments_text})")
             item.setData(1, teacher_id)
             self.list_teachers.addItem(item)
@@ -225,22 +231,26 @@ class TeacherManager(QWidget):
         self.lbl_count.setText(f"تعداد اساتید: {len(rows)} نفر")
 
     def search_teachers(self):
-        query = self.search_input.text().strip().lower()
+        query = self.search_input.text().strip()  # lower نکن! contains_fa خودش نرمال می‌کند
         self.list_teachers.clear()
 
         filtered = []
-        for row in self.teachers_data:
-            teacher_id = row[0]
-            name = row[1].lower()
-            instruments = get_instruments_for_teacher(teacher_id)
-            instrument_str = "، ".join(instruments).lower()
+        for teacher_id, name in self.teachers_data:
+            instruments = get_instruments_for_teacher(teacher_id) or []
+            # جست‌وجوی فارسی روی نام یا هر یک از سازها
+            if contains_fa(name, query) or any(contains_fa(ins, query) for ins in instruments):
+                filtered.append((teacher_id, name))
 
-            if query in name or query in instrument_str:
-                display_text = f"{row[1]} - ({'، '.join(instruments)})"
-                item = QListWidgetItem(display_text)
-                item.setData(1, teacher_id)
-                self.list_teachers.addItem(item)
-                filtered.append(row)
+        # سورت فارسی نتایج فیلترشده
+        filtered = sort_records_fa(filtered, name_index=1, tiebreak_index=0)
+
+        for teacher_id, name in filtered:
+            instruments = get_instruments_for_teacher(teacher_id) or []
+            instruments_sorted = sorted(instruments, key=cmp_to_key(fa_collator.compare))
+            display_text = f"{name} - ({'، '.join(instruments_sorted) if instruments_sorted else 'بدون ساز'})"
+            item = QListWidgetItem(display_text)
+            item.setData(1, teacher_id)
+            self.list_teachers.addItem(item)
 
         self.lbl_count.setText(f"تعداد اساتید: {len(filtered)} نفر")
 

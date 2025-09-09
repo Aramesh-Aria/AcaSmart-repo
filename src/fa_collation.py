@@ -80,3 +80,10 @@ def sort_records_fa(records, name_index: int = 1, tiebreak_index: Optional[int] 
 
 def contains_fa(text: str, pattern: str) -> bool:
     return fa_collator.contains(text, pattern)
+
+# --- Digit normalization (fa→en) --------------------------------------------
+_DIGIT_TRANS = str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")
+
+def nd(s: str) -> str:
+    """Normalize digits: Persian/Arabic numerals → ASCII 0-9."""
+    return str(s or "").translate(_DIGIT_TRANS)

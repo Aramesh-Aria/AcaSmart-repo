@@ -10,7 +10,7 @@ from db_helper import (insert_student, student_national_code_exists,get_student_
 
 import jdatetime
 from shamsi_date_popup import ShamsiDatePopup
-from fa_collation import sort_records_fa, contains_fa
+from fa_collation import sort_records_fa, contains_fa,nd
 
 class StudentManager(QWidget):
     def __init__(self):
@@ -257,7 +257,8 @@ class StudentManager(QWidget):
         # self.load_students()
         query = text.strip()
         selected_gender = self.filter_gender.currentText()
-        national_code_query = self.filter_national_code.text().strip()
+        national_code_query = nd(self.filter_national_code.text().strip())
+
         filtered_students = []
 
         self.list_students.clear()
@@ -273,8 +274,8 @@ class StudentManager(QWidget):
 
             if (contains_fa(name, query) and
                     (selected_gender == "همه" or gender == selected_gender) and
-                    national_code_query in national_code):
-
+                    national_code_query in nd(national_code)):
+                
                 filtered_students.append((student_id, name, gender, age, national_code))
 
         # مرتب‌سازی
