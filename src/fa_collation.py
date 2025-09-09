@@ -87,3 +87,11 @@ _DIGIT_TRANS = str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")
 def nd(s: str) -> str:
     """Normalize digits: Persian/Arabic numerals → ASCII 0-9."""
     return str(s or "").translate(_DIGIT_TRANS)
+
+
+# --- Digit localization (en→fa) --------------------------------------------
+_PERSIAN_DIGIT_TRANS = str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹")
+
+def fa_digits(s: str) -> str:
+    """Localize ASCII digits 0-9 to Persian numerals."""
+    return str(s or "").translate(_PERSIAN_DIGIT_TRANS)

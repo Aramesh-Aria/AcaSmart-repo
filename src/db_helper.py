@@ -1210,6 +1210,19 @@ def has_teacher_weekly_time_conflict(class_id, session_time, exclude_session_id=
         c.execute(query, params)
         return c.fetchone() is not None
 
+def get_session_count_per_student():
+    conn = get_connection()  # همان روشی که در پروژه‌ات برای اتصال استفاده می‌کنی
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT student_id, COUNT(*) 
+        FROM sessions
+        GROUP BY student_id
+    """)
+    rows = cur.fetchall()
+    conn.close()
+    # خروجی: {student_id: count}
+    return {sid: cnt for (sid, cnt) in rows}
+
 #<-----------------------------  PAYMENT FUNCTIONS  --------------------------------------->
 
 def insert_payment(student_id, class_id, term_id, amount, payment_date, payment_type='tuition', description=None):

@@ -10,13 +10,12 @@ from db_helper import (
     get_day_and_time_for_class, is_class_slot_taken,
     insert_student_term_if_not_exists,
     delete_sessions_for_expired_terms,get_session_count_per_class,
-get_unnotified_expired_terms,mark_terms_as_notified,delete_term_if_no_payments,get_last_term_end_date,get_session_by_id,delete_sessions_for_term,has_teacher_weekly_time_conflict
+get_unnotified_expired_terms,mark_terms_as_notified,delete_term_if_no_payments,get_last_term_end_date,get_session_by_id,delete_sessions_for_term,has_teacher_weekly_time_conflict,get_session_count_per_student
 )
 from shamsi_date_popup import ShamsiDatePopup
 import jdatetime
 import sqlite3
-from fa_collation import sort_records_fa, contains_fa,nd
-
+from fa_collation import sort_records_fa, contains_fa,nd,fa_digits
 class SessionManager(QWidget):
     def __init__(self):
         super().__init__()
@@ -37,6 +36,9 @@ class SessionManager(QWidget):
 
         self.last_selected_time = None
         self.last_time_per_class = {}  # کلاس به ساعت آخر ثبت‌شده
+
+        self.session_counts_by_student = {}  # {student_id: count}
+        self.refresh_session_counts()        # ← اولین بارگیری
 
         layout = QVBoxLayout()
 
@@ -110,6 +112,12 @@ class SessionManager(QWidget):
             first_item = self.list_search_results.item(0)
             self.list_search_results.setCurrentItem(first_item)
             self.select_student(first_item)
+
+    def refresh_session_counts(self):
+        try:
+            self.session_counts_by_student = get_session_count_per_student() or {}
+        except Exception:
+            self.session_counts_by_student = {}
 
     def check_and_notify_term_ends(self):
         expired = get_unnotified_expired_terms()
@@ -237,7 +245,10 @@ class SessionManager(QWidget):
 
         # نمایش
         for sid, national_code, name, teacher in filtered:
-            item = QListWidgetItem(f"{name} - کدملی: {national_code}")
+            count = self.session_counts_by_student.get(sid, 0)
+            count_fa = fa_digits(count)
+            item = QListWidgetItem(f"{name} - کد ملی: {national_code} ( {count_fa} جلسه ثبت شده )")
+
             item.setData(Qt.UserRole, sid)
             self.list_search_results.addItem(item)
             
@@ -366,6 +377,9 @@ class SessionManager(QWidget):
             QMessageBox.information(self, "موفق", f"جلسه برای هنرجو با موفقیت در تاریخ {date} و ساعت {time} ثبت شد.")
             self.last_selected_time = self.time_session.time()
             self.last_time_per_class[self.selected_class_id] = self.last_selected_time
+            self.refresh_session_counts()
+            self.search_students()
+            
         except sqlite3.IntegrityError as e:
             print("🔴 IntegrityError:", e)
 
@@ -436,6 +450,10 @@ class SessionManager(QWidget):
         self.update_class_list()
         self.update_summary_bar()
         QMessageBox.information(self, "موفق", "جلسه و ترم مرتبط با موفقیت حذف شدند.")
+
+        # ✅ شمارش جلسات هنرجویان را ریفرش کن و لیست جستجو را بازترسیم کن
+        self.refresh_session_counts()
+        self.search_students()
 
         self.last_selected_time = self.time_session.time()
         self.last_time_per_class[self.selected_class_id] = self.last_selected_time
@@ -519,16 +537,21 @@ class SessionManager(QWidget):
 
         try:
             update_session(
-            self.selected_session_id,
-            class_id,
-            student_id,
-            date,
-            time
+                self.selected_session_id,
+                class_id,
+                student_id,
+                term_id,
+                date,
+                time
             )
             QMessageBox.information(self, "موفق", "جلسه با موفقیت ویرایش شد.")
 
             # اگر هنرجو هنوز ترمی نداشته، بساز
             insert_student_term_if_not_exists(self.selected_student_id, self.selected_class_id, date, time)
+
+            # ✅ شمارش جلسات هنرجویان را ریفرش کن و لیست جستجو را بازترسیم کن
+            self.refresh_session_counts()
+            self.search_students()
 
         except sqlite3.IntegrityError:
             QMessageBox.warning(self, "خطا", "امکان ویرایش به دلیل تداخل یا جلسه تکراری وجود ندارد.")
@@ -542,6 +565,7 @@ class SessionManager(QWidget):
         self.load_sessions()
         self.clear_form()
         self.load_student_classes()
+
 
     def open_date_picker(self):
         dlg = ShamsiDatePopup(initial_date=self.selected_shamsi_date)
