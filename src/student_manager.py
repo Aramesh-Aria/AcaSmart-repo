@@ -10,6 +10,7 @@ from db_helper import (insert_student, student_national_code_exists,get_student_
 
 import jdatetime
 from shamsi_date_popup import ShamsiDatePopup
+from fa_collation import sort_records_fa, contains_fa
 
 class StudentManager(QWidget):
     def __init__(self):
@@ -228,7 +229,10 @@ class StudentManager(QWidget):
 
         # فرض بر اینه که fetch_students() تابع جدیدی هست که (id, name) برمی‌گردونه
         rows = fetch_students()
-        self.students_data = sorted(rows, key=lambda x: (x[1].lower(), x[4]))  # مرتب‌سازی بر اساس نام و کد ملی
+        # name_index=1 (نام)، tiebreak_index=4 (کدملی)
+        self.students_data = sort_records_fa(rows, name_index=1, tiebreak_index=4)
+        
+        # مرتب‌سازی بر اساس نام و کد ملی
         # for every student in items create a text like نام هنرجو (استاد: نام استاد)
         for student_id, name, gender, birth_date, national_code in self.students_data:
             # محاسبه سن از تاریخ تولد شمسی
@@ -251,7 +255,7 @@ class StudentManager(QWidget):
         #هر بار قبل از جستجو لیست رو تازه کن
         #لیست کامل هنرجویان از دیتابیس خونده بشه,سپس فیلتر روی داده‌های جدید انجام بشه
         # self.load_students()
-        query = text.strip().lower()
+        query = text.strip()
         selected_gender = self.filter_gender.currentText()
         national_code_query = self.filter_national_code.text().strip()
         filtered_students = []
@@ -267,15 +271,17 @@ class StudentManager(QWidget):
             age = today_jdate.year - birth_jdate.year - (
                         (today_jdate.month, today_jdate.day) < (birth_jdate.month, birth_jdate.day))
 
-            if (query in name.lower() and
+            if (contains_fa(name, query) and
                     (selected_gender == "همه" or gender == selected_gender) and
                     national_code_query in national_code):
+
                 filtered_students.append((student_id, name, gender, age, national_code))
 
         # مرتب‌سازی
         sort_criteria = self.sort_by.currentText()
-        if sort_criteria == "مرتب‌سازی بر اساس نام":
-            filtered_students.sort(key=lambda x: x[1].lower())
+        if sort_criteria == "مرتب‌سازی بر اساس حروف الفبا":
+            # filtered_students: (id, name, gender, age, national_code)
+            filtered_students = sort_records_fa(filtered_students, name_index=1, tiebreak_index=4)
         elif sort_criteria == "مرتب‌سازی بر اساس سن":
             filtered_students.sort(key=lambda x: x[3])  # سن
         elif sort_criteria == "مرتب‌سازی بر اساس کد ملی":
