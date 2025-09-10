@@ -71,7 +71,7 @@ class PaymentReportWindow(QWidget):
 
         # --- دکمه‌ها ---
         btn_layout = QHBoxLayout()
-        self.btn_clear = QPushButton("♻️ پاکسازی فیلتر")
+        self.btn_clear = QPushButton("🧹 پاکسازی فیلتر")
         self.btn_export = QPushButton("📥 خروجی اکسل")
         self.btn_clear.clicked.connect(self.clear_filters)
         self.btn_export.clicked.connect(self.export_to_excel)

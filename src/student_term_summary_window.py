@@ -78,7 +78,7 @@ class StudentTermSummaryWindow(QWidget):
         layout.addWidget(self.combo_term_status)
         layout.addWidget(self.btn_filter)
 
-        self.btn_clear = QPushButton("🧹 پاکسازی فیلترها")
+        self.btn_clear = QPushButton("پاکسازی فیلترها")
         self.btn_clear.clicked.connect(self.clear_filters)
         layout.addWidget(self.btn_clear)
 
