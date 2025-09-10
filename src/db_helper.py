@@ -1452,7 +1452,6 @@ def update_payment_by_id(payment_id, amount, date, payment_type, description):
         conn.commit()
 
 
-
 def fetch_students_sessions_for_class_on_date(class_id, selected_date):
     with get_connection() as conn:
         c = conn.cursor()
@@ -1470,6 +1469,32 @@ def fetch_students_sessions_for_class_on_date(class_id, selected_date):
         """, (class_id, selected_date, selected_date))
         return c.fetchall()
 
+def get_payment_by_id(payment_id):
+    """
+    دریافت جزئیات یک پرداخت بر اساس ID.
+    خروجی: dict شامل id, student_id, class_id, term_id, amount, payment_date (شمسی "YYYY-MM-DD"),
+            payment_type ('tuition'/'extra'), description
+    """
+    with get_connection() as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT id, student_id, class_id, term_id, amount, payment_date, payment_type, description
+            FROM payments
+            WHERE id = ?
+        """, (payment_id,))
+        row = c.fetchone()
+        if not row:
+            return None
+        return {
+            "id": row[0],
+            "student_id": row[1],
+            "class_id": row[2],
+            "term_id": row[3],
+            "amount": row[4],
+            "payment_date": row[5],   # تاریخ شمسی به صورت "YYYY-MM-DD"
+            "payment_type": row[6],   # 'tuition' یا 'extra'
+            "description": row[7],
+        }
 
 # <-----------------------------  ATTENDANCE FUNCTIONS  --------------------------------------->
 

@@ -16,6 +16,7 @@ from functools import partial
 
 class PaymentReportWindow(QWidget):
     payment_changed = Signal()  # سیگنال برای اعلام تغییرات پرداخت
+    edit_requested = Signal(int)
     def __init__(self, student_id=None, class_id=None):
         super().__init__()
         self.setWindowTitle("📊 گزارش پرداخت‌ها")
@@ -261,5 +262,7 @@ class PaymentReportWindow(QWidget):
             self.payment_changed.emit()  # ارسال سیگنال تغییر
 
     def edit_payment(self, payment_id):
-        # اینجا می‌تونی PaymentManager رو باز کنی و اطلاعات رو برای ویرایش پر کنی
-        pass
+        # اعلام به والد (PaymentManager) که این پرداخت باید برای ویرایش لود شود
+        self.edit_requested.emit(payment_id)
+        # ترجیحاً این پنجره بسته شود تا کاربر مستقیماً روی فرم ویرایش باشد:
+        self.close()

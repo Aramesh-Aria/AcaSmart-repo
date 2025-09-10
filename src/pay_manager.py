@@ -7,7 +7,7 @@ from db_helper import (
     fetch_students_with_teachers, fetch_classes,
     insert_payment, get_total_paid_for_term, get_setting,
     get_term_id_by_student_and_class,count_attendance_for_term,fetch_registered_classes_for_student,
-    update_payment_by_id, get_terms_for_payment_management
+    update_payment_by_id, get_terms_for_payment_management,get_payment_by_id
 )
 from shamsi_date_popup import ShamsiDatePopup
 from shamsi_date_picker import ShamsiDatePicker
@@ -463,5 +463,78 @@ class PaymentManager(QWidget):
             student_id=self.selected_student_id,
             class_id=self.selected_class_id
         )
-        self.report_window.payment_changed.connect(self.update_financial_labels)  # وقتی حذف شد آپدیت کن
+        self.report_window.payment_changed.connect(self.update_financial_labels)
+        self.report_window.edit_requested.connect(self.load_payment_for_edit)
         self.report_window.show()
+
+    def load_payment_for_edit(self, payment_id: int):
+        data = get_payment_by_id(payment_id)
+        if not data:
+            QMessageBox.warning(self, "خطا", "پرداخت موردنظر یافت نشد.")
+            return
+
+        # 1) هنرجو/کلاس/ترم را انتخاب کن
+        # مطمئن شو همه هنرجوها قابل مشاهده‌اند
+        self.input_search_student.setText("")
+        self.search_students()
+
+        # انتخاب هنرجو
+        target_student = data["student_id"]
+        for i in range(self.list_students.count()):
+            it = self.list_students.item(i)
+            if it and it.data(Qt.UserRole) == target_student:
+                self.list_students.setCurrentItem(it)
+                self.select_student(it)   # ← کلاس‌های همان هنرجو لود می‌شود
+                break
+
+        # انتخاب کلاس
+        target_class = data["class_id"]
+        for j in range(self.list_classes.count()):
+            ic = self.list_classes.item(j)
+            if ic and ic.data(Qt.UserRole) == target_class:
+                self.list_classes.setCurrentItem(ic)
+                self.select_class(ic)     # ← ترم‌ها لود می‌شوند
+                break
+
+        # انتخاب ترم (اگر برای پرداخت ثبت شده باشد)
+        target_term = data["term_id"]
+        if target_term:
+            for k in range(self.combo_terms.count()):
+                if self.combo_terms.itemData(k) == target_term:
+                    self.combo_terms.setCurrentIndex(k)  # سیگنال select_term خودت وصله
+                    break
+
+        # 2) مقداردهی فیلدهای فرم
+        # مبلغ
+        try:
+            from utils import format_currency
+            self.input_amount.setText(format_currency(data["amount"]))
+        except Exception:
+            self.input_amount.setText(str(data["amount"]))
+
+        # نوع پرداخت
+        if data["payment_type"] == 'tuition':
+            self.combo_type.setCurrentIndex(0)  # "شهریه"
+        else:
+            self.combo_type.setCurrentIndex(1)  # "مازاد"
+
+        # توضیحات
+        self.input_description.setPlainText(data["description"] or "")
+
+        # تاریخ: پرداخت‌ها به شمسی ذخیره شده‌اند ("YYYY-MM-DD")
+        try:
+            jdate = jdatetime.date.fromisoformat(data["payment_date"]).togregorian()
+            self.date_payment_picker.setDate(QDate(jdate.year, jdate.month, jdate.day))
+        except Exception:
+            # اگر هر دلیلی شکست خورد، تاریخ امروز ست شود
+            self.date_payment_picker.setDate(QDate.currentDate())
+
+        # 3) رفتن به وضعیت ویرایش
+        self.is_editing = True
+        self.editing_payment_id = data["id"]
+        self.btn_add_payment.setText("✏️ ذخیره ویرایش")
+        self.set_payment_button_enabled(True)
+
+        # پنجره را جلو بیاور
+        self.raise_()
+        self.activateWindow()
