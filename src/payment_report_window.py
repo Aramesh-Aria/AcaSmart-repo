@@ -20,7 +20,7 @@ class PaymentReportWindow(QWidget):
     def __init__(self, student_id=None, class_id=None):
         super().__init__()
         self.setWindowTitle("📊 گزارش پرداخت‌ها")
-        self.resize(1100, 650)
+        self.resize(1300, 650)
         # پیدا کردن مرکز صفحه و جابه‌جا کردن پنجره
         screen_geometry = QApplication.primaryScreen().availableGeometry()
         x = (screen_geometry.width() - self.width()) // 2
