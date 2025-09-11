@@ -411,10 +411,6 @@ class SessionManager(QWidget):
         # الان: سورت «اول زمان، بعد تاریخ»:
         rows = sorted(rows, key=lambda r: (to_minutes(r[3]), str(r[2]).strip()))
 
-        print("### ORDER PREVIEW:")
-        for r in rows:
-            print("   ", r[2], r[3], "→ id", r[0])
-
         for s_id, student_name, date_str, time_str, _ in rows:
             # منسجم: تاریخ جلوتر بیاید تا با سورت ذهنی هم‌راستا باشد
             text = f"{date_str} ساعت {time_str} - {student_name}"
