@@ -1,41 +1,40 @@
 # -*- mode: python ; coding: utf-8 -*-
+from pathlib import Path
 from PyInstaller.utils.hooks import collect_data_files
+
+# ===== Paths (نسبت به محل همین فایل mac.spec) =====
+BASE = Path(__file__).resolve().parent                          # .../AcaSmart-repo
+PROJ = BASE.parent                                              # .../AcaSmart
+SRC_DIR = BASE / 'src'                                          # .../AcaSmart-repo/src
+STATIC_DIR = PROJ / 'static'                                    # .../AcaSmart/static
+SETUP_DIR = PROJ / 'Setup_files'                                # .../AcaSmart/Setup_files
+
+ICON_ICNS = str((STATIC_DIR / 'AppIcon.icns').resolve())        # آیکن مک
 
 block_cipher = None
 
+# فقط دیتاهای لازم؛ آیکن را در datas نمی‌گذاریم چون با پارامتر icon کپی می‌شود
 datas = [
-    ('../Setup_files/acasmart_template.db', '.'),
-    ('../Setup_files/.env', '.'),
-    ('../static/white_background_icon.icns', '.'),
-    ('../static/white_background_icon.png', '.'),
+    (str((SETUP_DIR / 'acasmart_template.db').resolve()), '.'),
+    (str((SETUP_DIR / '.env').resolve()), '.'),
     *collect_data_files('dotenv'),
     *collect_data_files('openpyxl'),
 ]
 
 hiddenimports = [
-    'PySide6.QtCore',
-    'PySide6.QtWidgets',
-    'PySide6.QtGui',
-    'shiboken6',
-    'sqlite3',
-    'pandas',
-    'numpy',
-    'jdatetime',
-    'openpyxl',
-    'requests',
-    'dotenv',
-    'et_xmlfile',
-    'cachetools',
+    'PySide6.QtCore','PySide6.QtWidgets','PySide6.QtGui','shiboken6',
+    'sqlite3','pandas','numpy','jdatetime','openpyxl','requests',
+    'dotenv','et_xmlfile','cachetools',
 ]
 
 a = Analysis(
-    ['src/main.py'],
-    pathex=['.'],
+    [str((SRC_DIR / 'main.py').resolve())],
+    pathex=[str(BASE.resolve())],
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
-    runtime_hooks=['src/custom_runtime_hook.py'],
+    runtime_hooks=[str((SRC_DIR / 'custom_runtime_hook.py').resolve())],
     excludes=[
         'matplotlib','scipy','IPython','jupyter','notebook','pytest','nbconvert',
         'sphinx','setuptools','distutils','tkinter','PIL','pillow','cv2',
@@ -60,14 +59,20 @@ exe = EXE(
     upx=False,
     runtime_tmpdir=None,
     console=False,
+    icon=ICON_ICNS,   # ← برای اطمینان اینجا هم ست می‌کنیم
 )
 
 app = BUNDLE(
     exe,
     name='AcaSmart.app',
-    icon='../static/white_background_icon.icns',  # آیکن مک از پوشه Setup_files
+    icon=ICON_ICNS,   # ← آیکن باندل مک
     bundle_identifier='com.acasmart.app',
     info_plist={
+        'CFBundleName': 'AcaSmart',
+        'CFBundleDisplayName': 'AcaSmart',
+        'CFBundleIconFile': 'AppIcon.icns',  # نام فایلی که در Resources خواهد بود
+        'CFBundleShortVersionString': '1.0.0',
+        'CFBundleVersion': '1',
         'NSHighResolutionCapable': True,
     },
 )

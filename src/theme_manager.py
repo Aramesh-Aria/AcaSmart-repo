@@ -14,9 +14,9 @@ class ThemeManager:
         # فقط آیکن سفید برنامه؛ فرمت‌های موجود را اینجا لیست کن
         # توجه: icns را برای macOS اضافه کرده‌ای (white_background_icon.icns)
         self.app_icon_candidates = [
-            "white_background_icon.icns",  # macOS preferred
-            "white_background_icon.ico",   # Windows preferred
-            "white_background_icon.png",   # Fallback for Linux/others
+            "AppIcon.icns",  # macOS preferred
+            "AppIcon.ico",   # Windows preferred
+            "AppIcon.png",   # Fallback for Linux/others
         ]
 
     def _get_base_path(self) -> Path:
@@ -29,12 +29,14 @@ class ThemeManager:
 
     def _get_resource_path(self, filename: str) -> Path:
         """
-        Robust path resolution for both dev & packaged.
-        Tries (in order): MEIPASS/static, MEIPASS root, cwd/static, exe dir/static,
-        project_root/static (sibling of AcaSmart-repo), repo_root/static, and next to exe.
+        مسیر‌یابی robust در dev و packaged.
         """
         candidates: list[Path] = []
-        base = self._get_base_path()
+        base = Path(__file__).resolve()
+        src_dir  = base.parent                                # .../AcaSmart-repo/src
+        repo_dir = src_dir.parent                             # .../AcaSmart-repo
+        proj_dir = repo_dir.parent                            # .../AcaSmart
+        exe_dir  = Path(sys.executable).resolve().parent if hasattr(sys, "executable") else Path.cwd()
 
         # 1) PyInstaller MEIPASS (اگر بسته شده)
         if getattr(sys, "frozen", False):
@@ -42,36 +44,24 @@ class ThemeManager:
             candidates += [
                 meipass / "static" / filename,
                 meipass / filename,
-            ]
-            # مسیر کنار executable/app
-            exe_dir = Path(sys.executable).resolve().parent
-            candidates += [
                 exe_dir / "static" / filename,
                 exe_dir / filename,
             ]
 
-        # 2) حالت توسعه: paths بر اساس ساختار شما
-        # .../AcaSmart-repo/src → ریشه پروژه: parents[2] = AcaSmart-repo, parents[3] = ACASMART
-        parents = base.parents
-        project_root = parents[2] if len(parents) >= 3 else base  # .../ACASMART
-        repo_root = parents[1] if len(parents) >= 2 else base     # .../AcaSmart-repo
-
+        # 2) حالت توسعه: دقیقاً مطابق ساختار تو
         candidates += [
-            project_root / "static" / filename,  # ✅ ریشه پروژه/static/...
-            repo_root / "static" / filename,     # اگر static را بعداً داخل repo آوردی
-            Path.cwd() / "static" / filename,    # اجرای نسبی
-            base / "static" / filename,          # اگر src/static داشته باشی
-            base / filename,                     # اگر فایل کنار src کپی شد
+            proj_dir / "static" / filename,  # /Users/aria/Documents/AcaSmart/static
+            repo_dir / "static" / filename,  
+            src_dir  / "static" / filename,
+            Path.cwd() / "static" / filename,
+            src_dir / filename,
         ]
 
-        # اولین مسیر موجود را برگردان
         for p in candidates:
             if p.exists():
                 return p
-
-        # اگر هیچ‌کدام نبود، برای پیام خطا اولین کاندید را برگردان
         return candidates[0]
-    
+
     def detect_system_theme(self) -> str:
         """Keep theme detection for other UI needs; NOT used for app icon."""
         try:
@@ -89,28 +79,24 @@ class ThemeManager:
                 return "light"
 
     def _choose_icon_for_platform(self) -> QIcon:
-        """Always choose the WHITE app icon, best format per platform."""
-        # ترتیب ترجیح بر اساس پلتفرم
+        # ترتیب ترجیح
         if sys.platform == "darwin":
-            order = ["white_background_icon.icns", "white_background_icon.png", "white_background_icon.ico"]
+            order = ["AppIcon.icns", "AppIcon.png", "AppIcon.ico"]
         elif os.name == "nt":
-            order = ["white_background_icon.ico", "white_background_icon.png", "white_background_icon.icns"]
+            order = ["AppIcon.ico", "AppIcon.png", "AppIcon.icns"]
         else:
-            order = ["white_background_icon.png", "white_background_icon.ico", "white_background_icon.icns"]
+            order = ["AppIcon.png", "AppIcon.ico", "AppIcon.icns"]
 
-        # اگر فایل‌ها را جایی دیگر گذاشتی، _get_resource_path همه مسیرهای رایج را چک می‌کند
         for name in order:
             path = self._get_resource_path(name)
             if path.exists():
                 return QIcon(str(path))
 
-        # آخرین تلاش: از لیست کلی کاندیدها
         for name in self.app_icon_candidates:
             path = self._get_resource_path(name)
             if path.exists():
                 return QIcon(str(path))
-
-        print("⚠️ No white app icon found. Returning empty QIcon().")
+        print("⚠️ No app icon found. Returning empty QIcon().")
         return QIcon()
 
     def get_theme_icon(self, theme: str | None = None) -> QIcon:
@@ -118,16 +104,33 @@ class ThemeManager:
         return self._choose_icon_for_platform()
 
     def apply_theme_icon(self, window=None) -> str:
-        """Apply WHITE app icon regardless of system theme."""
-        theme = self.detect_system_theme()  # برای استفاده احتمالی در جاهای دیگر
+        """
+        در dev هم آیکن Dock را ست می‌کند.
+        - روی macOS: ابتدا QIcon ست می‌شود؛ اگر PyObjC موجود باشد،
+        آیکن Dock با NSApplication هم ست می‌شود.
+        """
+        theme = self.detect_system_theme()
         icon = self.get_theme_icon(theme=None)
 
+        # ست پیش‌فرض Qt
         if window:
             window.setWindowIcon(icon)
         if self.app:
             self.app.setWindowIcon(icon)
 
-        print("🎨 Applied WHITE app icon (theme ignored).")
+        # ست مستقیم Dock با Cocoa (اختیاری، اگر PyObjC نصب باشد)
+        if sys.platform == "darwin":
+            try:
+                from AppKit import NSApplication, NSImage
+                icns_path = self._get_resource_path("AppIcon.icns")
+                if icns_path.exists():
+                    nsimg = NSImage.alloc().initWithContentsOfFile_(str(icns_path))
+                    NSApplication.sharedApplication().setApplicationIconImage_(nsimg)
+            except Exception:
+                # PyObjC نصب نیست یا خطایی رخ داده؛ اشکالی ندارد، Qt کار می‌کند.
+                pass
+
+        print("🎨 Applied App icon.")
         return theme
 
     def get_available_icons_debug(self) -> dict:
@@ -140,10 +143,11 @@ class ThemeManager:
 
     def print_theme_info(self):
         print("🔍 Theme Debug:")
-        print(f"   Detected system theme (for UI only): {self.detect_system_theme()}")
-        print(f"   Base path: {self.base_path}")
-        for name, (p, ok) in self.get_available_icons_debug().items():
-            print(f"   {name}: {'✅' if ok else '❌'} {p}")
+        print(f"   Detected system theme: {self.detect_system_theme()}")
+        print(f"   Base file: {Path(__file__).resolve()}")
+        for name in self.app_icon_candidates:
+            p = self._get_resource_path(name)
+            print(f"   {name}: {'✅' if p.exists() else '❌'} {p}")
 
 # Global theme manager instance
 _theme_manager = None
