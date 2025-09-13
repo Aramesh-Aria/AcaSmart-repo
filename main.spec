@@ -10,8 +10,8 @@ a = Analysis(
     datas=[
         ('../Setup_files/acasmart_template.db', '.'),
         ('../Setup_files/.env', '.'),
-        ('../static/white_background_icon.ico', '.'),
-        ('../static/white_background_icon.png', '.'),
+        ('../static/AppIcon.ico', '.'),
+        ('../static/AppIcon.png', '.'),
         *collect_data_files('dotenv'),
         *collect_data_files('openpyxl'),
     ],
@@ -62,7 +62,7 @@ exe = EXE(
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,
-    icon='../static/white_background_icon.ico'  # Default icon
+    icon='../static/AppIcon.ico'  # Default icon
 )
 
 coll = COLLECT(

@@ -15,8 +15,9 @@ block_cipher = None
 
 # فقط دیتاهای لازم؛ آیکن را در datas نمی‌گذاریم چون با پارامتر icon کپی می‌شود
 datas = [
-    (str((SETUP_DIR / 'acasmart_template.db').resolve()), '.'),
-    (str((SETUP_DIR / '.env').resolve()), '.'),
+    ('../Setup_files/acasmart_template.db', '.'),
+    ('../Setup_files/.env', '.'),
+    ('../static/AppIcon.icns', '.'),
     *collect_data_files('dotenv'),
     *collect_data_files('openpyxl'),
 ]
@@ -59,13 +60,13 @@ exe = EXE(
     upx=False,
     runtime_tmpdir=None,
     console=False,
-    icon=ICON_ICNS,   # ← برای اطمینان اینجا هم ست می‌کنیم
+    icon='../static/AppIcon.icns',
 )
 
 app = BUNDLE(
     exe,
     name='AcaSmart.app',
-    icon=ICON_ICNS,   # ← آیکن باندل مک
+    icon='../static/AppIcon.icns',
     bundle_identifier='com.acasmart.app',
     info_plist={
         'CFBundleName': 'AcaSmart',

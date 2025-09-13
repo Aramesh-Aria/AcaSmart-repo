@@ -11,8 +11,6 @@ class ThemeManager:
         self.app = QApplication.instance()
         self.base_path = self._get_base_path()
 
-        # فقط آیکن سفید برنامه؛ فرمت‌های موجود را اینجا لیست کن
-        # توجه: icns را برای macOS اضافه کرده‌ای (white_background_icon.icns)
         self.app_icon_candidates = [
             "AppIcon.icns",  # macOS preferred
             "AppIcon.ico",   # Windows preferred
