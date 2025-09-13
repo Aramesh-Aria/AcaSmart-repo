@@ -1,15 +1,13 @@
-# -*- mode: python ; coding: utf-8 -*-
 from pathlib import Path
+import inspect
 from PyInstaller.utils.hooks import collect_data_files
 
-# ===== Paths (نسبت به محل همین فایل mac.spec) =====
-BASE = Path(__file__).resolve().parent                          # .../AcaSmart-repo
-PROJ = BASE.parent                                              # .../AcaSmart
-SRC_DIR = BASE / 'src'                                          # .../AcaSmart-repo/src
-STATIC_DIR = PROJ / 'static'                                    # .../AcaSmart/static
-SETUP_DIR = PROJ / 'Setup_files'                                # .../AcaSmart/Setup_files
-
-ICON_ICNS = str((STATIC_DIR / 'AppIcon.icns').resolve())        # آیکن مک
+SPEC_PATH = Path(inspect.getframeinfo(inspect.currentframe()).filename).resolve()
+BASE = SPEC_PATH.parent                          # .../AcaSmart-repo
+PROJ = BASE.parent                               # .../AcaSmart
+SRC_DIR = BASE / 'src'
+STATIC_DIR = PROJ / 'static'
+SETUP_DIR = PROJ / 'Setup_files'                # .../AcaSmart/Setup_files
 
 block_cipher = None
 
@@ -17,7 +15,6 @@ block_cipher = None
 datas = [
     ('../Setup_files/acasmart_template.db', '.'),
     ('../Setup_files/.env', '.'),
-    ('../static/AppIcon.icns', '.'),
     *collect_data_files('dotenv'),
     *collect_data_files('openpyxl'),
 ]
@@ -25,7 +22,7 @@ datas = [
 hiddenimports = [
     'PySide6.QtCore','PySide6.QtWidgets','PySide6.QtGui','shiboken6',
     'sqlite3','pandas','numpy','jdatetime','openpyxl','requests',
-    'dotenv','et_xmlfile','cachetools',
+    'dotenv','et_xmlfile','cachetools','jinja2'
 ]
 
 a = Analysis(
@@ -67,13 +64,19 @@ app = BUNDLE(
     exe,
     name='AcaSmart.app',
     icon='../static/AppIcon.icns',
-    bundle_identifier='com.acasmart.app',
+    bundle_identifier='ir.aramesh.AcaSmart',
     info_plist={
+        'CFBundleIdentifier' : 'ir.aramesh.AcaSmart',
         'CFBundleName': 'AcaSmart',
         'CFBundleDisplayName': 'AcaSmart',
-        'CFBundleIconFile': 'AppIcon.icns',  # نام فایلی که در Resources خواهد بود
-        'CFBundleShortVersionString': '1.0.0',
-        'CFBundleVersion': '1',
+        'CFBundleIconFile': 'AppIcon.icns',
+        'CFBundleShortVersionString': '1.1.08',
+        'CFBundleVersion': '1108',
         'NSHighResolutionCapable': True,
+        'LSMinimumSystemVersion': '11.0',
+        'LSApplicationCategoryType': 'public.app-category.productivity',
+        'NSRequiresAquaSystemAppearance': False,  # پشتیبانی از Dark Mode
+    
+
     },
 )
