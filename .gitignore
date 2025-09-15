@@ -55,7 +55,9 @@ acasmart.db
 # توجه: acasmart_template.db را IGNORE نکن تا داخل ریپو بماند
 acasmart_backup.db
 acasmart_backup_1.db
-acasmart_backup_New.db
+acasmart_backup_test.db
+# Analysis artifacts (generated reports)
+artifacts/
 # ==== Windows-only large binaries ====
 Setup_files/VC_redist.x64.exe
 *.exe
