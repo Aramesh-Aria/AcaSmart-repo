@@ -1,369 +1,169 @@
-import sqlite3
-from datetime import datetime, timedelta
-from paths import DB_PATH
+from data.db import get_connection  # expose the same connection behavior
+from data.schema import create_tables
+from data.migrations import (
+    migrate_attendance_unique_constraint,
+    migrate_drop_student_terms_term_id,
+)
 
-# تابع اتصال به دیتابیس
-def get_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA journal_mode = WAL")
-    conn.execute("PRAGMA synchronous = NORMAL")
-    return conn
-def create_tables():
-    """Create all tables with FKs, UNIQUE constraints, indexes, and audit columns."""
+# <-------------------------------  profiles functions  ------------------------------------------------->
+def create_pricing_profile(name: str, sessions: int, fee: int, currency_unit: str = None, is_default: bool = False):
+    if currency_unit is None:
+        currency_unit = get_setting("currency_unit", "toman")
     with get_connection() as conn:
         c = conn.cursor()
-
-        # Users table
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              mobile TEXT UNIQUE NOT NULL,
-              password TEXT NOT NULL
-            );
-        ''')
-        # Teachers table
+        if is_default:
+            c.execute("UPDATE pricing_profiles SET is_default = 0")
         c.execute("""
-            CREATE TABLE IF NOT EXISTS teachers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                national_code TEXT UNIQUE NOT NULL,
-                teaching_card_number TEXT,
-                gender TEXT,
-                phone TEXT,
-                birth_date TEXT,
-                card_number TEXT,
-                iban TEXT,
-                created_at TEXT DEFAULT (datetime('now','localtime')),
-                updated_at TEXT DEFAULT (datetime('now','localtime'))
-            );
-        """)
-        # teachers instruments table
-        c.execute("""CREATE TABLE IF NOT EXISTS teacher_instruments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                teacher_id INTEGER NOT NULL,
-                instrument TEXT NOT NULL,
-                FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE,
-                UNIQUE(teacher_id, instrument)
-                );  
-        """)
-        # Students table
-        c.execute("""CREATE TABLE IF NOT EXISTS students (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                birth_date TEXT NOT NULL,
-                gender TEXT NOT NULL,
-                national_code TEXT UNIQUE NOT NULL,
-                phone TEXT,
-                father_name TEXT,
-                created_at TEXT DEFAULT (datetime('now','localtime')),
-                updated_at TEXT DEFAULT (datetime('now','localtime'))
-            );
-
-        """)
-
-        # Classes table
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS classes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                teacher_id INTEGER NOT NULL,
-                day TEXT NOT NULL,
-                start_time TEXT NOT NULL,
-                end_time TEXT NOT NULL,
-                room TEXT,
-                instrument TEXT,
-                created_at TEXT DEFAULT (datetime('now','localtime')),
-                updated_at TEXT DEFAULT (datetime('now','localtime')),
-                FOREIGN KEY(teacher_id)
-                  REFERENCES teachers(id)
-                  ON DELETE CASCADE
-                  ON UPDATE CASCADE,
-                UNIQUE(teacher_id, day, start_time, end_time, room)
-            );
-        """)
-
-        # Sessions table
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS sessions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                class_id INTEGER NOT NULL,
-                student_id INTEGER NOT NULL,
-                term_id INTEGER,
-                date TEXT NOT NULL,
-                time TEXT NOT NULL,
-                duration INTEGER DEFAULT 30,
-                created_at TEXT DEFAULT (datetime('now','localtime')),
-                updated_at TEXT DEFAULT (datetime('now','localtime')),
-                FOREIGN KEY(class_id)
-                    REFERENCES classes(id)
-                    ON DELETE CASCADE
-                    ON UPDATE CASCADE,
-                FOREIGN KEY(student_id)
-                    REFERENCES students(id)
-                    ON DELETE CASCADE
-                    ON UPDATE CASCADE,
-                FOREIGN KEY(term_id)
-                    REFERENCES student_terms(id)
-                    ON DELETE CASCADE
-                    ON UPDATE CASCADE,
-                UNIQUE(class_id, student_id, date, time)
-            );
-        """)
-
-        # student_terms table
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS student_terms (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                student_id INTEGER NOT NULL,
-                class_id INTEGER NOT NULL,
-                start_date TEXT NOT NULL,
-                end_date TEXT,
-                created_at TEXT DEFAULT (datetime('now','localtime')),
-                updated_at TEXT DEFAULT (datetime('now','localtime')),
-                FOREIGN KEY(student_id)
-                    REFERENCES students(id)
-                    ON DELETE CASCADE
-                    ON UPDATE CASCADE,
-                FOREIGN KEY(class_id)
-                    REFERENCES classes(id)
-                    ON DELETE CASCADE
-                    ON UPDATE CASCADE
-            );
-        """)
-
-        # add term_id to student_terms
-        c.execute("PRAGMA table_info(student_terms)")
-        columns = [row[1] for row in c.fetchall()]
-        if "term_id" not in columns:
-            c.execute("ALTER TABLE student_terms ADD COLUMN term_id INTEGER")
-            print("✅ ستون term_id به جدول student_terms اضافه شد و مقداردهی شد.")
-
-        # add start_time to student_terms (for distinguishing same-day sessions)
-        c.execute("PRAGMA table_info(student_terms)")
-        columns = [row[1] for row in c.fetchall()]
-        if "start_time" not in columns:
-            c.execute("ALTER TABLE student_terms ADD COLUMN start_time TEXT")
-            print("✅ ستون start_time به جدول student_terms اضافه شد.")
-
-        # Payments table
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS payments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                student_id INTEGER NOT NULL,
-                class_id INTEGER NOT NULL,
-                term_id INTEGER,
-                amount INTEGER NOT NULL,
-                payment_date TEXT NOT NULL,
-                payment_type TEXT DEFAULT 'tuition',  -- 'tuition' or 'extra'
-                description TEXT,
-                created_at TEXT DEFAULT (datetime('now','localtime')),
-                updated_at TEXT DEFAULT (datetime('now','localtime')),
-                FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE ON UPDATE CASCADE,
-                FOREIGN KEY(class_id) REFERENCES classes(id) ON DELETE CASCADE ON UPDATE CASCADE,
-                FOREIGN KEY(term_id) REFERENCES student_terms(id) ON DELETE CASCADE ON UPDATE CASCADE
-            );
-        """)
-
-        # Settings table
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS settings (
-                key TEXT PRIMARY KEY,
-                value TEXT NOT NULL
-            );
-        """)
-
-
-        # Attendance table (ساخت اولیه یا بعد از مهاجرت)
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS attendance (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            student_id INTEGER NOT NULL,
-            class_id INTEGER NOT NULL,
-            term_id INTEGER NOT NULL,
-            date TEXT NOT NULL,
-            is_present INTEGER NOT NULL DEFAULT 1,
-            created_at TEXT DEFAULT (datetime('now','localtime')),
-            updated_at TEXT DEFAULT (datetime('now','localtime')),
-            FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE ON UPDATE CASCADE,
-            FOREIGN KEY(class_id) REFERENCES classes(id) ON DELETE CASCADE ON UPDATE CASCADE,
-            FOREIGN KEY(term_id) REFERENCES student_terms(id) ON DELETE CASCADE ON UPDATE CASCADE,
-            UNIQUE(student_id, class_id, term_id, date)
-        );
-        """)
-            # Table of registered terms for which the end-of-term message has already been displayed.
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS notified_terms (
-                term_id INTEGER PRIMARY KEY,
-                student_id INTEGER NOT NULL,
-                class_id INTEGER NOT NULL,
-                FOREIGN KEY(term_id) REFERENCES student_terms(id) ON DELETE CASCADE,
-                FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
-                FOREIGN KEY(class_id) REFERENCES classes(id) ON DELETE CASCADE
-            );
-        """)
-        # Table of recorded messages sent as reminders for term renewal 
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS sms_notifications (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                student_id INTEGER NOT NULL,
-                term_id INTEGER NOT NULL,
-                sent_at TEXT DEFAULT (datetime('now','localtime')),
-                FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
-                FOREIGN KEY(term_id) REFERENCES student_terms(id) ON DELETE CASCADE,
-                UNIQUE(student_id, term_id)
-            );
-        """)
-        # بلافاصله بعد از ساخت جدول notified_terms
-        c.execute("PRAGMA table_info(notified_terms)")
-        columns = [row[1] for row in c.fetchall()]
-        if "session_date" not in columns:
-            c.execute("ALTER TABLE notified_terms ADD COLUMN session_date TEXT")
-            print("✅ ستون session_date به جدول notified_terms اضافه شد.")
-
-        if "session_time" not in columns:
-            c.execute("ALTER TABLE notified_terms ADD COLUMN session_time TEXT")
-            print("✅ ستون session_time به جدول notified_terms اضافه شد.")
-
-        # Indexes for faster lookups
-        # For faster connection between students and classes
-        c.execute("CREATE INDEX IF NOT EXISTS idx_sessions_student_id ON sessions(student_id);")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_sessions_class_id ON sessions(class_id);")
-
-        # For linking the class with the instructor
-        c.execute("CREATE INDEX IF NOT EXISTS idx_classes_teacher_id ON classes(teacher_id);")
-
-        # If you search frequently, use the class day as a filter
-        c.execute("CREATE INDEX IF NOT EXISTS idx_classes_day ON classes(day);")
-
-        # If you want to sort the payments by student, class, or date
-        c.execute("CREATE INDEX IF NOT EXISTS idx_payments_student_id ON payments(student_id);")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_payments_class_id ON payments(class_id);")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(payment_date);")
-
-        # فقط وقتی دیتابیس تازه ساخته شده و جدول خالیه، مقادیر پیش‌فرض رو وارد کن
-        c.execute("SELECT COUNT(*) FROM settings")
-        if c.fetchone()[0] == 0:
-            c.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("currency_unit", "toman"))
-            c.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("sms_enabled", "فعال"))
-            c.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("term_session_count", "12"))
-            c.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("term_tuition", "6000000"))
-
+            INSERT INTO pricing_profiles(name, sessions_limit, tuition_fee, currency_unit, is_default)
+            VALUES (?, ?, ?, ?, ?)
+        """, (name, sessions, fee, currency_unit, 1 if is_default else 0))
         conn.commit()
+        return c.lastrowid
 
-    migrate_attendance_unique_constraint()  # اجرای مهاجرت بعد از ساخت جداول
-    migrate_student_terms_fk_to_sessions()
-
-
-def migrate_attendance_unique_constraint():
-    """Upgrade attendance table to have UNIQUE(student_id, class_id, term_id, date) instead of old constraint."""
+def list_pricing_profiles():
     with get_connection() as conn:
         c = conn.cursor()
-
-        # بررسی وجود جدول
-        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='attendance';")
-        if not c.fetchone():
-            return
-
-        # بررسی ساختار UNIQUE
-        c.execute("PRAGMA index_list(attendance);")
-        indexes = c.fetchall()
-        if any("term_id" in idx[1] for idx in indexes):
-            print("ℹ️ جدول attendance قبلاً term_id را در UNIQUE دارد. مهاجرت لازم نیست.")
-            return
-
-        print("🔄 اجرای مهاجرت UNIQUE برای جدول attendance...")
-
-        # بکاپ جدول
-        c.execute("ALTER TABLE attendance RENAME TO attendance_old;")
-
-        # ساخت جدول جدید با کلید یکتا صحیح
         c.execute("""
-            CREATE TABLE attendance (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                student_id INTEGER NOT NULL,
-                class_id INTEGER NOT NULL,
-                term_id INTEGER NOT NULL,
-                date TEXT NOT NULL,
-                is_present INTEGER NOT NULL DEFAULT 1,
-                created_at TEXT DEFAULT (datetime('now','localtime')),
-                updated_at TEXT DEFAULT (datetime('now','localtime')),
-                FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE ON UPDATE CASCADE,
-                FOREIGN KEY(class_id) REFERENCES classes(id) ON DELETE CASCADE ON UPDATE CASCADE,
-                FOREIGN KEY(term_id) REFERENCES student_terms(id) ON DELETE CASCADE ON UPDATE CASCADE,
-                UNIQUE(student_id, class_id, term_id, date)
-            );
+            SELECT id, name, sessions_limit, tuition_fee, currency_unit, is_default
+            FROM pricing_profiles
+            ORDER BY is_default DESC, name COLLATE NOCASE
         """)
+        return c.fetchall()
 
-        # انتقال داده‌ها
-        c.execute("""
-            INSERT OR IGNORE INTO attendance (student_id, class_id, term_id, date, is_present, created_at, updated_at)
-            SELECT student_id, class_id, term_id, date, is_present, created_at, updated_at
-            FROM attendance_old;
-        """)
-
-        # حذف بکاپ
-        c.execute("DROP TABLE attendance_old;")
-
-        conn.commit()
-        print("✅ مهاجرت جدول attendance با موفقیت انجام شد.")
-
-def migrate_student_terms_fk_to_sessions():
+def get_default_profile():
     with get_connection() as conn:
         c = conn.cursor()
-
-        # اگر قبلاً FK موردنظر اضافه شده، کاری نکن
-        c.execute("PRAGMA foreign_key_list('student_terms');")
-        fk_list = c.fetchall()
-        if any(row[2] == 'sessions' and row[3] == 'term_id' for row in fk_list):
-            print("ℹ️ FK student_terms.term_id → sessions(id) قبلاً وجود دارد.")
-            return
-
-        print("🔄 شروع مهاجرت student_terms برای افزودن FK به sessions(id)...")
-
-        # جدول جدید با قید FK
         c.execute("""
-            CREATE TABLE IF NOT EXISTS student_terms_new (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                student_id INTEGER NOT NULL,
-                class_id INTEGER NOT NULL,
-                start_date TEXT NOT NULL,
-                end_date TEXT,
-                term_id INTEGER,
-                start_time TEXT,
-                created_at TEXT DEFAULT (datetime('now','localtime')),
-                updated_at TEXT DEFAULT (datetime('now','localtime')),
-                FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE ON UPDATE CASCADE,
-                FOREIGN KEY(class_id)   REFERENCES classes(id)  ON DELETE CASCADE ON UPDATE CASCADE,
-                FOREIGN KEY(term_id)    REFERENCES sessions(id) ON DELETE SET NULL ON UPDATE CASCADE
-            );
+            SELECT id, name, sessions_limit, tuition_fee, currency_unit
+            FROM pricing_profiles
+            WHERE is_default=1 LIMIT 1
         """)
+        return c.fetchone()
 
-        # انتقال ایمن داده‌ها:
-        # اگر term_id معتبر نباشد (جلسه‌ای با آن id وجود نداشته باشد)، به NULL ست می‌شود.
+def set_term_config(term_id: int, sessions_limit: int, tuition_fee: int, currency_unit: str = None, profile_id: int = None):
+    if currency_unit is None:
+        currency_unit = get_setting("currency_unit", "toman")
+    with get_connection() as conn:
+        c = conn.cursor()
         c.execute("""
-            INSERT INTO student_terms_new (id, student_id, class_id, start_date, end_date, term_id, start_time, created_at, updated_at)
-            SELECT st.id,
-                   st.student_id,
-                   st.class_id,
-                   st.start_date,
-                   st.end_date,
-                   CASE WHEN EXISTS (SELECT 1 FROM sessions s WHERE s.id = st.term_id)
-                        THEN st.term_id
-                        ELSE NULL
-                   END AS term_id,
-                   st.start_time,
-                   st.created_at,
-                   st.updated_at
-            FROM student_terms st;
-        """)
-
-        # جایگزینی جدول
-        c.execute("DROP TABLE student_terms;")
-        c.execute("ALTER TABLE student_terms_new RENAME TO student_terms;")
-
+            UPDATE student_terms
+               SET sessions_limit=?, tuition_fee=?, currency_unit=?, profile_id=?
+             WHERE id=?
+        """, (sessions_limit, tuition_fee, currency_unit, profile_id, term_id))
         conn.commit()
-        print("✅ FK term_id → sessions(id) با ON DELETE SET NULL و ON UPDATE CASCADE اضافه شد.")
+
+def get_term_config(term_id: int):
+    with get_connection() as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT sessions_limit, tuition_fee, currency_unit
+            FROM student_terms
+            WHERE id=?
+        """, (term_id,))
+        row = c.fetchone()
+        if row:
+            sl, fee, unit = row
+            if sl is None:
+                sl = int(get_setting("term_session_count", 12))
+            if fee is None:
+                fee = int(get_setting("term_fee", get_setting("term_tuition", 6000000)))
+            if not unit:
+                unit = get_setting("currency_unit", "toman")
+            return {"sessions_limit": sl, "tuition_fee": fee, "currency_unit": unit}
+        return {
+            "sessions_limit": int(get_setting("term_session_count", 12)),
+            "tuition_fee": int(get_setting("term_fee", get_setting("term_tuition", 6000000))),
+            "currency_unit": get_setting("currency_unit", "toman"),
+        }
+
+# --- Pricing Profiles helpers ---
+
+def get_pricing_profile_by_id(profile_id: int):
+    """برگرداندن پروفایل بر اساس id (None اگر نبود)."""
+    with get_connection() as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT id, name, sessions_limit, tuition_fee, currency_unit, is_default
+            FROM pricing_profiles
+            WHERE id = ?
+        """, (profile_id,))
+        row = c.fetchone()
+        if not row:
+            return None
+        return {
+            "id": row[0],
+            "name": row[1],
+            "sessions_limit": row[2],
+            "tuition_fee": row[3],
+            "currency_unit": row[4],
+            "is_default": bool(row[5]),
+        }
+
+def apply_profile_to_term(term_id: int, profile_id: int):
+    """
+    پروفایل شهریه را روی ترم اعمال می‌کند (sessions_limit/tuition_fee/currency_unit و profile_id).
+    """
+    prof = get_pricing_profile_by_id(profile_id)
+    if not prof:
+        return False
+    set_term_config(
+        term_id,
+        sessions_limit=prof["sessions_limit"],
+        tuition_fee=prof["tuition_fee"],
+        currency_unit=prof["currency_unit"],
+        profile_id=prof["id"],
+    )
+    return True
+
+def get_term_config_full(term_id: int):
+    """
+    کانفیگ کامل ترم + اطلاعات پروفایل (اگر داشته باشد).
+    """
+    with get_connection() as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT st.sessions_limit, st.tuition_fee, st.currency_unit, st.profile_id,
+                   pp.name
+            FROM student_terms st
+            LEFT JOIN pricing_profiles pp ON pp.id = st.profile_id
+            WHERE st.id = ?
+        """, (term_id,))
+        row = c.fetchone()
+        if not row:
+            return None
+        sl, fee, unit, pid, pname = row
+        if sl is None:
+            sl = int(get_setting("term_session_count", 12))
+        if fee is None:
+            fee = int(get_setting("term_fee", get_setting("term_tuition", 6000000)))
+        if not unit:
+            unit = get_setting("currency_unit", "toman")
+        return {
+            "sessions_limit": sl,
+            "tuition_fee": fee,
+            "currency_unit": unit,
+            "profile_id": pid,
+            "profile_name": pname,
+        }
+
+def set_default_pricing_profile(profile_id: int):
+    """تغییر پروفایل پیش‌فرض (اختیاری اما مفید برای UI تنظیمات)."""
+    with get_connection() as conn:
+        c = conn.cursor()
+        c.execute("UPDATE pricing_profiles SET is_default = 0")
+        c.execute("UPDATE pricing_profiles SET is_default = 1 WHERE id = ?", (profile_id,))
+        conn.commit()
+
+def clear_term_profile(term_id: int):
+    """حذف نسبتِ پروفایل از ترم (ترم سفارشی می‌شود)."""
+    with get_connection() as conn:
+        c = conn.cursor()
+        c.execute("""
+            UPDATE student_terms
+               SET profile_id = NULL, updated_at = datetime('now','localtime')
+             WHERE id = ?
+        """, (term_id,))
+        conn.commit()
 
 # <-------------------------------  Utility Functions  ------------------------------------------------->
 
@@ -799,63 +599,74 @@ def get_day_and_time_for_class(class_id):
         c.execute("SELECT day, start_time FROM classes WHERE id = ?", (class_id,))
         return c.fetchone() or (None, None)
     
-def insert_student_term_if_not_exists(student_id, class_id, start_date, start_time):
-    """
-    ترم جدید فقط اگر:
-      1) اسلات هفتگیِ استاد (روز هفته + ساعت) قبلاً به هنرجوی دیگری نخورده باشد؛
-      2) در همان تاریخ/ساعت برای کلاس جلسهٔ دیگری ثبت نشده باشد؛
-      3) از تاریخ پایان ترم قبلی زودتر نباشد؛
-    ثبت می‌شود.
-    """
+def insert_student_term_if_not_exists(
+    student_id, class_id, start_date, start_time,
+    sessions_limit=None, tuition_fee=None, currency_unit=None, profile_id=None
+):
     with get_connection() as conn:
         c = conn.cursor()
 
-        # ⛔️ سناریو B: ممنوعیت اسلات هفتگیِ استاد در کل ترم (روزِ هفته + ساعت)
+        # جلوگیری از تداخل استاد در همین روز/ساعت
         if has_teacher_weekly_time_conflict(class_id, start_time):
             return None
 
-        # آیا همین ترم (با همین start_date و start_time) قبلاً وجود دارد؟
+        # اگر ترم فعالِ دقیقا با همین start_date/start_time هست، همان را برگردان
         c.execute("""
             SELECT id
             FROM student_terms
-            WHERE student_id = ?
-              AND class_id   = ?
-              AND start_date = ?
-              AND start_time = ?
-              AND end_date IS NULL
+            WHERE student_id=? AND class_id=? AND start_date=? AND start_time=? AND end_date IS NULL
         """, (student_id, class_id, start_date, start_time))
-        existing = c.fetchone()
-        if existing:
-            return existing[0]
+        row = c.fetchone()
+        if row:
+            term_id = row[0]
+            # اگر ترم موجود است ولی کاربر مقدار سفارشی داده، روی همان ترم ست کن
+            if any(v is not None for v in (sessions_limit, tuition_fee, currency_unit, profile_id)):
+                if currency_unit is None:
+                    currency_unit = get_setting("currency_unit", "toman")
+                c.execute("""
+                    UPDATE student_terms
+                       SET sessions_limit = COALESCE(?, sessions_limit),
+                           tuition_fee    = COALESCE(?, tuition_fee),
+                           currency_unit  = COALESCE(?, currency_unit),
+                           profile_id     = COALESCE(?, profile_id),
+                           updated_at     = datetime('now','localtime')
+                     WHERE id=?
+                """, (sessions_limit, tuition_fee, currency_unit, profile_id, term_id))
+                conn.commit()
+            return term_id
 
-        # در همان تاریخ/ساعت، جلسهٔ دیگری برای این کلاس ثبت شده باشد → بلاک
-        c.execute("""
-            SELECT COUNT(*)
-            FROM sessions
-            WHERE class_id = ? AND date = ? AND time = ?
-        """, (class_id, start_date, start_time))
+        # اگر همان روز/ساعت جلسه‌ای برای این کلاس ثبت شده، بلاک
+        c.execute("SELECT COUNT(*) FROM sessions WHERE class_id=? AND date=? AND time=?",
+                  (class_id, start_date, start_time))
         if c.fetchone()[0] > 0:
             return None
 
-        # ⛳️ اگر ترم قبلی پایان داشته و start_date جدید قبل از آن است → بلاک
+        # عدم شروع قبل از پایان ترم قبلی
         c.execute("""
-            SELECT end_date
-            FROM student_terms
-            WHERE student_id = ? AND class_id = ? AND end_date IS NOT NULL
+            SELECT end_date FROM student_terms
+            WHERE student_id=? AND class_id=? AND end_date IS NOT NULL
             ORDER BY end_date DESC LIMIT 1
         """, (student_id, class_id))
-        row = c.fetchone()
-        if row:
-            last_end_date = row[0]
-            if start_date < last_end_date:
-                return None
+        last = c.fetchone()
+        if last and start_date < last[0]:
+            return None
 
-        # ✅ درج ترم جدید
+        # مقادیر پیش‌فرض برای فیلدهای سفارشی
+        if sessions_limit is None:
+            sessions_limit = int(get_setting("term_session_count", 12))
+        if tuition_fee is None:
+            tuition_fee = int(get_setting("term_fee", get_setting("term_tuition", 6000000)))
+        if currency_unit is None:
+            currency_unit = get_setting("currency_unit", "toman")
+
+        # درج ترم جدید با مقادیر سفارشی
         c.execute("""
-            INSERT INTO student_terms (student_id, class_id, start_date, start_time, end_date)
-            VALUES (?, ?, ?, ?, NULL)
-        """, (student_id, class_id, start_date, start_time))
-
+            INSERT INTO student_terms
+                (student_id, class_id, start_date, start_time, end_date,
+                 sessions_limit, tuition_fee, currency_unit, profile_id)
+            VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?)
+        """, (student_id, class_id, start_date, start_time,
+              sessions_limit, tuition_fee, currency_unit, profile_id))
         conn.commit()
         return c.lastrowid
 
@@ -869,28 +680,46 @@ def delete_future_sessions(student_id, class_id, session_date):
 
 def check_and_set_term_end_by_id(term_id, student_id, class_id, session_date):
     """
-    اگر تعداد حضور >= term_session_count شد،
-    برای آن ترم end_date را برابر session_date بگذار.
+    اگر مجموع ثبت‌های ترم (حاضر + غایب) به سقف برسد و end_date هنوز خالی باشد،
+    end_date = session_date می‌شود. مقدار True/False برمی‌گرداند که آیا end_date ست شد یا نه.
     """
     with get_connection() as conn:
         c = conn.cursor()
 
-        # شمارش جلسات با حضور برای این term_id
+        # سقف ترم + end_date فعلی
         c.execute("""
-            SELECT COUNT(*) FROM attendance
-            WHERE term_id = ? AND is_present = 1
+            SELECT sessions_limit, end_date
+            FROM student_terms
+            WHERE id = ?
         """, (term_id,))
-        present_count = c.fetchone()[0]
+        row = c.fetchone()
+        if not row:
+            return False
 
-        term_limit = int(get_setting("term_session_count", 12))
-        if present_count >= term_limit:
-            # ثبت تاریخ پایان ترم
+        term_limit, current_end = row[0], row[1]
+        if term_limit is None:
+            # fallback به تنظیم سراسری اگر snapshot ترم خالی باشد
+            term_limit = int(get_setting("term_session_count", 12))
+        else:
+            try:
+                term_limit = int(term_limit)
+            except:
+                term_limit = int(get_setting("term_session_count", 12))
+
+        # شمارش کل ثبت‌ها (حاضر + غایب)
+        c.execute("SELECT COUNT(*) FROM attendance WHERE term_id = ?", (term_id,))
+        total = c.fetchone()[0] or 0
+
+        if current_end is None and total >= term_limit:
             c.execute("""
                 UPDATE student_terms
                 SET end_date = ?, updated_at = datetime('now','localtime')
                 WHERE id = ?
             """, (session_date, term_id))
             conn.commit()
+            return True
+
+        return False
 
 def delete_sessions_for_term(term_id):
     """
@@ -922,28 +751,53 @@ def does_teacher_have_time_conflict(teacher_id, day, start_time, end_time, exclu
         return c.fetchone()[0] > 0
 
 #<-----------------------------  SESSION FUNCTIONS  --------------------------------------->
-def add_session(class_id, student_id, date, time):
+def ensure_term_config(term_id: int):
+    cfg = get_term_config(term_id)  # همیشه چیزی برمی‌گرداند
+    # اگر از قبل مقدار داشتیم، دست نزنیم (ایدمپوتنت)
+    if cfg["sessions_limit"] and cfg["tuition_fee"] and cfg["currency_unit"]:
+        return
+
+    prof = get_default_profile()
+    if prof:
+        pid, name, sessions, fee, unit = prof
+        set_term_config(term_id, sessions, fee, unit or get_setting("currency_unit", "toman"), profile_id=pid)
+    else:
+        sessions = int(get_setting("term_session_count", 12))
+        fee      = int(get_setting("term_fee", get_setting("term_tuition", 6000000)))
+        unit     = get_setting("currency_unit", "toman")
+        set_term_config(term_id, sessions, fee, unit, profile_id=None)
+        
+def add_session(class_id, student_id, date, time,
+                term_sessions_limit=None, term_tuition_fee=None,
+                term_currency_unit=None, term_profile_id=None):
     conn = get_connection()
     c = conn.cursor()
 
-    # اطمینان از وجود ترم
-    term_id = insert_student_term_if_not_exists(student_id, class_id, date, time)
+    term_id = insert_student_term_if_not_exists(
+        student_id, class_id, date, time,
+        sessions_limit=term_sessions_limit,
+        tuition_fee=term_tuition_fee,
+        currency_unit=term_currency_unit,
+        profile_id=term_profile_id
+    )
     if not term_id:
-        print(f"⛔️ جلسه افزوده نشد، زیرا امکان ایجاد ترم جدید برای {student_id=} در {date=} وجود ندارد.")
+        print(f"⛔️ ایجاد ترم/جلسه ممکن نشد.")
+        conn.close()
+        return None
+    
+    # جلوگیری از ثبت ناسازگار با end_date
+    c.execute("SELECT end_date FROM student_terms WHERE id=?", (term_id,))
+    row = c.fetchone()
+    if row and row[0] and date > row[0]:
+        print("⛔️ ترم پایان یافته؛ ثبت جلسه بعد از end_date ممنوع است.")
         conn.close()
         return None
 
     try:
-        # ثبت جلسه
         c.execute("""
             INSERT INTO sessions (class_id, student_id, term_id, date, time)
             VALUES (?, ?, ?, ?, ?)
         """, (class_id, student_id, term_id, date, time))
-        session_id = c.lastrowid
-
-        # حالا session_id رو به عنوان term_id در student_terms ذخیره کن
-        c.execute("UPDATE student_terms SET term_id = ? WHERE id = ?", (session_id, term_id))
-
         conn.commit()
         return term_id
     except sqlite3.IntegrityError:
@@ -1057,12 +911,11 @@ def get_all_expired_terms():
 
 def delete_sessions_for_expired_terms():
     """
-    فقط جلساتی که مربوط به ترم‌های پایان‌یافته‌اند را حذف می‌کند.
+    فقط «جلسات آینده»ی ترم‌های پایان‌یافته را حذف می‌کند.
+    خروجی: تعداد جلسات حذف‌شده (int)
     """
     with get_connection() as conn:
         c = conn.cursor()
-
-        # دریافت ترم‌هایی که end_date دارند
         c.execute("""
             SELECT id, student_id, class_id, end_date
             FROM student_terms
@@ -1070,8 +923,8 @@ def delete_sessions_for_expired_terms():
         """)
         expired_terms = c.fetchall()
 
+        total_deleted = 0
         for term_id, student_id, class_id, end_date in expired_terms:
-            # حذف فقط سشن‌هایی که به این term_id تعلق دارن و تاریخشون بعد از end_date هست
             c.execute("""
                 DELETE FROM sessions
                 WHERE term_id = ?
@@ -1079,9 +932,10 @@ def delete_sessions_for_expired_terms():
                   AND class_id = ?
                   AND date > ?
             """, (term_id, student_id, class_id, end_date))
+            total_deleted += c.rowcount or 0
 
         conn.commit()
-
+        return total_deleted
 
 
 def get_session_count_per_class():
@@ -1337,57 +1191,47 @@ def get_all_terms_for_student_class(student_id, class_id):
         return c.fetchall()
 
 def get_terms_for_payment_management(student_id, class_id):
-    """
-    تمام ترم‌های هنرجو در یک کلاس خاص را با اطلاعات مالی برمی‌گرداند.
-    برای مدیریت پرداخت‌ها استفاده می‌شود.
-    """
     with get_connection() as conn:
         c = conn.cursor()
-        
-        # گرفتن مبلغ هر ترم از تنظیمات
-        term_tuition = int(get_setting("term_tuition", 6000000))
-        
         c.execute("""
             SELECT 
                 t.id as term_id,
                 t.start_date,
                 t.end_date,
                 t.created_at,
-                COALESCE(SUM(CASE WHEN p.payment_type = 'tuition' THEN p.amount ELSE 0 END), 0) as paid_tuition,
-                COALESCE(SUM(CASE WHEN p.payment_type = 'extra' THEN p.amount ELSE 0 END), 0) as paid_extra,
-                COUNT(p.id) as payment_count
+                COALESCE(SUM(CASE WHEN p.payment_type='tuition' THEN p.amount ELSE 0 END), 0) as paid_tuition,
+                COALESCE(SUM(CASE WHEN p.payment_type='extra' THEN p.amount ELSE 0 END), 0) as paid_extra,
+                COUNT(p.id) as payment_count,
+                COALESCE(t.tuition_fee, 0) as term_fee  -- 👈 از خودِ ترم
             FROM student_terms t
             LEFT JOIN payments p ON t.id = p.term_id
             WHERE t.student_id = ? AND t.class_id = ?
-            GROUP BY t.id, t.start_date, t.end_date, t.created_at
+            GROUP BY t.id, t.start_date, t.end_date, t.created_at, t.tuition_fee
             ORDER BY t.start_date DESC
         """, (student_id, class_id))
-        
-        terms = c.fetchall()
-        result = []
-        
-        for term in terms:
-            term_id, start_date, end_date, created_at, paid_tuition, paid_extra, payment_count = term
-            total_paid = paid_tuition + paid_extra
-            debt = term_tuition - paid_tuition
-            status = "تسویه" if debt == 0 else "بدهکار" if debt > 0 else "خطا"
-            term_status = "فعال" if end_date is None else "تکمیل شده"
-            
-            result.append({
-                "term_id": term_id,
-                "start_date": start_date,
-                "end_date": end_date,
-                "created_at": created_at,
-                "paid_tuition": paid_tuition,
-                "paid_extra": paid_extra,
-                "total_paid": total_paid,
-                "debt": debt,
-                "status": status,
-                "term_status": term_status,
-                "payment_count": payment_count
-            })
-        
-        return result
+        rows = c.fetchall()
+
+    result = []
+    for term_id, start_date, end_date, created_at, paid_tuition, paid_extra, payment_count, term_fee in rows:
+        if not term_fee:
+            term_fee = int(get_setting("term_fee", get_setting("term_tuition", 6000000)))  # fallback
+        debt = term_fee - paid_tuition
+        status = "تسویه" if debt == 0 else "بدهکار" if debt > 0 else "خطا"
+        term_status = "فعال" if end_date is None else "تکمیل شده"
+        result.append({
+            "term_id": term_id,
+            "start_date": start_date,
+            "end_date": end_date,
+            "created_at": created_at,
+            "paid_tuition": paid_tuition,
+            "paid_extra": paid_extra,
+            "total_paid": paid_tuition + paid_extra,
+            "debt": debt,
+            "status": status,
+            "term_status": term_status,
+            "payment_count": payment_count
+        })
+    return result
 
 def fetch_extra_payments_for_term(term_id):
     with get_connection() as conn:
@@ -1495,6 +1339,62 @@ def get_payment_by_id(payment_id):
             "payment_type": row[6],   # 'tuition' یا 'extra'
             "description": row[7],
         }
+    
+def get_term_tuition_by_id(term_id: int):
+    with get_connection() as conn:
+        c = conn.cursor()
+        c.execute("SELECT tuition_fee FROM student_terms WHERE id=?", (term_id,))
+        row = c.fetchone()
+        return int(row[0]) if row and row[0] is not None else None
+
+# db_helper.py
+def get_term_sessions_limit_by_id(term_id: int):
+    """
+    سقف جلسات ترم را برمی‌گرداند.
+    اول از student_terms.sessions_limit، اگر تهی بود از pricing_profiles.sessions_limit
+    و در نهایت از تنظیمات پیش‌فرض term_session_count.
+    """
+    with get_connection() as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT
+              COALESCE(st.sessions_limit, pp.sessions_limit) AS lim
+            FROM student_terms st
+            LEFT JOIN pricing_profiles pp ON pp.id = st.profile_id
+            WHERE st.id = ?
+        """, (term_id,))
+        row = c.fetchone()
+        if row and row[0] is not None:
+            return int(row[0])
+    # fallback بیرون از DB (در خود PaymentManager هم دوباره fallback می‌کنیم)
+    return None
+
+def get_finished_terms_with_future_sessions():
+    """
+    ترم‌هایی که end_date دارند و هنوز جلساتی با تاریخ > end_date برایشان ثبت است.
+    خروجی: [(term_id, student_id, student_name, class_id, class_name, end_date, future_count), ...]
+    """
+    with get_connection() as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT
+                t.id AS term_id,
+                t.student_id,
+                s.name AS student_name,
+                t.class_id,
+                c2.name AS class_name,
+                t.end_date,
+                SUM(CASE WHEN sess.date > t.end_date THEN 1 ELSE 0 END) AS future_count
+            FROM student_terms t
+            JOIN students s ON s.id = t.student_id
+            JOIN classes  c2 ON c2.id = t.class_id
+            LEFT JOIN sessions sess ON sess.term_id = t.id
+            WHERE t.end_date IS NOT NULL
+            GROUP BY t.id
+            HAVING SUM(CASE WHEN sess.date > t.end_date THEN 1 ELSE 0 END) > 0
+            ORDER BY t.end_date DESC
+        """)
+        return c.fetchall()
 
 # <-----------------------------  ATTENDANCE FUNCTIONS  --------------------------------------->
 
@@ -1538,11 +1438,16 @@ def fetch_classes_on_weekday(day_name):
         return c.fetchall()
     
 def insert_attendance_with_date(student_id, class_id, term_id, date, is_present):
+    """
+    ثبت حضور/غیاب برای تاریخ مشخص. اگر با این ثبت سقف پر شود،
+    check_and_set_term_end_by_id همان روز را end_date می‌گذارد.
+    مقدار True/False برمی‌گرداند که آیا end_date ست شد یا نه.
+    """
     if not term_id:
         term_id = get_term_id_by_student_class_and_date(student_id, class_id, date)
     if not term_id:
-        return  # ترمی پیدا نشد، ثبت نکن
-    
+        return False  # ترمی پیدا نشد؛ چیزی ثبت نشد
+
     with get_connection() as conn:
         conn.execute(
             """
@@ -1552,10 +1457,11 @@ def insert_attendance_with_date(student_id, class_id, term_id, date, is_present)
             (student_id, class_id, term_id, date, is_present)
         )
         conn.commit()
-    
-    # پاس دادن term_id مستقیم به تابع
-    check_and_set_term_end_by_id(term_id, student_id, class_id, date)
-    
+
+    # بعد از ثبت، بررسی و در صورت لزوم بستن ترم (end_date = همان date)
+    ended = check_and_set_term_end_by_id(term_id, student_id, class_id, date)
+    return ended
+
 def delete_attendance(student_id, class_id, term_id, date_str):
     """حذف یک رکورد حضور بر اساس هنرجو/کلاس/ترم/تاریخ (رشته شمسی)."""
     with get_connection() as conn:
@@ -1632,6 +1538,52 @@ def get_class_and_teacher_name(class_id):
         """, (class_id,))
         return c.fetchone() or ("—", "—")
 
+def count_present_attendance_for_term(term_id: int) -> int:
+    with get_connection() as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT COUNT(*) FROM attendance
+            WHERE term_id = ? AND is_present = 1
+        """, (term_id,))
+        row = c.fetchone()
+        return row[0] or 0
+    
+def recalc_term_end_by_id(term_id: int):
+    """اگر مجموع ثبت‌ها از limit کمتر باشد، end_date را NULL می‌کند؛
+       اگر به حد رسیده باشد و end_date خالی است، همان امروز را نمی‌زند (این کار با insert انجام می‌شود).
+    """
+    with get_connection() as conn:
+        c = conn.cursor()
+        # limit و end_date فعلی
+        c.execute("SELECT sessions_limit, end_date FROM student_terms WHERE id=?", (term_id,))
+        row = c.fetchone()
+        if not row:
+            return
+        limit, end_date = row[0], row[1]
+        if limit is None:
+            try:
+                limit = int(get_setting("term_session_count", 12))
+            except:
+                limit = 12
+        else:
+            try:
+                limit = int(limit)
+            except:
+                limit = 12
+
+        # شمارش کل ثبت‌ها (حاضر + غایب)
+        c.execute("SELECT COUNT(*) FROM attendance WHERE term_id=?", (term_id,))
+        total = c.fetchone()[0] or 0
+
+        # اگر قبلاً بسته شده ولی حالا کمتر از limit شد → بازش کن
+        if end_date is not None and total < limit:
+            c.execute("""
+                UPDATE student_terms
+                SET end_date = NULL, updated_at = datetime('now','localtime')
+                WHERE id = ?
+            """, (term_id,))
+            conn.commit()
+
 # <-----------------------------  functions for Reporting windows(reports_window.py)--------------------------------------->
 
 def count_attendance_for_term(term_id):
@@ -1646,18 +1598,8 @@ def count_attendance_for_term(term_id):
 #todo: FinancialReport Functions
 
 def get_all_student_terms_with_financials():
-    """
-    بازگرداندن لیست تمام ترم‌ها با اطلاعات مالی کامل برای گزارش‌گیری.
-    شامل ترم‌های فعال و غیرفعال.
-    """
     with get_connection() as conn:
         c = conn.cursor()
-
-        # گرفتن مبلغ هر ترم از تنظیمات
-        session_count = int(get_setting("term_session_count", 12))
-        term_tuition = int(get_setting("term_tuition", 6000000))
-
-        # گرفتن همه ترم‌ها همراه با اطلاعات مرتبط
         c.execute("""
             SELECT
                 t.id as term_id,
@@ -1668,44 +1610,32 @@ def get_all_student_terms_with_financials():
                 c.id as class_id,
                 t.start_date,
                 t.end_date,
-                tr.name as teacher_name
+                tr.name as teacher_name,
+                COALESCE(t.tuition_fee, 0) as term_fee
             FROM student_terms t
             JOIN students s ON s.id = t.student_id
-            JOIN classes c ON c.id = t.class_id
+            JOIN classes c   ON c.id = t.class_id
             JOIN teachers tr ON c.teacher_id = tr.id
             ORDER BY t.start_date DESC
         """)
         terms = c.fetchall()
 
         result = []
+        for (term_id, student_name, national_code, class_name, instrument,
+             class_id, start_date, end_date, teacher_name, term_fee) in terms:
 
-        for term in terms:
-            (
-                term_id, student_name, national_code, class_name,
-                instrument, class_id, start_date, end_date, teacher_name
-            ) = term
+            if not term_fee:
+                term_fee = int(get_setting("term_fee", get_setting("term_tuition", 6000000)))  # fallback
 
             paid_tuition = get_total_paid_for_term(term_id, 'tuition')
-            paid_extra = get_total_paid_for_term(term_id, 'extra')
-            total_paid = paid_tuition + paid_extra
-            debt = term_tuition - paid_tuition
-            if debt == 0:
-                status = "تسویه"
-            elif debt > 0:
-                status = "بدهکار"
-            else:
-                status = "خطا در داده‌ها"  # چون نباید منفی باشه!
+            paid_extra   = get_total_paid_for_term(term_id, 'extra')
+            debt = term_fee - paid_tuition
+            status = "تسویه" if debt == 0 else "بدهکار" if debt > 0 else "خطا در داده‌ها"
+            term_status = "فعال" if end_date is None else "تکمیل شده"
 
             # آخرین تاریخ پرداخت
-            c.execute("""
-                SELECT MAX(payment_date)
-                FROM payments
-                WHERE term_id = ?
-            """, (term_id,))
+            c.execute("SELECT MAX(payment_date) FROM payments WHERE term_id = ?", (term_id,))
             last_payment_date = c.fetchone()[0]
-
-            # تعیین وضعیت ترم
-            term_status = "فعال" if end_date is None else "تکمیل شده"
 
             result.append({
                 "term_id": term_id,
@@ -1717,17 +1647,16 @@ def get_all_student_terms_with_financials():
                 "teacher_name": teacher_name,
                 "start_date": start_date,
                 "end_date": end_date,
-                "tuition": term_tuition,
+                "tuition": term_fee,
                 "paid_tuition": paid_tuition,
                 "paid_extra": paid_extra,
-                "total_paid": total_paid,
+                "total_paid": paid_tuition + paid_extra,
                 "debt": debt,
                 "status": status,
                 "term_status": term_status,
                 "last_payment_date": last_payment_date
             })
-
-        return result
+    return result
 
 #todo AttendanceReport Functions
 def get_attendance_report_rows():
