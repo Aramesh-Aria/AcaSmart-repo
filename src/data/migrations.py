@@ -1,4 +1,7 @@
+import logging
 from data.db import get_connection
+
+logger = logging.getLogger(__name__)
 
 
 def migrate_attendance_unique_constraint():
@@ -20,10 +23,10 @@ def migrate_attendance_unique_constraint():
 		ddl_norm = "".join(ddl.split()).lower()  # حذف فاصله‌ها + حروف کوچک
 		wanted = "unique(student_id,class_id,term_id,date)"
 		if wanted in ddl_norm:
-			print("ℹ️ ساختار UNIQUE صحیح است؛ مهاجرت لازم نیست.")
+			logger.info("ℹ️ ساختار UNIQUE صحیح است؛ مهاجرت لازم نیست.")
 			return
 
-		print("🔄 اجرای مهاجرت UNIQUE برای جدول attendance...")
+		logger.info("🔄 اجرای مهاجرت UNIQUE برای جدول attendance...")
 
 		# 3) بکاپ جدول
 		c.execute("ALTER TABLE attendance RENAME TO attendance_old;")
@@ -75,7 +78,7 @@ def migrate_attendance_unique_constraint():
 		c.execute("CREATE INDEX IF NOT EXISTS idx_attendance_date    ON attendance(date);")
 
 		conn.commit()
-		print("✅ مهاجرت جدول attendance با موفقیت انجام شد.")
+		logger.info("✅ مهاجرت جدول attendance با موفقیت انجام شد.")
 
 
 def migrate_drop_student_terms_term_id():
@@ -87,7 +90,7 @@ def migrate_drop_student_terms_term_id():
 		if "term_id" not in cols:
 			return  # قبلاً حذف شده؛ کاری نکن
 
-		print("🔄 حذف ستون student_terms.term_id ...")
+		logger.info("🔄 حذف ستون student_terms.term_id ...")
 
 		# 🔒 FKها را موقتاً خاموش کن تا sessions پاک نشوند
 		c.execute("PRAGMA foreign_keys=OFF;")

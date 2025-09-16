@@ -1,8 +1,11 @@
+import logging
 from data.db import get_connection
 from data.migrations import (
 	migrate_attendance_unique_constraint,
 	migrate_drop_student_terms_term_id,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def create_tables():
@@ -153,7 +156,7 @@ def create_tables():
 			c.execute("ALTER TABLE student_terms ADD COLUMN profile_id INTEGER REFERENCES pricing_profiles(id) ON DELETE SET NULL")
 
 		# بک‌فیل مقادیر خالی
-		from db_helper import get_setting  # lazy import to avoid circular
+		from data.settings_repo import get_setting  # lazy import to avoid circular
 		default_fee = int(get_setting("term_fee", get_setting("term_tuition", 6000000)))
 		default_sessions = int(get_setting("term_session_count", 12))
 		default_unit = get_setting("currency_unit", "toman")
@@ -169,14 +172,14 @@ def create_tables():
 		columns = [row[1] for row in c.fetchall()]
 		if "term_id" not in columns:
 			c.execute("ALTER TABLE student_terms ADD COLUMN term_id INTEGER")
-			print("✅ ستون term_id به جدول student_terms اضافه شد و مقداردهی شد.")
+			logger.info("✅ ستون term_id به جدول student_terms اضافه شد و مقداردهی شد.")
 
 		# add start_time to student_terms (for distinguishing same-day sessions)
 		c.execute("PRAGMA table_info(student_terms)")
 		columns = [row[1] for row in c.fetchall()]
 		if "start_time" not in columns:
 			c.execute("ALTER TABLE student_terms ADD COLUMN start_time TEXT")
-			print("✅ ستون start_time به جدول student_terms اضافه شد.")
+			logger.info("✅ ستون start_time به جدول student_terms اضافه شد.")
 
 		# Payments table
 		c.execute("""
@@ -276,6 +279,10 @@ def create_tables():
 		c.execute("CREATE INDEX IF NOT EXISTS idx_attendance_term_id ON attendance(term_id);")
 		c.execute("CREATE INDEX IF NOT EXISTS idx_payments_term_id   ON payments(term_id);")
 		c.execute("CREATE INDEX IF NOT EXISTS idx_terms_student_class ON student_terms(student_id, class_id);")
+		# Composite indexes (idempotent)
+		c.execute("CREATE INDEX IF NOT EXISTS idx_sessions_class_date_time ON sessions(class_id, date, time);")
+		c.execute("CREATE INDEX IF NOT EXISTS idx_attendance_term_date     ON attendance(term_id, date);")
+		c.execute("CREATE INDEX IF NOT EXISTS idx_payments_term_date       ON payments(term_id, payment_date);")
 		# فقط وقتی دیتابیس تازه ساخته شده و جدول خالیه، مقادیر پیش‌فرض رو وارد کن
 		c.execute("SELECT COUNT(*) FROM settings")
 		if c.fetchone()[0] == 0:
