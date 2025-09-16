@@ -1,13 +1,24 @@
+from data.teachers_repo import (
+    delete_teacher_by_id,
+    fetch_teachers,
+    insert_teacher,
+    is_teacher_assigned_to_students,
+    get_teacher_by_id,
+    update_teacher_by_id,
+    get_teacher_id_by_national_code,
+)
+from data.students_repo import is_national_code_exists_for_other
+from data.teacher_instruments_repo import (
+    add_instrument_to_teacher,
+    remove_instrument_from_teacher,
+    get_instruments_for_teacher,
+)
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QListWidget, QListWidgetItem, QMessageBox, QFormLayout, QToolButton,
     QStyle, QComboBox, QDialog
 )
 from PySide6.QtCore import Qt
-from db_helper import (fetch_teachers, insert_teacher, delete_teacher_by_id,
-                       is_teacher_assigned_to_students, get_teacher_by_id,
-                       update_teacher_by_id,is_national_code_exists,is_national_code_exists_for_other,
-                       add_instrument_to_teacher,remove_instrument_from_teacher,get_instruments_for_teacher,get_teacher_id_by_national_code)
 
 from shamsi_date_popup import ShamsiDatePopup
 import jdatetime
@@ -176,7 +187,7 @@ class TeacherManager(QWidget):
         iban = self.input_iban.text().strip() or None
 
         # بررسی تکراری بودن کد ملی
-        if is_national_code_exists("teachers", national_code):
+        if is_national_code_exists_for_other("teachers", national_code, -1):
             QMessageBox.warning(self, "خطا", "کد ملی تکراری است.")
             return
 
@@ -393,12 +404,12 @@ class TeacherManager(QWidget):
             self.list_instruments.addItem(text)
         self.input_instrument.clear()
         self.check_form_validity()
-        self.btn_update.setEnabled(True)
+        self.btn_update.setEnabled(self.selected_teacher_id is not None)
 
     def remove_instrument_from_list(self, item):
         self.list_instruments.takeItem(self.list_instruments.row(item))
         self.check_form_validity()
-        self.btn_update.setEnabled(True)
+        self.btn_update.setEnabled(self.selected_teacher_id is not None)
 
     def is_instrument_in_list(self, instrument):
         for i in range(self.list_instruments.count()):
