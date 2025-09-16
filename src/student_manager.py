@@ -1,16 +1,21 @@
+from data.students_repo import (
+    get_student_by_id,
+    insert_student,
+    student_national_code_exists,
+    update_student_by_id,
+    delete_student_by_id,
+    fetch_students,
+    is_national_code_exists_for_other,
+)
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QMessageBox, QListWidget, QListWidgetItem, QComboBox, QFormLayout, QDialog, QToolButton, QStyle
 )
 from PySide6.QtCore import Qt
 
-from db_helper import (insert_student, student_national_code_exists,get_student_by_id,
-                       update_student_by_id,delete_student_by_id,fetch_students,
-                       is_national_code_exists_for_other)
-
 import jdatetime
 from shamsi_date_popup import ShamsiDatePopup
-from fa_collation import sort_records_fa, contains_fa,nd
+from fa_collation import sort_records_fa, contains_fa, nd
 
 class StudentManager(QWidget):
     def __init__(self):

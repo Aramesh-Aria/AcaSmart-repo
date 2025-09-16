@@ -1,8 +1,8 @@
+from data.db import get_connection
 import sqlite3
 from PySide6.QtWidgets import QMainWindow, QWidget, QFormLayout, QLineEdit, QPushButton, QMessageBox
 from dashboard_window import DashboardWindow
 from utils import hash_password
-from db_helper import get_connection
 
 class LoginWindow(QMainWindow):
     def __init__(self):

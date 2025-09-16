@@ -1,14 +1,11 @@
+from data.classes_repo import class_exists, create_class, delete_class_by_id, fetch_classes, get_class_by_id, is_class_has_sessions, update_class_by_id,does_teacher_have_time_conflict
+from data.teacher_instruments_repo import fetch_teachers_with_instruments, get_instruments_for_teacher
 from PySide6.QtWidgets import (
     QWidget, QLabel, QLineEdit, QComboBox, QPushButton,
     QListWidget, QListWidgetItem, QVBoxLayout, QHBoxLayout,
     QFormLayout, QTimeEdit, QMessageBox
 )
 
-from db_helper import (
-    create_class, fetch_teachers_with_instruments, fetch_classes,
-    class_exists, delete_class_by_id, is_class_has_sessions,
-    get_instruments_for_teacher, get_class_by_id, update_class_by_id,does_teacher_have_time_conflict
-)
 from PySide6.QtCore import QTime, Qt, QSize
 from PySide6.QtGui import QColor
 

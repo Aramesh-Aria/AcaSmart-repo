@@ -1,10 +1,11 @@
+from data.db import get_connection
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QFileDialog, QMessageBox, QLabel,QApplication
 from PySide6.QtCore import Qt
 import shutil
 from version import __version__
 from paths import DB_PATH
-from db_helper import get_connection 
 import logging
+import sqlite3
 
 class DashboardWindow(QWidget):
     def __init__(self, logged_in_mobile):
@@ -50,6 +51,7 @@ class DashboardWindow(QWidget):
         layout.addSpacing(20)
 
         buttons_bottom = [
+            ("💼 پروفایل‌های شهریه", self.open_pricing_profile_manager),
             ("📊 گزارش‌گیری", self.open_reports),
             ("📥 بکاپ‌گیری از دیتابیس", self.backup_database),
             ("📤 بازیابی بکاپ", self.restore_database),
@@ -135,7 +137,13 @@ class DashboardWindow(QWidget):
         if filename:
             try:
                 logging.info(f"📥 عملیات بکاپ‌گیری آغاز شد. مسیر دیتابیس مبدا: {self.db_path}")
-                shutil.copyfile(self.db_path, filename)
+                # استفاده از API بکاپ SQLite تا با حالت WAL هم سازگار باشد
+                with get_connection() as src_conn:
+                    dst_conn = sqlite3.connect(filename)
+                    try:
+                        src_conn.backup(dst_conn)
+                    finally:
+                        dst_conn.close()
                 logging.info(f"✅ فایل بکاپ با موفقیت در {filename} ذخیره شد.")
                 QMessageBox.information(self, "بکاپ‌گیری موفق", f"فایل بکاپ با موفقیت ذخیره شد:\n{filename}")
             except Exception as e:
@@ -163,3 +171,8 @@ class DashboardWindow(QWidget):
         from sms_notification_window import SmsNotificationWindow
         self.open_sms_notification_window = SmsNotificationWindow()
         self.open_sms_notification_window.show()
+
+    def open_pricing_profile_manager(self):
+        from pricing_profile_manager import PricingProfileManager
+        self.pricing_profile_window = PricingProfileManager()
+        self.pricing_profile_window.show()

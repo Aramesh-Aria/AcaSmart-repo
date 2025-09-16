@@ -1,9 +1,9 @@
+from data.reports_repo import fetch_all_contacts
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,
     QHeaderView, QLineEdit, QHBoxLayout
 )
 from PySide6.QtCore import Qt
-from db_helper import fetch_all_contacts
 
 
 class ContactsWindow(QWidget):

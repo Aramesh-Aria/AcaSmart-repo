@@ -1,10 +1,12 @@
+from data.reports_repo import get_student_term_summary_rows
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,
     QHeaderView, QHBoxLayout, QLineEdit, QComboBox, QPushButton, QGroupBox, QFileDialog
 )
+from data.teachers_repo import fetch_teachers_simple
+from data.classes_repo import fetch_classes
 from PySide6.QtCore import Qt, QDate
 
-from db_helper import get_student_term_summary_rows, fetch_teachers_simple, fetch_classes
 import jdatetime
 from shamsi_date_picker import ShamsiDatePicker
 from shamsi_date_popup import ShamsiDatePopup

@@ -1,10 +1,10 @@
+from data.reports_repo import get_teacher_summary_rows
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTableWidget, QTableWidgetItem,
     QHeaderView, QPushButton, QFileDialog, QComboBox, QSizePolicy
 )
 from PySide6.QtCore import Qt
-
-from db_helper import get_teacher_summary_rows, fetch_teachers_simple
+from data.teachers_repo import fetch_teachers_simple
 import openpyxl
 import jdatetime
 
