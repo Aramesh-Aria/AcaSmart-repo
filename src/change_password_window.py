@@ -1,6 +1,6 @@
+from data.db import get_connection
 from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QPushButton, QMessageBox
 from utils import hash_password
-from db_helper import get_connection
 
 class ChangeCredentialsWindow(QWidget):
     def __init__(self, logged_in_mobile):
