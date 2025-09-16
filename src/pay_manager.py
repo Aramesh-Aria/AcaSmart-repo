@@ -1,20 +1,20 @@
+from data.classes_repo import fetch_classes
+from data.payments_repo import get_payment_by_id, get_terms_for_payment_management, get_total_paid_for_term, insert_payment, update_payment_by_id
+from data.settings_repo import get_setting
+from data.students_repo import fetch_registered_classes_for_student, fetch_students_with_teachers
+from data.terms_repo import count_attendance_for_term, get_term_id_by_student_and_class, get_term_sessions_limit_by_id, get_term_tuition_by_id
 from PySide6.QtWidgets import (
     QWidget, QLabel, QLineEdit, QPushButton, QListWidget, QListWidgetItem,
     QVBoxLayout, QHBoxLayout, QFormLayout, QTextEdit, QComboBox, QMessageBox
 )
 from PySide6.QtCore import QDate, Qt
-from db_helper import (
-    fetch_students_with_teachers, fetch_classes,
-    insert_payment, get_total_paid_for_term, get_setting,
-    get_term_id_by_student_and_class,count_attendance_for_term,fetch_registered_classes_for_student,
-    update_payment_by_id, get_terms_for_payment_management,get_payment_by_id
-)
 from shamsi_date_popup import ShamsiDatePopup
 from shamsi_date_picker import ShamsiDatePicker
 import jdatetime
 from utils import format_currency_with_unit ,get_currency_unit,format_currency,parse_user_amount_to_toman
 from payment_report_window import PaymentReportWindow
 from fa_collation import sort_records_fa, contains_fa, nd
+from utils import currency_label, format_currency_with_unit, parse_user_amount_to_toman
 
 class PaymentManager(QWidget):
     
@@ -67,7 +67,8 @@ class PaymentManager(QWidget):
         form_layout = QFormLayout()
         form_layout.setLabelAlignment(Qt.AlignRight)
 
-        self.input_amount = QLineEdit(str(self.term_fee))
+        self.input_amount = QLineEdit()
+        self._set_amount_box_from_toman(self.term_fee)
         form_layout.addRow("💰 مبلغ پرداختی:", self.input_amount)
 
         self.date_payment_picker = ShamsiDatePicker()
@@ -122,6 +123,23 @@ class PaymentManager(QWidget):
         self.search_students()
         self.load_classes()
 
+    # --- helpers for currency display ---
+    def _display_amount(self, amount_toman: int) -> str:
+        """
+        مقدار تومان خام را برای نمایش در فیلد ورودی، برحسب واحد فعلی UI (تومان/ریال) برمی‌گرداند.
+        خروجی فقط عدد است (بدون واحد/کاما).
+        """
+        try:
+            if currency_label() == "ریال":
+                return str(int(round(float(amount_toman) * 10)))
+            return str(int(round(float(amount_toman))))
+        except Exception:
+            return str(amount_toman)
+
+    def _set_amount_box_from_toman(self, amount_toman: int):
+        """فیلد input_amount را با توجه به واحد فعلی (ریال/تومان) به‌روز می‌کند."""
+        self.input_amount.setText(self._display_amount(amount_toman))
+
     def clear_form(self):
         self.term_fee = int(get_setting("term_fee", self.term_fee))
         self.selected_student_id = None
@@ -137,7 +155,7 @@ class PaymentManager(QWidget):
         self.list_students.clear()
         self.list_classes.clear()
         self.combo_terms.clear()
-        self.input_amount.setText(str(self.term_fee))
+        self._set_amount_box_from_toman(self.term_fee)
 
         self.input_description.clear()
 
@@ -281,7 +299,9 @@ class PaymentManager(QWidget):
             self.selected_term_id = self.combo_terms.itemData(index)
         else:
             self.selected_term_id = None
-        
+
+        # load term fee from the selected term/profile ---
+        self._load_term_fee_from_selected_term()
         self.update_term_status()
         self.update_financial_labels()
 
@@ -297,6 +317,7 @@ class PaymentManager(QWidget):
             self.term_missing = False
             limit = int(get_setting("term_session_count", 12))
             done = count_attendance_for_term(term_id)  # ← استفاده مستقیم از term_id
+            limit = self._get_term_sessions_limit()
             self.term_expired = (done >= limit)
         else:
             self.term_missing = False
@@ -319,7 +340,7 @@ class PaymentManager(QWidget):
 
         self.term_missing = False
         done = count_attendance_for_term(self.selected_term_id)
-        limit = int(get_setting("term_session_count", 12))
+        limit = self._get_term_sessions_limit()
         self.term_expired = (done >= limit)
 
         # اطلاعات مالی ترم انتخاب‌شده
@@ -343,6 +364,19 @@ class PaymentManager(QWidget):
 
         self.lbl_remaining.setText(f"مانده شهریه: {format_currency_with_unit(rem_money)} — جلسات باقی: {rem_sessions}")
         self.lbl_remaining.setStyleSheet(f"font-size:13px; color:{color}; margin-bottom:10px;")
+
+
+        # sync amount box with current unit; prefer remaining for tuition ---
+        try:
+            if self.combo_type.currentText() == "شهریه":
+                # نمایش مانده برای پرداخت شهریه
+                self._set_amount_box_from_toman(max(rem_money, 0))
+            else:
+                # برای مازاد، اگر کاربر چیزی تایپ نکرده بود، صفر/خالی نگذاریم
+                if not (self.input_amount.text() or "").strip():
+                    self._set_amount_box_from_toman(0)
+        except Exception:
+            pass
 
         # نوع پرداخت انتخاب‌شده رو بگیر
         ptype = self.combo_type.currentText()
@@ -508,7 +542,7 @@ class PaymentManager(QWidget):
         # مبلغ
         try:
             from utils import format_currency
-            self.input_amount.setText(format_currency(data["amount"]))
+            self._set_amount_box_from_toman(int(data["amount"]))
         except Exception:
             self.input_amount.setText(str(data["amount"]))
 
@@ -538,3 +572,35 @@ class PaymentManager(QWidget):
         # پنجره را جلو بیاور
         self.raise_()
         self.activateWindow()
+
+    def _load_term_fee_from_selected_term(self):
+        """
+        شهریهٔ ترم انتخاب‌شده را از جدول student_terms می‌خواند.
+        اگر نبود، از مقدار پیش‌فرض تنظیمات استفاده می‌کند.
+        """
+        try:
+            fee = None
+            if self.selected_term_id:
+                fee = get_term_tuition_by_id(self.selected_term_id)
+            if fee is None:
+                fee = int(get_setting("term_fee", 6000000))
+            self.term_fee = int(fee)
+
+            # اگر نوع پرداخت «شهریه» است، کادر مبلغ را با مانده یا شهریه تنظیم کن
+            # (ترجیح من: با مانده؛ اگر هنوز محاسبه نشده، فعلاً کل شهریه)
+            self._set_amount_box_from_toman(self.term_fee)
+        except Exception:
+            # در بدترین حالت همان پیش‌فرض
+            self.term_fee = int(get_setting("term_fee", 6000000))
+            self._set_amount_box_from_toman(self.term_fee)
+
+    def _get_term_sessions_limit(self) -> int:
+        """سقف جلسات ترم انتخاب‌شده را از DB می‌خواند؛ در صورت عدم وجود، از تنظیمات پیش‌فرض."""
+        try:
+            if self.selected_term_id:
+                lim = get_term_sessions_limit_by_id(self.selected_term_id)
+                if lim:
+                    return int(lim)
+        except Exception:
+            pass
+        return int(get_setting("term_session_count", 12))

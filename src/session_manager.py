@@ -1,21 +1,131 @@
+from data.classes_repo import get_day_and_time_for_class
+from data.notifications_repo import get_unnotified_expired_terms, mark_terms_as_notified
+from data.payments_repo import delete_term_if_no_payments
+from data.profiles_repo import list_pricing_profiles
+from data.sessions_repo import add_session, delete_session, delete_sessions_for_expired_terms, delete_sessions_for_term, fetch_sessions_by_class, get_session_by_id, get_session_count_per_class, get_session_count_per_student, has_teacher_weekly_time_conflict, has_weekly_time_conflict, is_class_slot_taken, update_session
+from data.settings_repo import get_setting
+from data.students_repo import fetch_classes_for_student, fetch_students_with_teachers
+from data.terms_repo import get_finished_terms_with_future_sessions, get_last_term_end_date, insert_student_term_if_not_exists
 from PySide6.QtWidgets import (
     QWidget, QLabel, QLineEdit, QPushButton, QListWidget, QListWidgetItem,
-    QVBoxLayout, QTimeEdit, QMessageBox, QDialog
+    QVBoxLayout, QTimeEdit, QMessageBox, QDialog,
+    QDialogButtonBox, QHBoxLayout, QComboBox, QRadioButton, QSpinBox
 )
 from PySide6.QtCore import QTime, Qt
-from db_helper import (
-    fetch_students_with_teachers,
-    add_session, fetch_sessions_by_class, delete_session,
-    fetch_classes_for_student, has_weekly_time_conflict, update_session,
-    get_day_and_time_for_class, is_class_slot_taken,
-    insert_student_term_if_not_exists,
-    delete_sessions_for_expired_terms,get_session_count_per_class,
-get_unnotified_expired_terms,mark_terms_as_notified,delete_term_if_no_payments,get_last_term_end_date,get_session_by_id,delete_sessions_for_term,has_teacher_weekly_time_conflict,get_session_count_per_student
-)
 from shamsi_date_popup import ShamsiDatePopup
 import jdatetime
 import sqlite3
 from fa_collation import sort_records_fa, contains_fa,nd,fa_digits
+from utils import currency_label, format_currency_with_unit, parse_user_amount_to_toman
+from fa_collation import fa_digits
+
+class TermConfigDialog(QDialog):
+    """
+    انتخاب پروفایل/ترم سفارشی برای ساخت ترم همراه با جلسهٔ اول.
+    خروجی: dict با کلیدهای sessions_limit, tuition_fee, currency_unit, profile_id (همه Optional)
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("تنظیمات ترم")
+
+        # حالت‌ها
+        self.rb_profile = QRadioButton("استفاده از پروفایل شهریه")
+        self.rb_custom  = QRadioButton("سفارشی")
+        self.rb_profile.setChecked(True)
+        self.ui_unit = currency_label()  # "تومان" یا "ریال"
+
+        # پروفایل‌ها
+        self.profile_combo = QComboBox()
+        self.profiles = list_pricing_profiles()  # [(id, name, sessions_limit, tuition_fee, currency_unit, is_default)]
+        for pid, name, sl, fee_toman, unit, is_def in self.profiles:
+            label = f"{name} — {sl} جلسه، {format_currency_with_unit(fee_toman)}"
+            self.profile_combo.addItem(label, pid)
+            if is_def:
+                self.profile_combo.setCurrentIndex(self.profile_combo.count() - 1)
+
+        # بعد از حلقهٔ افزودن آیتم‌های پروفایل به کمبو:
+        if not self.profiles:
+            self.rb_profile.setEnabled(False)
+            self.profile_combo.setEnabled(False)
+            self.rb_custom.setChecked(True)
+
+        # ورودی سفارشی
+        self.spin_sessions = QSpinBox()
+        self.spin_sessions.setRange(1, 100)
+        self.spin_sessions.setValue(int(get_setting("term_session_count", 12)))
+
+        self.spin_fee = QSpinBox()
+        self.spin_fee.setRange(0, 1_000_000_000)
+        self.spin_fee.setSingleStep(10000)
+
+        # مقدار اولیه‌ی «تومان خام» از تنظیمات:
+        base_fee_toman = int(get_setting("term_fee", get_setting("term_tuition", 6000000)))
+        # برای نمایش: اگر UI روی ریال است، ×۱۰
+        display_fee = base_fee_toman * 10 if self.ui_unit == "ریال" else base_fee_toman
+        self.spin_fee.setValue(int(display_fee))
+
+        # نمایش واحد
+        self.currency_unit = get_setting("currency_unit", "toman")
+        self.lbl_unit = QLabel(f"واحد: {self.ui_unit}")  # ← واحد نمایش فعلی
+
+        # چیدمان
+        lay = QVBoxLayout(self)
+        lay.addWidget(self.rb_profile)
+        lay.addWidget(self.profile_combo)
+        lay.addSpacing(8)
+        lay.addWidget(self.rb_custom)
+
+        row1 = QHBoxLayout()
+        row1.addWidget(QLabel("سقف جلسات:"))
+        row1.addWidget(self.spin_sessions)
+        lay.addLayout(row1)
+
+        row2 = QHBoxLayout()
+        row2.addWidget(QLabel(f"شهریه ترم (به {self.ui_unit}):"))
+        row2.addWidget(self.spin_fee)
+        lay.addLayout(row2)
+
+        lay.addWidget(self.lbl_unit)
+
+        # دکمه‌ها
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(self.accept)
+        btns.rejected.connect(self.reject)
+        lay.addWidget(btns)
+
+        # فعال/غیرفعال‌سازی ورودی‌های سفارشی
+        def sync_enabled():
+            custom = self.rb_custom.isChecked()
+            self.spin_sessions.setEnabled(custom)
+            self.spin_fee.setEnabled(custom)
+        self.rb_profile.toggled.connect(sync_enabled)
+        self.rb_custom.toggled.connect(sync_enabled)
+        sync_enabled()
+
+    def get_config(self):
+        if self.rb_custom.isChecked():
+            # مقدار نمایش‌داده‌شده (ممکن است ریال باشد) → تبدیل به «تومان خام»
+            fee_toman = parse_user_amount_to_toman(str(self.spin_fee.value()))
+            return {
+                "sessions_limit": int(self.spin_sessions.value()),
+                "tuition_fee":   int(fee_toman),   # همیشه تومان
+                "currency_unit": self.currency_unit,
+                "profile_id":    None,
+            }
+        else:
+            pid = self.profile_combo.currentData()
+            row = next((p for p in self.profiles if p[0] == pid), None)
+            if row:
+                _, _, sl, fee_toman, unit, _ = row
+                return {
+                    "sessions_limit": int(sl),
+                    "tuition_fee":   int(fee_toman),                 # تومان خام از پروفایل
+                    "currency_unit": unit or self.currency_unit,
+                    "profile_id":    pid,
+                }
+            return {"sessions_limit": None, "tuition_fee": None, "currency_unit": None, "profile_id": None}
+
+
 class SessionManager(QWidget):
     def __init__(self):
         super().__init__()
@@ -91,6 +201,15 @@ class SessionManager(QWidget):
         self.btn_clear.clicked.connect(self.clear_form)
         layout.addWidget(self.btn_clear)
 
+        # دکمه پاکسازی ترم پایان یافته
+        self.btn_notify_expired = QPushButton("📣 نمایش ترم‌های پایان‌یافته (بدون حذف)")
+        self.btn_notify_expired.clicked.connect(self.check_and_notify_term_ends)
+        layout.addWidget(self.btn_notify_expired)
+
+        self.btn_cleanup = QPushButton("🗑️ پاکسازی جلسات آیندهٔ ترم‌های پایان‌یافته")
+        self.btn_cleanup.clicked.connect(self.manual_cleanup_expired_sessions)
+        layout.addWidget(self.btn_cleanup)
+
         # Sessions list
         layout.addWidget(QLabel("جلسات این کلاس (برای حذف دوبار کلیک کنید):"))
         self.list_sessions = QListWidget()
@@ -104,7 +223,7 @@ class SessionManager(QWidget):
         self.search_students()  # نمایش اولیه
 
         self.check_and_notify_term_ends()
-        delete_sessions_for_expired_terms()
+        # delete_sessions_for_expired_terms()
         self.showMaximized()
 
         #بررسی میکنه که آیا لیستی از هنرجویان نمایش داده شده یا نه- اگر بله کلاس های مرتبط رو لود میکنه
@@ -124,7 +243,7 @@ class SessionManager(QWidget):
         if not expired:
             return
 
-        message = "هنرجویان زیر ترم‌شان به پایان رسیده است و از لیست کلاس حذف شدند:\n"
+        message = "هنرجویان زیر ترم‌شان به پایان رسیده است :\n"
         to_mark = []
 
         for student_id, class_id, student_name, national_code, class_name, day, term_id, session_date, session_time in expired:
@@ -135,11 +254,12 @@ class SessionManager(QWidget):
         QMessageBox.information(self, "پایان ترم‌ها", message)
 
         # ✅ بعد علامت‌گذاری کن که پیام نمایش داده شده
-        mark_terms_as_notified(to_mark)
+        # mark_terms_as_notified(to_mark)
 
-        #  حذف جلسات مربوط به این ترم
-        for term_id, *_ in to_mark:
-            delete_sessions_for_term(term_id)
+        # #  حذف جلسات مربوط به این ترم
+        # for term_id, *_ in to_mark:
+        #     delete_sessions_for_term(term_id)
+    
     def clear_form(self):
         """Reset date/time and editing state without clearing student/class list"""
         self.input_search_student.clear()
@@ -318,6 +438,15 @@ class SessionManager(QWidget):
         class_day, class_start_time = get_day_and_time_for_class(self.selected_class_id)
         session_time = self.time_session.time().toString("HH:mm")
 
+        # --- دریافت پیکربندی ترم از کاربر ---
+        cfg = {}
+        dlg = TermConfigDialog(self)
+        if dlg.exec_() == QDialog.Accepted:
+            cfg = dlg.get_config()  # dict: sessions_limit, tuition_fee, currency_unit, profile_id
+        else:
+            return  # کاربر لغو کرد
+        
+
         # بررسی اینکه ساعت جلسه قبل از شروع کلاس نباشد
         if class_start_time:
             try:
@@ -340,8 +469,13 @@ class SessionManager(QWidget):
             self.selected_student_id,
             self.selected_class_id,
             date,
-            start_time
+            start_time,
+            sessions_limit = cfg.get("sessions_limit"),
+            tuition_fee    = cfg.get("tuition_fee"),
+            currency_unit  = cfg.get("currency_unit"),
+            profile_id     = cfg.get("profile_id"),
         )
+
 
 
         if self.selected_term_id is None:
@@ -588,3 +722,59 @@ class SessionManager(QWidget):
             else:
                 # حذف Border انتخاب
                 widget.setStyleSheet(widget.styleSheet().replace("border: 2px solid #0000FF;", "border: 1px solid #ccc;"))
+
+    def manual_cleanup_expired_sessions(self):
+        # ۰) لیست "پایان ترم"هایی که هنوز اعلان نشده‌اند
+        expired = get_unnotified_expired_terms()
+        if not expired:
+            QMessageBox.information(self, "پاکسازی", "موردی یافت نشد؛ همه چیز قبلاً اعلان شده یا جلسه‌ای برای حذف وجود ندارد.")
+            return
+
+        # پیش‌نمایش + جمع‌آوری داده‌ها برای mark و delete
+        lines = ["ترم‌های پایان‌یافته که «علامت‌گذاری و سپس حذف جلسات آینده» خواهند شد:"]
+        to_mark = []
+        term_ids = set()
+
+        for student_id, class_id, student_name, national_code, class_name, day, term_id, session_date, session_time in expired:
+            lines.append(f"• ترم #{term_id} — {student_name} | {class_name} ({day}) | {session_date} {session_time}")
+            # ورودیِ mark_terms_as_notified همان فرمت قبلی:
+            to_mark.append((term_id, student_id, class_id, session_date, session_time))
+            term_ids.add(term_id)
+
+        preview = "\n".join(lines)
+        if QMessageBox.question(
+            self, "تأیید عملیات",
+            preview + "\n\nابتدا به‌عنوان «اعلان‌شده» ثبت و سپس جلسات آینده حذف شوند؟",
+            QMessageBox.Yes | QMessageBox.No
+        ) != QMessageBox.Yes:
+            return
+
+        # ۱) اول: ثبت اعلان (جدول notified_terms)
+        try:
+            mark_terms_as_notified(to_mark)
+        except Exception as e:
+            QMessageBox.warning(self, "خطا", f"در ثبت اعلان (mark) مشکلی پیش آمد:\n{e}")
+            return
+
+        # ۲) بعد: حذف جلسات آیندهٔ همان ترم‌ها
+        total_deleted = 0
+        for term_id in term_ids:
+            try:
+                deleted = delete_sessions_for_term(term_id)  # طبق پیاده‌سازی تو: فقط جلسات آینده ترم را حذف می‌کند
+                total_deleted += int(deleted or 0)
+            except Exception:
+                # اگر repo مقدار برنگرداند یا خطا داد، ادامه می‌دهیم ولی عدد حذف را اضافه نمی‌کنیم
+                pass
+
+        # ۳) اطلاع نتیجه و رفرش UI
+        QMessageBox.information(
+            self, "نتیجه پاکسازی",
+            f"علامت‌گذاری {fa_digits(len(to_mark))} مورد انجام شد و مجموعاً {fa_digits(total_deleted)} جلسه حذف گردید."
+        )
+
+        self.load_sessions()
+        self.update_class_list()
+        self.update_summary_bar()
+        # اختیاری: اگر می‌خواهی شمارش‌ها و لیست هنرجویان هم به‌روز شود:
+        self.refresh_session_counts()
+        self.search_students()

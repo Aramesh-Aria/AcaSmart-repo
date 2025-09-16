@@ -9,8 +9,9 @@ import jdatetime
 from shamsi_date_popup import ShamsiDatePopup
 from shamsi_date_picker import ShamsiDatePicker
 from datetime import timedelta
-from db_helper import(fetch_payments, get_setting,delete_payment,fetch_classes
-                      )
+from data.payments_repo import fetch_payments, delete_payment
+from data.settings_repo import get_setting
+from data.classes_repo import fetch_classes
 from utils import format_currency_with_unit
 from functools import partial
 

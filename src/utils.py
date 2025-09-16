@@ -1,5 +1,5 @@
+from data.settings_repo import get_setting
 import hashlib
-from db_helper import get_setting
 from typing import Union  
 
 def hash_password(plain: str) -> str:
