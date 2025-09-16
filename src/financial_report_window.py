@@ -1,11 +1,12 @@
+from data.reports_repo import get_all_student_terms_with_financials
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QHeaderView,
     QHBoxLayout, QLineEdit, QComboBox, QPushButton, QFileDialog
 )
+from data.classes_repo import fetch_classes
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QColor
 
-from db_helper import get_all_student_terms_with_financials, fetch_classes
 from utils import format_currency_with_unit
 from shamsi_date_picker import ShamsiDatePicker
 
