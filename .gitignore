@@ -56,6 +56,8 @@ acasmart.db
 acasmart_backup.db
 acasmart_backup_1.db
 acasmart_backup_test.db
+README_DEV.md
+old_db.py
 # Analysis artifacts (generated reports)
 artifacts/
 # ==== Windows-only large binaries ====
