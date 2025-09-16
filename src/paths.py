@@ -1,4 +1,3 @@
-# paths.py
 from pathlib import Path
 import platform, os, sys
 
