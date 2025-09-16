@@ -1,3 +1,6 @@
+from data.db import get_connection
+from data.schema import create_tables
+from data.settings_repo import ensure_bool_setting
 import os
 import sqlite3
 import shutil
@@ -5,10 +8,8 @@ import stat
 import logging
 from dotenv import load_dotenv
 
-from db_helper import create_tables, get_connection
 from utils import hash_password
 from paths import DB_PATH, APP_DATA_DIR, resource_path
-from db_helper import ensure_bool_setting
 
 def initialize_database():
     # ۱) اگر دیتابیس هنوز ساخته نشده، از روی تمپلیت کپی کن

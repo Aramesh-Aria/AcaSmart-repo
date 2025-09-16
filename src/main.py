@@ -1,11 +1,10 @@
-# main.py  — clean & cross-platform, using paths.py only
 import sys
 import traceback
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from paths import APP_DATA_DIR, DB_PATH, resource_path  # ← منبع واحد مسیرها
+from paths import APP_DATA_DIR, DB_PATH, resource_path
 from dotenv import load_dotenv
 from PySide6.QtWidgets import QApplication
 
@@ -42,20 +41,22 @@ if env_path.exists():
 else:
     load_dotenv()
 
-# ---------- Logging ----------
-log_dir = APP_DATA_DIR
-log_dir.mkdir(parents=True, exist_ok=True)
-log_path = log_dir / "error.log"
+def _ensure_logging():
+    root = logging.getLogger()
+    if root.handlers:
+        return  # respect existing setup
+    APP_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    log_file = APP_DATA_DIR / "acasmart.log"
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        handlers=[
+            logging.FileHandler(log_file, encoding="utf-8"),
+            logging.StreamHandler(sys.stdout),
+        ],
+    )
 
-class UTF8FileHandler(logging.FileHandler):
-    def __init__(self, filename, mode='a', encoding='utf-8'):
-        super().__init__(filename, mode, encoding=encoding)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[UTF8FileHandler(str(log_path))]
-)
+_ensure_logging()
 
 class LoggerWriter:
     def __init__(self, level):
@@ -77,7 +78,7 @@ def log_uncaught_exceptions(exctype, value, tb):
 sys.excepthook = log_uncaught_exceptions
 
 # ---------- Cleanup ----------
-CLEANUP_FILE = log_dir / ".last_cleanup.txt"
+CLEANUP_FILE = APP_DATA_DIR / ".last_cleanup.txt"
 
 def should_cleanup() -> bool:
     if not CLEANUP_FILE.exists():
@@ -93,7 +94,7 @@ def update_cleanup_timestamp():
 
 def clear_local_log_file():
     try:
-        with open(log_path, "w", encoding="utf-8") as f:
+        with open(APP_DATA_DIR / "error.log", "w", encoding="utf-8") as f:
             f.truncate(0)
         print("🧹 Cleared local error.log file.")
     except Exception as e:
