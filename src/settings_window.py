@@ -1,5 +1,5 @@
+from data.settings_repo import get_setting, get_setting_bool, set_setting, set_setting_bool
 from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QPushButton, QMessageBox, QComboBox
-from db_helper import get_setting, set_setting, get_setting_bool, set_setting_bool
 
 class SettingsWindow(QWidget):
     def __init__(self):

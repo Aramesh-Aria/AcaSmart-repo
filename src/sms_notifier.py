@@ -1,8 +1,13 @@
+from data.settings_repo import get_setting_bool
 import requests
-from db_helper import  get_setting_bool
 from dotenv import load_dotenv
 import os
 from paths import APP_DATA_DIR
+from enum import Enum
+class SmsStatus(Enum):
+    SENT = "sent"
+    FAILED = "failed"
+    DISABLED = "disabled"
 
 class SmsNotifier:
     def __init__(self):
@@ -32,7 +37,7 @@ class SmsNotifier:
                     f.write("[SMS SKIPPED] ارسال پیامک غیرفعال بود. ارسال انجام نشد.\n")
             except Exception as e:
                 print(f"⚠️ خطا در نوشتن لاگ (skip): {e}")
-            return  # هیچ ارسال/درخواستی انجام نشود
+            return {"status": SmsStatus.DISABLED, "message": "ارسال پیامک غیرفعال است"}
 
         # 2) ولیدیشن حداقلی تنظیمات ENV
         if not self.api_key or not self.from_number or not self.pattern_code:
@@ -41,7 +46,8 @@ class SmsNotifier:
                     f.write("[SMS ERROR] اطلاعات IPPanel ناقص است (API_KEY/ FROM_NUMBER/ PATTERN_CODE).\n")
             except Exception as e:
                 print(f"⚠️ خطا در نوشتن لاگ (env): {e}")
-            return
+            # برگرداندن وضعیت شکست برای استفادهٔ احتمالی در UI
+            return {"status": SmsStatus.FAILED, "message": "پیکربندی IPPanel ناقص است"}
 
         # تبدیل شماره به فرمت +98
         if phone_number.startswith("0"):
@@ -83,6 +89,8 @@ class SmsNotifier:
                     f.write(f"[SMS ERROR] {error_message}\n")
             except Exception as e:
                 print(f"❌ خطا در نوشتن لاگ: {e}")
+            # حفظ رفتار قبلی: پرتاب خطا برای هندل فعلی UI
             raise Exception(error_message)
 
         print(f"✅ پیامک برای {student_name} ارسال شد.")
+        return {"status": SmsStatus.SENT, "message": "پیامک ارسال شد"}

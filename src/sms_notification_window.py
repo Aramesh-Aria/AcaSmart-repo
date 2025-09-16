@@ -1,9 +1,9 @@
+from data.students_repo import fetch_students, get_student_contact
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea,
     QCheckBox, QMessageBox, QHBoxLayout
 )
 from PySide6.QtCore import Qt
-from db_helper import fetch_students
 from sms_notifier import SmsNotifier
 
 class SmsNotificationWindow(QWidget):
@@ -116,5 +116,4 @@ class SmsNotificationWindow(QWidget):
         QMessageBox.information(self, "پایان عملیات", f"ارسال پیامک برای {count} هنرجو انجام شد.")
 
     def get_student_contact(self, student_id):
-        from db_helper import get_student_contact
         return get_student_contact(student_id)
