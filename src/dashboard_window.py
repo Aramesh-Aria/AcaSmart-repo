@@ -16,9 +16,8 @@ class DashboardWindow(QWidget):
         
         # Apply theme-based icon
         try:
-            from theme_manager import apply_theme_icon,get_theme_icon
+            from theme_manager import apply_theme_icon
             apply_theme_icon(self)
-            self.setWindowIcon(get_theme_icon())
         except Exception as e:
             print(f"⚠️ Could not apply theme icon to dashboard window: {e}")
         

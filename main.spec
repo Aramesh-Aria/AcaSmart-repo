@@ -15,6 +15,7 @@ a = Analysis(
         *collect_data_files('dotenv'),
         *collect_data_files('openpyxl'),
         ('../static/AppIcon.ico', '.'),
+        ('../static/AppIcon.png','.'),
     ],
     hiddenimports=[
         'PySide6.QtCore',

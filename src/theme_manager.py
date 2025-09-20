@@ -9,21 +9,61 @@ class ThemeManager:
 
     def __init__(self):
         self.app = QApplication.instance()
-        self.base_path = self._get_base_path()
 
         self.app_icon_candidates = [
             "AppIcon.icns",  # macOS preferred
             "AppIcon.ico",   # Windows preferred
             "AppIcon.png",   # Fallback for Linux/others
         ]
+    def _build_platform_icon(self) -> QIcon:
+        """
+        macOS:  icns → png → ico
+        Windows: QIcon شامل ICO + PNG
+        Linux/Others: png → ico → icns
+        (بدون return زودهنگام؛ فقط یک return در انتهای تابع)
+        """
+        qicon = QIcon()
 
-    def _get_base_path(self) -> Path:
-        """Base path around this file; not used directly for icons."""
-        if getattr(sys, "frozen", False):
-            # PyInstaller runtime temp dir
-            return Path(sys._MEIPASS)  # type: ignore[attr-defined]
-        # .../AcaSmart-repo/src  → برگردان همین مسیر
-        return Path(__file__).resolve().parent
+        if sys.platform == "darwin":
+            icns = self._get_resource_path("AppIcon.icns")
+            png  = self._get_resource_path("AppIcon.png")
+            ico  = self._get_resource_path("AppIcon.ico")
+
+            if icns.exists():
+                qicon = QIcon(str(icns))
+            elif png.exists():
+                qicon = QIcon(str(png))
+            elif ico.exists():
+                qicon = QIcon(str(ico))
+
+        elif os.name == "nt":
+            ico = self._get_resource_path("AppIcon.ico")
+            png = self._get_resource_path("AppIcon.png")
+            icns = self._get_resource_path("AppIcon.icns")
+
+            # آیکن اجرایی از ICO می‌آید؛ PNG را هم برای تایتل‌بار اضافه می‌کنیم
+            if ico.exists():
+                qicon.addFile(str(ico))
+            if png.exists():
+                qicon.addFile(str(png))
+            # اگر هیچ‌کدام نبود، fallback به icns (به‌ندرت)
+            if qicon.isNull() and icns.exists():
+                qicon.addFile(str(icns))
+
+        else:
+            # Linux / others
+            png  = self._get_resource_path("AppIcon.png")
+            ico  = self._get_resource_path("AppIcon.ico")
+            icns = self._get_resource_path("AppIcon.icns")
+
+            if png.exists():
+                qicon = QIcon(str(png))
+            elif ico.exists():
+                qicon = QIcon(str(ico))
+            elif icns.exists():
+                qicon = QIcon(str(icns))
+
+        return qicon
 
     def _get_resource_path(self, filename: str) -> Path:
         """
@@ -77,29 +117,11 @@ class ThemeManager:
                 return "light"
 
     def _choose_icon_for_platform(self) -> QIcon:
-        # ترتیب ترجیح
-        if sys.platform == "darwin":
-            order = ["AppIcon.icns", "AppIcon.png", "AppIcon.ico"]
-        elif os.name == "nt":
-            order = ["AppIcon.ico", "AppIcon.png", "AppIcon.icns"]
-        else:
-            order = ["AppIcon.png", "AppIcon.ico", "AppIcon.icns"]
-
-        for name in order:
-            path = self._get_resource_path(name)
-            if path.exists():
-                return QIcon(str(path))
-
-        for name in self.app_icon_candidates:
-            path = self._get_resource_path(name)
-            if path.exists():
-                return QIcon(str(path))
-        print("⚠️ No app icon found. Returning empty QIcon().")
-        return QIcon()
+        return self._build_platform_icon()
 
     def get_theme_icon(self, theme: str | None = None) -> QIcon:
-        """For app icon, ignore theme and always return WHITE icon."""
-        return self._choose_icon_for_platform()
+        # تم نادیده گرفته می‌شود؛ فقط سفید
+        return self._build_platform_icon()
 
     def apply_theme_icon(self, window=None) -> str:
         """
@@ -108,15 +130,13 @@ class ThemeManager:
         آیکن Dock با NSApplication هم ست می‌شود.
         """
         theme = self.detect_system_theme()
-        icon = self.get_theme_icon(theme=None)
+        icon  = self._build_platform_icon()
 
-        # ست پیش‌فرض Qt
         if window:
             window.setWindowIcon(icon)
         if self.app:
             self.app.setWindowIcon(icon)
 
-        # ست مستقیم Dock با Cocoa (اختیاری، اگر PyObjC نصب باشد)
         if sys.platform == "darwin":
             try:
                 from AppKit import NSApplication, NSImage
@@ -125,7 +145,6 @@ class ThemeManager:
                     nsimg = NSImage.alloc().initWithContentsOfFile_(str(icns_path))
                     NSApplication.sharedApplication().setApplicationIconImage_(nsimg)
             except Exception:
-                # PyObjC نصب نیست یا خطایی رخ داده؛ اشکالی ندارد، Qt کار می‌کند.
                 pass
 
         print("🎨 Applied App icon.")

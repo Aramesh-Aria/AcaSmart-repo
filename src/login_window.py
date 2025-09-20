@@ -12,8 +12,7 @@ class LoginWindow(QMainWindow):
 
         # Apply theme-based icon
         try:
-            from theme_manager import apply_theme_icon,get_theme_icon
-            self.setWindowIcon(get_theme_icon())
+            from theme_manager import apply_theme_icon
             apply_theme_icon(self)
         except Exception as e:
             print(f"⚠️ Could not apply theme icon to login window: {e}")
