@@ -60,63 +60,94 @@ def _ensure_logging():
     root.setLevel(logging.INFO)
     root.addHandler(file_handler)
     
-    # Only add console handler if we have access to original stdout
-    if hasattr(sys, '__stdout__') and sys.__stdout__ is not None:
+    # Only add console handler for non-frozen applications
+    if not getattr(sys, 'frozen', False):
+        # For non-frozen apps, try to add console handler
         try:
-            console_handler = logging.StreamHandler(sys.__stdout__)
+            if hasattr(sys, '__stdout__') and sys.__stdout__ is not None:
+                console_handler = logging.StreamHandler(sys.__stdout__)
+            else:
+                console_handler = logging.StreamHandler(sys.stdout)
             console_handler.setLevel(logging.INFO)
             console_handler.setFormatter(formatter)
             root.addHandler(console_handler)
         except Exception as e:
             # If console handler fails, just log to file
-            logging.warning(f"Could not create console handler: {e}")
-    elif not getattr(sys, 'frozen', False):
-        # For non-frozen apps, try regular stdout
-        try:
-            console_handler = logging.StreamHandler(sys.stdout)
-            console_handler.setLevel(logging.INFO)
-            console_handler.setFormatter(formatter)
-            root.addHandler(console_handler)
-        except Exception as e:
-            logging.warning(f"Could not create console handler: {e}")
+            pass  # Silent fail for console handler
 
 _ensure_logging()
 
-class LoggerWriter:
-    def __init__(self, level):
-        self.level = level
-        self._original_stdout = sys.__stdout__
-        self._original_stderr = sys.__stderr__
+# Only create LoggerWriter and redirect stdout/stderr for non-frozen applications
+if not getattr(sys, 'frozen', False):
+    class LoggerWriter:
+        def __init__(self, level):
+            self.level = level
+            self._original_stdout = getattr(sys, '__stdout__', sys.stdout)
+            self._original_stderr = getattr(sys, '__stderr__', sys.stderr)
+        
+        def write(self, message):
+            if message.strip():
+                # Write to original stdout/stderr to avoid recursion
+                try:
+                    if self.level == logging.info:
+                        self._original_stdout.write(message)
+                    else:
+                        self._original_stderr.write(message)
+                    # Also log it
+                    self.level(message)
+                except Exception:
+                    # If logging fails, just write to original stream
+                    if self.level == logging.info:
+                        self._original_stdout.write(message)
+                    else:
+                        self._original_stderr.write(message)
+        
+        def flush(self):
+            try:
+                if self.level == logging.info:
+                    self._original_stdout.flush()
+                else:
+                    self._original_stderr.flush()
+            except Exception:
+                pass  # Silent fail for flush
     
-    def write(self, message):
-        if message.strip():
-            # Write to original stdout/stderr to avoid recursion
-            if self.level == logging.info:
-                self._original_stdout.write(message)
-            else:
-                self._original_stderr.write(message)
-            # Also log it
-            self.level(message)
-    
-    def flush(self):
-        if self.level == logging.info:
-            self._original_stdout.flush()
-        else:
-            self._original_stderr.flush()
-
-# Only redirect stdout/stderr if not frozen (i.e., not in PyInstaller bundle)
-# and if we have access to the original streams
-if not getattr(sys, 'frozen', False) and hasattr(sys, '__stdout__') and hasattr(sys, '__stderr__'):
+    # Only redirect if we have access to the original streams
     try:
-        sys.stdout = LoggerWriter(logging.info)
-        sys.stderr = LoggerWriter(logging.error)
-    except Exception as e:
-        logging.warning(f"Could not redirect stdout/stderr: {e}")
+        if hasattr(sys, '__stdout__') and hasattr(sys, '__stderr__'):
+            sys.stdout = LoggerWriter(logging.info)
+            sys.stderr = LoggerWriter(logging.error)
+    except Exception:
+        pass  # Silent fail for redirection
+
+# ---------- Safe Logging Functions ----------
+def safe_log_info(message):
+    """Safely log info message without causing recursion"""
+    try:
+        logging.info(message)
+    except Exception:
+        # If logging fails, try to write to file directly
+        try:
+            with open(APP_DATA_DIR / "acasmart.log", "a", encoding="utf-8") as f:
+                f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} INFO: {message}\n")
+        except Exception:
+            pass  # Silent fail
+
+def safe_log_error(message):
+    """Safely log error message without causing recursion"""
+    try:
+        logging.error(message)
+    except Exception:
+        # If logging fails, try to write to file directly
+        try:
+            with open(APP_DATA_DIR / "acasmart.log", "a", encoding="utf-8") as f:
+                f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ERROR: {message}\n")
+        except Exception:
+            pass  # Silent fail
 
 # ---------- Uncaught Exception Handler ----------
 def log_uncaught_exceptions(exctype, value, tb):
     error_message = "".join(traceback.format_exception(exctype, value, tb))
-    logging.error(error_message)
+    safe_log_error(error_message)
 
 sys.excepthook = log_uncaught_exceptions
 
@@ -141,7 +172,7 @@ def clear_local_log_file():
             f.truncate(0)
         print("🧹 Cleared local error.log file.")
     except Exception as e:
-        logging.error(f"❌ Error clearing local log file: {e}")
+        safe_log_error(f"❌ Error clearing local log file: {e}")
 
 # ---------- Main ----------
 if __name__ == "__main__":
@@ -156,7 +187,7 @@ if __name__ == "__main__":
                 clear_local_log_file()
                 update_cleanup_timestamp()
             except Exception as e:
-                logging.error(f"❌ Error during cleanup: {e}")
+                safe_log_error(f"❌ Error during cleanup: {e}")
 
         print("🔧 Initializing database...")
         initialize_database()
@@ -182,6 +213,6 @@ if __name__ == "__main__":
 
     except Exception as e:
         print(f"❌ Critical error during startup: {e}")
-        logging.error(f"Critical error during startup: {e}")
+        safe_log_error(f"Critical error during startup: {e}")
         traceback.print_exc()
         raise
