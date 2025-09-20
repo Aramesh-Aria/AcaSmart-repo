@@ -63,8 +63,7 @@ exe = EXE(
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,
-    icon = str((BASE / 'static' / 'AppIcon.ico').resolve())
-
+    icon='../static/AppIcon.ico'  # Default icon
 )
 
 coll = COLLECT(
