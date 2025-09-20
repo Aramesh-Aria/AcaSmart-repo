@@ -192,7 +192,9 @@ if __name__ == "__main__":
         print("🔧 Initializing database...")
         initialize_database()
         print("✅ Database initialized successfully")
-
+        
+        print("🎨 Starting GUI...")
+        app = QApplication(sys.argv)
         # Apply theme icon before starting the GUI
         try:
             from theme_manager import apply_theme_icon
@@ -201,16 +203,8 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"⚠️ Could not apply theme icon: {e}")
 
-        print("🎨 Starting GUI...")
-        app = QApplication(sys.argv)
-
-        try:
-            from theme_manager import apply_theme_icon
-            theme = apply_theme_icon()
-            print(f"🎨 Applied {theme} theme icon")
-        except Exception as e:
-            print(f"⚠️ Could not apply theme icon: {e}")
-
+        
+        from login_window import LoginWindow
         window = LoginWindow()
         window.show()
         print("✅ GUI started successfully")
