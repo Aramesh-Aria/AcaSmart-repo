@@ -47,28 +47,71 @@ def _ensure_logging():
         return  # respect existing setup
     APP_DATA_DIR.mkdir(parents=True, exist_ok=True)
     log_file = APP_DATA_DIR / "acasmart.log"
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-        handlers=[
-            logging.FileHandler(log_file, encoding="utf-8"),
-            logging.StreamHandler(sys.stdout),
-        ],
-    )
+    
+    # Create a file handler
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler.setLevel(logging.INFO)
+    
+    # Create formatter
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    file_handler.setFormatter(formatter)
+    
+    # Configure root logger
+    root.setLevel(logging.INFO)
+    root.addHandler(file_handler)
+    
+    # Only add console handler if we have access to original stdout
+    if hasattr(sys, '__stdout__') and sys.__stdout__ is not None:
+        try:
+            console_handler = logging.StreamHandler(sys.__stdout__)
+            console_handler.setLevel(logging.INFO)
+            console_handler.setFormatter(formatter)
+            root.addHandler(console_handler)
+        except Exception as e:
+            # If console handler fails, just log to file
+            logging.warning(f"Could not create console handler: {e}")
+    elif not getattr(sys, 'frozen', False):
+        # For non-frozen apps, try regular stdout
+        try:
+            console_handler = logging.StreamHandler(sys.stdout)
+            console_handler.setLevel(logging.INFO)
+            console_handler.setFormatter(formatter)
+            root.addHandler(console_handler)
+        except Exception as e:
+            logging.warning(f"Could not create console handler: {e}")
 
 _ensure_logging()
 
 class LoggerWriter:
     def __init__(self, level):
         self.level = level
+        self._original_stdout = sys.__stdout__
+        self._original_stderr = sys.__stderr__
+    
     def write(self, message):
         if message.strip():
+            # Write to original stdout/stderr to avoid recursion
+            if self.level == logging.info:
+                self._original_stdout.write(message)
+            else:
+                self._original_stderr.write(message)
+            # Also log it
             self.level(message)
+    
     def flush(self):
-        pass
+        if self.level == logging.info:
+            self._original_stdout.flush()
+        else:
+            self._original_stderr.flush()
 
-sys.stdout = LoggerWriter(logging.info)
-sys.stderr = LoggerWriter(logging.error)
+# Only redirect stdout/stderr if not frozen (i.e., not in PyInstaller bundle)
+# and if we have access to the original streams
+if not getattr(sys, 'frozen', False) and hasattr(sys, '__stdout__') and hasattr(sys, '__stderr__'):
+    try:
+        sys.stdout = LoggerWriter(logging.info)
+        sys.stderr = LoggerWriter(logging.error)
+    except Exception as e:
+        logging.warning(f"Could not redirect stdout/stderr: {e}")
 
 # ---------- Uncaught Exception Handler ----------
 def log_uncaught_exceptions(exctype, value, tb):
