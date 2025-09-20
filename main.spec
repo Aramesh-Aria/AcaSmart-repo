@@ -14,7 +14,7 @@ a = Analysis(
         ('../static/AppIcon.png', '.'),
         *collect_data_files('dotenv'),
         *collect_data_files('openpyxl'),
-        ('AppIcon.ico', '.'),
+        ('../static/AppIcon.ico', '.'),
     ],
     hiddenimports=[
         'PySide6.QtCore',
@@ -63,7 +63,8 @@ exe = EXE(
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,
-    icon='../static/AppIcon.ico'  # Default icon
+    icon = str((BASE / 'static' / 'AppIcon.ico').resolve())
+
 )
 
 coll = COLLECT(
