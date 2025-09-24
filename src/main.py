@@ -174,7 +174,7 @@ def clear_local_log_file():
     except Exception as e:
         safe_log_error(f"❌ Error clearing local log file: {e}")
 
-# ---------- Main ----------
+
 if __name__ == "__main__":
     try:
         print("🚀 Starting AcaSmart application...")
