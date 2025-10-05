@@ -1,6 +1,6 @@
 import logging
-from Acasmart.data.db import get_connection
-from Acasmart.data.repos.settings_repo import get_setting
+from acasmart.data.db import get_connection
+from acasmart.data.repos.settings_repo import get_setting
 
 logger = logging.getLogger(__name__)
 

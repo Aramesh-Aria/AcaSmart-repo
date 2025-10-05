@@ -1,4 +1,4 @@
-from Acasmart.data.db import get_connection
+from acasmart.data.db import get_connection
 
 
 def add_instrument_to_teacher(teacher_id, instrument):

@@ -1,15 +1,15 @@
 import sqlite3
 import logging
-from Acasmart.data.db import get_connection
+from acasmart.data.db import get_connection
 
 logger = logging.getLogger(__name__)
 
 
 def ensure_term_config(term_id: int):
-	from Acasmart.data.repos.profiles_repo import get_default_profile
-	from Acasmart.data.repos.settings_repo import get_setting
-	from Acasmart.data.repos.profiles_repo import set_term_config
-	from Acasmart.data.repos.profiles_repo import get_term_config
+	from acasmart.data.repos.profiles_repo import get_default_profile
+	from acasmart.data.repos.settings_repo import get_setting
+	from acasmart.data.repos.profiles_repo import set_term_config
+	from acasmart.data.repos.profiles_repo import get_term_config
 	cfg = get_term_config(term_id)  # همیشه چیزی برمی‌گرداند
 	# اگر از قبل مقدار داشتیم، دست نزنیم (ایدمپوتنت)
 	if cfg["sessions_limit"] and cfg["tuition_fee"] and cfg["currency_unit"]:
@@ -29,7 +29,7 @@ def ensure_term_config(term_id: int):
 def add_session(class_id, student_id, date, time,
 				term_sessions_limit=None, term_tuition_fee=None,
 				term_currency_unit=None, term_profile_id=None):
-	from Acasmart.data.repos.terms_repo import insert_student_term_if_not_exists
+	from acasmart.data.repos.terms_repo import insert_student_term_if_not_exists
 	conn = get_connection()
 	c = conn.cursor()
 
@@ -213,7 +213,7 @@ def get_session_by_id(session_id):
 		return c.fetchone()
 
 def delete_session(session_id):
-	from Acasmart.data.repos.payments_repo import delete_term_if_no_payments
+	from acasmart.data.repos.payments_repo import delete_term_if_no_payments
 	with get_connection() as conn:
 		# اطلاعات جلسه را ابتدا بگیر
 		c = conn.cursor()

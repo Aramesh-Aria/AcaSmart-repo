@@ -1,17 +1,17 @@
-from Acasmart.data.repos.reports_repo import get_attendance_report_rows
+from acasmart.data.repos.reports_repo import get_attendance_report_rows
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QHeaderView,
     QLineEdit, QComboBox, QPushButton, QHBoxLayout, QFileDialog, QMessageBox
 )
-from Acasmart.data.repos.classes_repo import fetch_classes
+from acasmart.data.repos.classes_repo import fetch_classes
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QColor
 from datetime import datetime
 import openpyxl
 import jdatetime
 
-from Acasmart.ui.widgets.shamsi_date_picker import ShamsiDatePicker
-from Acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
+from acasmart.ui.widgets.shamsi_date_picker import ShamsiDatePicker
+from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
 
 
 class AttendanceReportWindow(QWidget):

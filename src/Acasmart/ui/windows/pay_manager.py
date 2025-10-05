@@ -1,20 +1,20 @@
-from Acasmart.data.repos.classes_repo import fetch_classes
-from Acasmart.data.repos.payments_repo import get_payment_by_id, get_terms_for_payment_management, get_total_paid_for_term, insert_payment, update_payment_by_id
-from Acasmart.data.repos.settings_repo import get_setting
-from Acasmart.data.repos.students_repo import fetch_registered_classes_for_student, fetch_students_with_teachers
-from Acasmart.data.repos.terms_repo import count_attendance_for_term, get_term_id_by_student_and_class, get_term_sessions_limit_by_id, get_term_tuition_by_id
+from acasmart.data.repos.classes_repo import fetch_classes
+from acasmart.data.repos.payments_repo import get_payment_by_id, get_terms_for_payment_management, get_total_paid_for_term, insert_payment, update_payment_by_id
+from acasmart.data.repos.settings_repo import get_setting
+from acasmart.data.repos.students_repo import fetch_registered_classes_for_student, fetch_students_with_teachers
+from acasmart.data.repos.terms_repo import count_attendance_for_term, get_term_id_by_student_and_class, get_term_sessions_limit_by_id, get_term_tuition_by_id
 from PySide6.QtWidgets import (
     QWidget, QLabel, QLineEdit, QPushButton, QListWidget, QListWidgetItem,
     QVBoxLayout, QHBoxLayout, QFormLayout, QTextEdit, QComboBox, QMessageBox
 )
 from PySide6.QtCore import QDate, Qt
-from Acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
-from Acasmart.ui.widgets.shamsi_date_picker import ShamsiDatePicker
+from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
+from acasmart.ui.widgets.shamsi_date_picker import ShamsiDatePicker
 import jdatetime
-from Acasmart.core.utils import format_currency_with_unit ,get_currency_unit,format_currency,parse_user_amount_to_toman
-from Acasmart.ui.reports.payment_report_window import PaymentReportWindow
-from Acasmart.core.fa_collation import sort_records_fa, contains_fa, nd
-from Acasmart.core.utils import currency_label, format_currency_with_unit, parse_user_amount_to_toman
+from acasmart.core.utils import format_currency_with_unit ,get_currency_unit,format_currency,parse_user_amount_to_toman
+from acasmart.ui.reports.payment_report_window import PaymentReportWindow
+from acasmart.core.fa_collation import sort_records_fa, contains_fa, nd
+from acasmart.core.utils import currency_label, format_currency_with_unit, parse_user_amount_to_toman
 
 class PaymentManager(QWidget):
     
@@ -541,7 +541,7 @@ class PaymentManager(QWidget):
         # 2) مقداردهی فیلدهای فرم
         # مبلغ
         try:
-            from Acasmart.core.utils import format_currency
+            from acasmart.core.utils import format_currency
             self._set_amount_box_from_toman(int(data["amount"]))
         except Exception:
             self.input_amount.setText(str(data["amount"]))

@@ -1,4 +1,4 @@
-from Acasmart.data.repos.settings_repo import get_setting
+from acasmart.data.repos.settings_repo import get_setting
 import hashlib
 from typing import Union  
 

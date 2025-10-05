@@ -1,8 +1,8 @@
-from Acasmart.data.repos.settings_repo import get_setting_bool
+from acasmart.data.repos.settings_repo import get_setting_bool
 import requests
 from dotenv import load_dotenv
 import os
-from Acasmart.paths import APP_DATA_DIR
+from acasmart.paths import APP_DATA_DIR
 from enum import Enum
 class SmsStatus(Enum):
     SENT = "sent"

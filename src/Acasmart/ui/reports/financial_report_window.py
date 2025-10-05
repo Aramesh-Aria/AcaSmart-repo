@@ -1,14 +1,14 @@
-from Acasmart.data.repos.reports_repo import get_all_student_terms_with_financials
+from acasmart.data.repos.reports_repo import get_all_student_terms_with_financials
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QHeaderView,
     QHBoxLayout, QLineEdit, QComboBox, QPushButton, QFileDialog
 )
-from Acasmart.data.repos.classes_repo import fetch_classes
+from acasmart.data.repos.classes_repo import fetch_classes
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QColor
 
-from Acasmart.core.utils import format_currency_with_unit
-from Acasmart.ui.widgets.shamsi_date_picker import ShamsiDatePicker
+from acasmart.core.utils import format_currency_with_unit
+from acasmart.ui.widgets.shamsi_date_picker import ShamsiDatePicker
 
 import jdatetime
 import openpyxl

@@ -1,6 +1,6 @@
 import sqlite3
 from contextlib import contextmanager
-from Acasmart.paths import DB_PATH
+from acasmart.paths import DB_PATH
 
 
 def get_connection():

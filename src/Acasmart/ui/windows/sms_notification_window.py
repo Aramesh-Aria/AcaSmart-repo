@@ -1,10 +1,10 @@
-from Acasmart.data.repos.students_repo import fetch_students, get_student_contact
+from acasmart.data.repos.students_repo import fetch_students, get_student_contact
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea,
     QCheckBox, QMessageBox, QHBoxLayout
 )
 from PySide6.QtCore import Qt
-from Acasmart.services.sms_notifier import SmsNotifier
+from acasmart.services.sms_notifier import SmsNotifier
 
 class SmsNotificationWindow(QWidget):
     def __init__(self):

@@ -1,15 +1,15 @@
-from Acasmart.data.repos.reports_repo import get_student_term_summary_rows
+from acasmart.data.repos.reports_repo import get_student_term_summary_rows
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,
     QHeaderView, QHBoxLayout, QLineEdit, QComboBox, QPushButton, QGroupBox, QFileDialog
 )
-from Acasmart.data.repos.teachers_repo import fetch_teachers_simple
-from Acasmart.data.repos.classes_repo import fetch_classes
+from acasmart.data.repos.teachers_repo import fetch_teachers_simple
+from acasmart.data.repos.classes_repo import fetch_classes
 from PySide6.QtCore import Qt, QDate
 
 import jdatetime
-from Acasmart.ui.widgets.shamsi_date_picker import ShamsiDatePicker
-from Acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
+from acasmart.ui.widgets.shamsi_date_picker import ShamsiDatePicker
+from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
 import openpyxl
 
 

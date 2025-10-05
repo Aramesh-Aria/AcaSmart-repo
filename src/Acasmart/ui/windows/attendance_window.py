@@ -1,17 +1,17 @@
-from Acasmart.data.repos.attendance_repo import count_attendance, fetch_attendance_by_date, insert_attendance_with_date, count_attendance_by_term, delete_attendance
-from Acasmart.data.repos.settings_repo import get_setting, get_setting_bool
-from Acasmart.data.repos.terms_repo import get_student_term, recalc_term_end_by_id, get_term_dates
-from Acasmart.data.repos.sessions_repo import (
+from acasmart.data.repos.attendance_repo import count_attendance, fetch_attendance_by_date, insert_attendance_with_date, count_attendance_by_term, delete_attendance
+from acasmart.data.repos.settings_repo import get_setting, get_setting_bool
+from acasmart.data.repos.terms_repo import get_student_term, recalc_term_end_by_id, get_term_dates
+from acasmart.data.repos.sessions_repo import (
     delete_future_sessions,
     delete_sessions_for_expired_terms,
     fetch_students_sessions_for_class_on_date,
 )
-from Acasmart.data.repos.classes_repo import fetch_classes_on_weekday
-from Acasmart.data.repos.notifications_repo import has_renew_sms_been_sent, mark_renew_sms_sent
-from Acasmart.data.repos.reports_repo import get_class_and_teacher_name
-from Acasmart.data.repos.profiles_repo import get_term_config
-from Acasmart.data.repos.attendance_repo import count_present_attendance_for_term
-from Acasmart.data.repos.students_repo import get_student_contact
+from acasmart.data.repos.classes_repo import fetch_classes_on_weekday
+from acasmart.data.repos.notifications_repo import has_renew_sms_been_sent, mark_renew_sms_sent
+from acasmart.data.repos.reports_repo import get_class_and_teacher_name
+from acasmart.data.repos.profiles_repo import get_term_config
+from acasmart.data.repos.attendance_repo import count_present_attendance_for_term
+from acasmart.data.repos.students_repo import get_student_contact
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QCheckBox, QDialog
@@ -20,9 +20,9 @@ from PySide6.QtCore import Qt
 import functools
 import sqlite3
 
-from Acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
+from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
 import jdatetime
-from Acasmart.services.sms_notifier import SmsNotifier, SmsStatus
+from acasmart.services.sms_notifier import SmsNotifier, SmsStatus
 
 class AttendanceManager(QWidget):
     def __init__(self):

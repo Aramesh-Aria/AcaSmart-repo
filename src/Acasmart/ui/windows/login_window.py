@@ -1,8 +1,8 @@
-from Acasmart.data.db import get_connection
+from acasmart.data.db import get_connection
 import sqlite3
 from PySide6.QtWidgets import QMainWindow, QWidget, QFormLayout, QLineEdit, QPushButton, QMessageBox
-from Acasmart.ui.windows.dashboard_window import DashboardWindow
-from Acasmart.core.utils import hash_password
+from acasmart.ui.windows.dashboard_window import DashboardWindow
+from acasmart.core.utils import hash_password
 
 class LoginWindow(QMainWindow):
     def __init__(self):
@@ -12,7 +12,7 @@ class LoginWindow(QMainWindow):
 
         # Apply theme-based icon
         try:
-            from Acasmart.ui.widgets.theme_manager import apply_theme_icon
+            from acasmart.ui.widgets.theme_manager import apply_theme_icon
             apply_theme_icon(self)
         except Exception as e:
             print(f"⚠️ Could not apply theme icon to login window: {e}")

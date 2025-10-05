@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import QDate
 
-from Acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
+from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
 import jdatetime
 from datetime import date
 class ShamsiDatePicker(QWidget):

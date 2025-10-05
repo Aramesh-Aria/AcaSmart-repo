@@ -1,5 +1,5 @@
 import logging
-from Acasmart.data.db import get_connection
+from acasmart.data.db import get_connection
 
 logger = logging.getLogger(__name__)
 
@@ -8,8 +8,8 @@ def insert_student_term_if_not_exists(
 	student_id, class_id, start_date, start_time,
 	sessions_limit=None, tuition_fee=None, currency_unit=None, profile_id=None
 ):
-	from Acasmart.data.repos.settings_repo import get_setting  # local to avoid cycles
-	from Acasmart.data.repos.sessions_repo import has_teacher_weekly_time_conflict  # avoid cycles
+	from acasmart.data.repos.settings_repo import get_setting  # local to avoid cycles
+	from acasmart.data.repos.sessions_repo import has_teacher_weekly_time_conflict  # avoid cycles
 	with get_connection() as conn:
 		c = conn.cursor()
 
@@ -196,7 +196,7 @@ def get_term_sessions_limit_by_id(term_id: int):
 
 
 def check_and_set_term_end_by_id(term_id, student_id, class_id, session_date):
-	from Acasmart.data.repos.settings_repo import get_setting  # local to avoid cycles
+	from acasmart.data.repos.settings_repo import get_setting  # local to avoid cycles
 	with get_connection() as conn:
 		c = conn.cursor()
 

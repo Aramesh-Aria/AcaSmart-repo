@@ -1,6 +1,6 @@
 import logging
-from Acasmart.data.db import get_connection
-from Acasmart.data.repos.migrations import (
+from acasmart.data.db import get_connection
+from acasmart.data.repos.migrations import (
 	migrate_attendance_unique_constraint,
 	migrate_drop_student_terms_term_id,
 )
@@ -156,7 +156,7 @@ def create_tables():
 			c.execute("ALTER TABLE student_terms ADD COLUMN profile_id INTEGER REFERENCES pricing_profiles(id) ON DELETE SET NULL")
 
 		# بک‌فیل مقادیر خالی
-		from Acasmart.data.repos.settings_repo import get_setting  # lazy import to avoid circular
+		from acasmart.data.repos.settings_repo import get_setting  # lazy import to avoid circular
 		default_fee = int(get_setting("term_fee", get_setting("term_tuition", 6000000)))
 		default_sessions = int(get_setting("term_session_count", 12))
 		default_unit = get_setting("currency_unit", "toman")

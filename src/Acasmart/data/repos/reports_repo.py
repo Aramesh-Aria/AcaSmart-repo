@@ -1,5 +1,5 @@
 import logging
-from Acasmart.data.db import get_connection
+from acasmart.data.db import get_connection
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +15,8 @@ def get_class_and_teacher_name(class_id):
         return c.fetchone() or ("—", "—")
 	
 def get_all_student_terms_with_financials():
-	from Acasmart.data.repos.settings_repo import get_setting
-	from Acasmart.data.repos.payments_repo import get_total_paid_for_term
+	from acasmart.data.repos.settings_repo import get_setting
+	from acasmart.data.repos.payments_repo import get_total_paid_for_term
 	with get_connection() as conn:
 		c = conn.cursor()
 		c.execute("""

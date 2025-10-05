@@ -1,12 +1,12 @@
-from Acasmart.data.db import get_connection
-from Acasmart.data.repos.profiles_repo import create_pricing_profile, list_pricing_profiles
-from Acasmart.data.repos.settings_repo import get_setting
+from acasmart.data.db import get_connection
+from acasmart.data.repos.profiles_repo import create_pricing_profile, list_pricing_profiles
+from acasmart.data.repos.settings_repo import get_setting
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QTableWidgetItem,
     QMessageBox, QDialog, QDialogButtonBox, QLabel, QLineEdit, QSpinBox, QCheckBox,QAbstractItemView
 )
 from PySide6.QtCore import Qt
-from Acasmart.core.utils import currency_label, format_currency_with_unit, parse_user_amount_to_toman
+from acasmart.core.utils import currency_label, format_currency_with_unit, parse_user_amount_to_toman
 
 class PricingProfileDialog(QDialog):
     """

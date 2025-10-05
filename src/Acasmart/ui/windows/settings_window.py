@@ -1,7 +1,7 @@
-from Acasmart.data.repos.settings_repo import get_setting, get_setting_bool, set_setting, set_setting_bool
+from acasmart.data.repos.settings_repo import get_setting, get_setting_bool, set_setting, set_setting_bool
 from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QPushButton, QMessageBox, QComboBox
 import re
-from Acasmart.core.utils import currency_label
+from acasmart.core.utils import currency_label
 
 def _digits_only(text: str) -> int:
     """فقط ارقام را نگه می‌دارد (کاما/فاصله/حروف حذف)."""

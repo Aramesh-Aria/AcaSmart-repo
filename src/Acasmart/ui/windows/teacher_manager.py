@@ -1,4 +1,4 @@
-from Acasmart.data.repos.teachers_repo import (
+from acasmart.data.repos.teachers_repo import (
     delete_teacher_by_id,
     fetch_teachers,
     insert_teacher,
@@ -7,8 +7,8 @@ from Acasmart.data.repos.teachers_repo import (
     update_teacher_by_id,
     get_teacher_id_by_national_code,
 )
-from Acasmart.data.repos.students_repo import is_national_code_exists_for_other
-from Acasmart.data.repos.teacher_instruments_repo import (
+from acasmart.data.repos.students_repo import is_national_code_exists_for_other
+from acasmart.data.repos.teacher_instruments_repo import (
     add_instrument_to_teacher,
     remove_instrument_from_teacher,
     get_instruments_for_teacher,
@@ -20,10 +20,10 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from Acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
+from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
 import jdatetime
 import re
-from Acasmart.core.fa_collation import sort_records_fa, contains_fa, fa_collator
+from acasmart.core.fa_collation import sort_records_fa, contains_fa, fa_collator
 from functools import cmp_to_key
 
 class TeacherManager(QWidget):

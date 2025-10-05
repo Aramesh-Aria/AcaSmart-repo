@@ -1,4 +1,4 @@
-from Acasmart.data.repos.students_repo import (
+from acasmart.data.repos.students_repo import (
     get_student_by_id,
     insert_student,
     student_national_code_exists,
@@ -14,8 +14,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 import jdatetime
-from Acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
-from Acasmart.core.fa_collation import sort_records_fa, contains_fa, nd
+from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
+from acasmart.core.fa_collation import sort_records_fa, contains_fa, nd
 
 class StudentManager(QWidget):
     def __init__(self):

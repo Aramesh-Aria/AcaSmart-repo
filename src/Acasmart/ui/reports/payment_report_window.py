@@ -6,13 +6,13 @@ from PySide6.QtCore import Qt,Signal,QDate
 from PySide6.QtGui import QColor
 import pandas as pd
 import jdatetime
-from Acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
-from Acasmart.ui.widgets.shamsi_date_picker import ShamsiDatePicker
+from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
+from acasmart.ui.widgets.shamsi_date_picker import ShamsiDatePicker
 from datetime import timedelta
-from Acasmart.data.repos.payments_repo import fetch_payments, delete_payment
-from Acasmart.data.repos.settings_repo import get_setting
-from Acasmart.data.repos.classes_repo import fetch_classes
-from Acasmart.core.utils import format_currency_with_unit
+from acasmart.data.repos.payments_repo import fetch_payments, delete_payment
+from acasmart.data.repos.settings_repo import get_setting
+from acasmart.data.repos.classes_repo import fetch_classes
+from acasmart.core.utils import format_currency_with_unit
 from functools import partial
 
 class PaymentReportWindow(QWidget):

@@ -1,9 +1,9 @@
-from Acasmart.data.db import get_connection
+from acasmart.data.db import get_connection
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QFileDialog, QMessageBox, QLabel,QApplication
 from PySide6.QtCore import Qt
 import shutil
-from Acasmart.core.version import __version__
-from Acasmart.paths import DB_PATH
+from acasmart.core.version import __version__
+from acasmart.paths import DB_PATH
 import logging
 import sqlite3
 
@@ -16,7 +16,7 @@ class DashboardWindow(QWidget):
         
         # Apply theme-based icon
         try:
-            from Acasmart.ui.widgets.theme_manager import apply_theme_icon
+            from acasmart.ui.widgets.theme_manager import apply_theme_icon
             apply_theme_icon(self)
         except Exception as e:
             print(f"⚠️ Could not apply theme icon to dashboard window: {e}")
@@ -91,42 +91,42 @@ class DashboardWindow(QWidget):
         self.move(x, y)
 
     def open_student_manager(self):
-        from Acasmart.ui.windows.student_manager import StudentManager
+        from acasmart.ui.windows.student_manager import StudentManager
         self.student_window = StudentManager()
         self.student_window.show()
 
     def open_teacher_manager(self):
-        from Acasmart.ui.windows.teacher_manager import TeacherManager
+        from acasmart.ui.windows.teacher_manager import TeacherManager
         self.teacher_window = TeacherManager()
         self.teacher_window.show()
 
     def open_change_password(self):
-        from Acasmart.ui.windows.change_password_window import ChangeCredentialsWindow
+        from acasmart.ui.windows.change_password_window import ChangeCredentialsWindow
         self.change_password_window = ChangeCredentialsWindow(logged_in_mobile=self.logged_in_mobile)
         self.change_password_window.show()
 
     def open_class_manager(self):
-        from Acasmart.ui.windows.class_manager import ClassManager
+        from acasmart.ui.windows.class_manager import ClassManager
         self.class_window = ClassManager()
         self.class_window.show()
 
     def open_session_manager(self):
-        from Acasmart.ui.windows.session_manager import SessionManager
+        from acasmart.ui.windows.session_manager import SessionManager
         self.session_window = SessionManager()
         self.session_window.show()
 
     def open_payment_manager(self):
-        from Acasmart.ui.windows.pay_manager import PaymentManager
+        from acasmart.ui.windows.pay_manager import PaymentManager
         self.payment_manager_window = PaymentManager()
         self.payment_manager_window.show()
 
     def open_setting_manager(self):
-        from Acasmart.ui.windows.settings_window import SettingsWindow
+        from acasmart.ui.windows.settings_window import SettingsWindow
         self.setting_window = SettingsWindow()
         self.setting_window.show()
 
     def open_attndance_window(self):
-        from Acasmart.ui.windows.attendance_window import AttendanceManager
+        from acasmart.ui.windows.attendance_window import AttendanceManager
         self.attendance_window = AttendanceManager()
         self.attendance_window.show()
 
@@ -163,16 +163,16 @@ class DashboardWindow(QWidget):
                 QMessageBox.critical(self, "خطا در بازیابی", f"مشکلی در بازیابی فایل پیش آمد:\n{str(e)}")
 
     def open_reports(self):
-        from Acasmart.ui.reports.reports_window import ReportsWindow
+        from acasmart.ui.reports.reports_window import ReportsWindow
         self.reports_window = ReportsWindow()
         self.reports_window.show()
 
     def open_sms_notification_manager(self):
-        from Acasmart.ui.windows.sms_notification_window import SmsNotificationWindow
+        from acasmart.ui.windows.sms_notification_window import SmsNotificationWindow
         self.open_sms_notification_window = SmsNotificationWindow()
         self.open_sms_notification_window.show()
 
     def open_pricing_profile_manager(self):
-        from Acasmart.ui.windows.pricing_profile_manager import PricingProfileManager
+        from acasmart.ui.windows.pricing_profile_manager import PricingProfileManager
         self.pricing_profile_window = PricingProfileManager()
         self.pricing_profile_window.show()

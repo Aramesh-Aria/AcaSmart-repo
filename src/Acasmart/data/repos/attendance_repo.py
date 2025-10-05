@@ -1,5 +1,5 @@
 import logging
-from Acasmart.data.db import get_connection
+from acasmart.data.db import get_connection
 
 logger = logging.getLogger(__name__)
 
@@ -8,7 +8,7 @@ def count_attendance(student_id, class_id):
 	"""
 	تعداد جلسات ثبت‌شده برای هنرجو در ترم فعال (end_date IS NULL).
 	"""
-	from Acasmart.data.repos.terms_repo import get_term_id_by_student_and_class
+	from acasmart.data.repos.terms_repo import get_term_id_by_student_and_class
 	term_id = get_term_id_by_student_and_class(student_id, class_id)
 	if not term_id:
 		return 0
@@ -40,7 +40,7 @@ def insert_attendance_with_date(student_id, class_id, term_id, date, is_present)
 	check_and_set_term_end_by_id همان روز را end_date می‌گذارد.
 	مقدار True/False برمی‌گرداند که آیا end_date ست شد یا نه.
 	"""
-	from Acasmart.data.repos.terms_repo import check_and_set_term_end_by_id
+	from acasmart.data.repos.terms_repo import check_and_set_term_end_by_id
 	if not term_id:
 		term_id = get_term_id_by_student_class_and_date(student_id, class_id, date)
 	if not term_id:
@@ -78,7 +78,7 @@ def fetch_attendance_by_date(student_id, class_id, date_str, term_id=None):
 	وضعیت حضور هنرجو در یک کلاس، تاریخ و ترم خاص را برمی‌گرداند.
 	اگر term_id داده نشود، از آخرین ترم فعال استفاده می‌کند.
 	"""
-	from Acasmart.data.repos.terms_repo import get_term_id_by_student_and_class
+	from acasmart.data.repos.terms_repo import get_term_id_by_student_and_class
 	if term_id is None:
 		term_id = get_term_id_by_student_and_class(student_id, class_id)
 	if not term_id:

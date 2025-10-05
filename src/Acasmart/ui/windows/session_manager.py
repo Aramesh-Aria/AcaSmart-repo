@@ -1,23 +1,23 @@
-from Acasmart.data.repos.classes_repo import get_day_and_time_for_class
-from Acasmart.data.repos.notifications_repo import get_unnotified_expired_terms, mark_terms_as_notified
-from Acasmart.data.repos.payments_repo import delete_term_if_no_payments
-from Acasmart.data.repos.profiles_repo import list_pricing_profiles
-from Acasmart.data.repos.sessions_repo import add_session, delete_session, delete_sessions_for_expired_terms, delete_sessions_for_term, fetch_sessions_by_class, get_session_by_id, get_session_count_per_class, get_session_count_per_student, has_teacher_weekly_time_conflict, has_weekly_time_conflict, is_class_slot_taken, update_session
-from Acasmart.data.repos.settings_repo import get_setting
-from Acasmart.data.repos.students_repo import fetch_classes_for_student, fetch_students_with_teachers
-from Acasmart.data.repos.terms_repo import get_finished_terms_with_future_sessions, get_last_term_end_date, insert_student_term_if_not_exists
+from acasmart.data.repos.classes_repo import get_day_and_time_for_class
+from acasmart.data.repos.notifications_repo import get_unnotified_expired_terms, mark_terms_as_notified
+from acasmart.data.repos.payments_repo import delete_term_if_no_payments
+from acasmart.data.repos.profiles_repo import list_pricing_profiles
+from acasmart.data.repos.sessions_repo import add_session, delete_session, delete_sessions_for_expired_terms, delete_sessions_for_term, fetch_sessions_by_class, get_session_by_id, get_session_count_per_class, get_session_count_per_student, has_teacher_weekly_time_conflict, has_weekly_time_conflict, is_class_slot_taken, update_session
+from acasmart.data.repos.settings_repo import get_setting
+from acasmart.data.repos.students_repo import fetch_classes_for_student, fetch_students_with_teachers
+from acasmart.data.repos.terms_repo import get_finished_terms_with_future_sessions, get_last_term_end_date, insert_student_term_if_not_exists
 from PySide6.QtWidgets import (
     QWidget, QLabel, QLineEdit, QPushButton, QListWidget, QListWidgetItem,
     QVBoxLayout, QTimeEdit, QMessageBox, QDialog,
     QDialogButtonBox, QHBoxLayout, QComboBox, QRadioButton, QSpinBox
 )
 from PySide6.QtCore import QTime, Qt
-from Acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
+from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
 import jdatetime
 import sqlite3
-from Acasmart.core.fa_collation import sort_records_fa, contains_fa,nd,fa_digits
-from Acasmart.core.utils import currency_label, format_currency_with_unit, parse_user_amount_to_toman
-from Acasmart.core.fa_collation import fa_digits
+from acasmart.core.fa_collation import sort_records_fa, contains_fa,nd,fa_digits
+from acasmart.core.utils import currency_label, format_currency_with_unit, parse_user_amount_to_toman
+from acasmart.core.fa_collation import fa_digits
 
 class TermConfigDialog(QDialog):
     """

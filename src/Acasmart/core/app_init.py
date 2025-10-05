@@ -1,6 +1,6 @@
-from Acasmart.data.db import get_connection
-from Acasmart.data.schema import create_tables
-from Acasmart.data.repos.settings_repo import ensure_bool_setting
+from acasmart.data.db import get_connection
+from acasmart.data.schema import create_tables
+from acasmart.data.repos.settings_repo import ensure_bool_setting
 import os
 import sqlite3
 import shutil
@@ -8,8 +8,8 @@ import stat
 import logging
 from dotenv import load_dotenv
 
-from Acasmart.core.utils import hash_password
-from Acasmart.paths import DB_PATH, APP_DATA_DIR, resource_path
+from acasmart.core.utils import hash_password
+from acasmart.paths import DB_PATH, APP_DATA_DIR, resource_path
 
 def initialize_database():
     # ۱) اگر دیتابیس هنوز ساخته نشده، از روی تمپلیت کپی کن

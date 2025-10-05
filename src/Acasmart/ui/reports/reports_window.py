@@ -29,26 +29,26 @@ class ReportsWindow(QWidget):
         self.setLayout(layout)
 
     def open_financial_report(self):
-        from Acasmart.ui.reports.financial_report_window import FinancialReportWindow
+        from acasmart.ui.reports.financial_report_window import FinancialReportWindow
         self.financial_window = FinancialReportWindow()
         self.financial_window.show()
 
     def open_attendance_report(self):    
-        from Acasmart.ui.reports.attendance_report_window import AttendanceReportWindow
+        from acasmart.ui.reports.attendance_report_window import AttendanceReportWindow
         self.attendance_report_window = AttendanceReportWindow()
         self.attendance_report_window.show()
 
     def open_student_report(self):
-        from Acasmart.ui.reports.student_term_summary_window import StudentTermSummaryWindow
+        from acasmart.ui.reports.student_term_summary_window import StudentTermSummaryWindow
         self.student_term_summary_report_window = StudentTermSummaryWindow()
         self.student_term_summary_report_window.show()
 
     def open_student_contacts(self):
-        from Acasmart.ui.reports.contacts_window import ContactsWindow
+        from acasmart.ui.reports.contacts_window import ContactsWindow
         self.contacts_window = ContactsWindow()
         self.contacts_window.show()
 
     def open_teacher_report(self):
-        from Acasmart.ui.reports.teacher_summary_window import TeacherSummaryWindow
+        from acasmart.ui.reports.teacher_summary_window import TeacherSummaryWindow
         self.teachers_summary_report_window = TeacherSummaryWindow()
         self.teachers_summary_report_window.show()

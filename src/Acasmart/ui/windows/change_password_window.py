@@ -1,6 +1,6 @@
-from Acasmart.data.db import get_connection
+from acasmart.data.db import get_connection
 from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QPushButton, QMessageBox
-from Acasmart.core.utils import hash_password
+from acasmart.core.utils import hash_password
 
 class ChangeCredentialsWindow(QWidget):
     def __init__(self, logged_in_mobile):

@@ -4,12 +4,12 @@ import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from Acasmart.paths import APP_DATA_DIR, DB_PATH, resource_path
+from acasmart.paths import APP_DATA_DIR, DB_PATH, resource_path
 from dotenv import load_dotenv
 from PySide6.QtWidgets import QApplication
 
-from Acasmart.core.app_init import initialize_database
-from Acasmart.ui.windows.login_window import LoginWindow
+from acasmart.core.app_init import initialize_database
+from acasmart.ui.windows.login_window import LoginWindow
 
 # ---------- setuptools patch ----------
 def patch_setuptools_file_access():
@@ -197,14 +197,14 @@ if __name__ == "__main__":
         app = QApplication(sys.argv)
         # Apply theme icon before starting the GUI
         try:
-            from Acasmart.ui.widgets.theme_manager import apply_theme_icon
+            from acasmart.ui.widgets.theme_manager import apply_theme_icon
             apply_theme_icon()
             print("🎨 Applied theme icon successfully")
         except Exception as e:
             print(f"⚠️ Could not apply theme icon: {e}")
 
         
-        from Acasmart.ui.windows.login_window import LoginWindow
+        from acasmart.ui.windows.login_window import LoginWindow
         window = LoginWindow()
         window.show()
         print("✅ GUI started successfully")
