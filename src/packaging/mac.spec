@@ -13,8 +13,8 @@ block_cipher = None
 
 # فقط دیتاهای لازم؛ آیکن را در datas نمی‌گذاریم چون با پارامتر icon کپی می‌شود
 datas = [
-    ('../Setup_files/acasmart_template.db', '.'),
-    ('../Setup_files/.env', '.'),
+    ('../acasmart/resources/acasmart_template.db', '.'),
+    ('../.env', '.'),
     *collect_data_files('dotenv'),
     *collect_data_files('openpyxl'),
 ]
@@ -57,13 +57,13 @@ exe = EXE(
     upx=False,
     runtime_tmpdir=None,
     console=False,
-    icon='../static/AppIcon.icns',
+    icon='../acasmart/resources/AppIcon.icns',
 )
 
 app = BUNDLE(
     exe,
     name='AcaSmart.app',
-    icon='../static/AppIcon.icns',
+    icon='../acasmart/resources/AppIcon.icns',
     bundle_identifier='ir.aramesh.AcaSmart',
     info_plist={
         'CFBundleIdentifier' : 'ir.aramesh.AcaSmart',

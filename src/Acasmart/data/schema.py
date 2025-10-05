@@ -1,6 +1,6 @@
 import logging
 from acasmart.data.db import get_connection
-from acasmart.data.repos.migrations import (
+from acasmart.data.migrations import (
 	migrate_attendance_unique_constraint,
 	migrate_drop_student_terms_term_id,
 )

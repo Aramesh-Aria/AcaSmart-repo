@@ -81,18 +81,17 @@ class ThemeManager:
         if getattr(sys, "frozen", False):
             meipass = Path(sys._MEIPASS)  # type: ignore[attr-defined]
             candidates += [
-                meipass / "static" / filename,
                 meipass / filename,
-                exe_dir / "static" / filename,
                 exe_dir / filename,
             ]
 
-        # 2) حالت توسعه: دقیقاً مطابق ساختار تو
+        # 2) حالت توسعه: مسیر جدید منابع
         candidates += [
-            proj_dir / "static" / filename,  # /Users/aria/Documents/AcaSmart/static
-            repo_dir / "static" / filename,  
-            src_dir  / "static" / filename,
-            Path.cwd() / "static" / filename,
+            # New canonical location
+            src_dir / "acasmart" / "resources" / filename,
+            repo_dir / "src" / "acasmart" / "resources" / filename,
+            proj_dir / "AcaSmart-repo" / "src" / "acasmart" / "resources" / filename,
+            # Fallbacks
             src_dir / filename,
         ]
 

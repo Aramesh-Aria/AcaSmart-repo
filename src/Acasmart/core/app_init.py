@@ -14,7 +14,7 @@ from acasmart.paths import DB_PATH, APP_DATA_DIR, resource_path
 def initialize_database():
     # ۱) اگر دیتابیس هنوز ساخته نشده، از روی تمپلیت کپی کن
     if not DB_PATH.exists():
-        template = resource_path("acasmart_template.db")
+        template = resource_path("resources", "acasmart_template.db")
         if not template.exists():
             raise FileNotFoundError(f"❌ Template DB not found at: {template}")
 
