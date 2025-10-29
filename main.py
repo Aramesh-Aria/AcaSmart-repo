@@ -11,28 +11,8 @@ from PySide6.QtWidgets import QApplication
 from acasmart.core.app_init import initialize_database
 from acasmart.ui.windows.login_window import LoginWindow
 
-# ---------- setuptools patch ----------
-def patch_setuptools_file_access():
-    try:
-        import pkg_resources
-        original_get_distribution = pkg_resources.get_distribution
-        def safe_get_distribution(name):
-            try:
-                return original_get_distribution(name)
-            except (FileNotFoundError, OSError):
-                class DummyDistribution:
-                    def __init__(self):
-                        self.project_name = name
-                        self.version = "0.0.0"
-                    def __getattr__(self, _):
-                        return None
-                return DummyDistribution()
-        pkg_resources.get_distribution = safe_get_distribution
-        print("🔧 Patched setuptools file access")
-    except Exception as e:
-        print(f"⚠️ Could not patch setuptools: {e}")
-
-patch_setuptools_file_access()
+from PySide6.QtCore import Qt
+from acasmart.ui.widgets.theme_manager import ThemeManager, apply_theme_icon
 
 # ---------- Environment ----------
 env_path = resource_path(".env")
@@ -194,7 +174,14 @@ if __name__ == "__main__":
         print("✅ Database initialized successfully")
         
         print("🎨 Starting GUI...")
+    
+        # (اختیاری) HiDPI
+        QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+        QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+    
         app = QApplication(sys.argv)
+        ThemeManager.apply(app, mode=None)   # از QSettings می‌خوانَد؛ یا "light"/"dark"
+        
         # Apply theme icon before starting the GUI
         try:
             from acasmart.ui.widgets.theme_manager import apply_theme_icon

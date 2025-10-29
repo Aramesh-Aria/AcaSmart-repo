@@ -12,6 +12,7 @@ a = Analysis(
         ('../.env', '.'),
         ('../acasmart/resources/AppIcon.ico', '.'),
         ('../acasmart/resources/AppIcon.png', '.'),
+        ('src/acasmart/resources/fonts/*.ttf', 'acasmart/resources/fonts'),
         *collect_data_files('dotenv'),
         *collect_data_files('openpyxl'),
     ],

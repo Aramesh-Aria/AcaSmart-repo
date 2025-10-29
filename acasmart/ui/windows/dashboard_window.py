@@ -1,5 +1,8 @@
 from acasmart.data.db import get_connection
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QFileDialog, QMessageBox, QLabel,QApplication
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QPushButton, QFileDialog, QMessageBox, QLabel,
+    QApplication, QMainWindow, QFrame
+)
 from PySide6.QtCore import Qt
 import shutil
 from acasmart.core.version import __version__
@@ -7,7 +10,10 @@ from acasmart.paths import DB_PATH
 import logging
 import sqlite3
 
-class DashboardWindow(QWidget):
+from acasmart.ui.widgets.global_toolbar import GlobalToolbar
+from acasmart.ui.widgets.theme_manager import ThemeManager
+
+class DashboardWindow(QMainWindow):
     def __init__(self, logged_in_mobile):
         super().__init__()
         self.logged_in_mobile = logged_in_mobile
@@ -21,9 +27,17 @@ class DashboardWindow(QWidget):
         except Exception as e:
             print(f"⚠️ Could not apply theme icon to dashboard window: {e}")
         
-        layout = QVBoxLayout()
-        layout.setSpacing(8)
-        button_style = "font-size: 15px; padding: 10px;"
+        # --- central widget + layout
+        central = QWidget(self)
+        root = QVBoxLayout(central)
+        root.setSpacing(8)
+        root.setContentsMargins(12, 12, 12, 12)
+
+        # اگر خواستی کارت بسازی:
+        # card = QFrame()
+        # card.setObjectName("Card")
+        # card_layout = QVBoxLayout(card)
+        # root.addWidget(card)
         self.db_path = DB_PATH  # فقط برای نمایش/استفاده‌ی read-only از مسیر
 
         if not self.db_path.exists():
@@ -43,12 +57,13 @@ class DashboardWindow(QWidget):
 
         for title, handler in buttons_top:
             btn = QPushButton(title)
-            btn.setStyleSheet(button_style)
+            # استایل: بجای setStyleSheet، پراپرتی بده
+            btn.setProperty("variant", "primary")
+            ThemeManager.repolish(btn)
             btn.clicked.connect(handler)
-            layout.addWidget(btn)
+            root.addWidget(btn)
 
-        # ----------- ابزارهای مدیریتی ------------
-        layout.addSpacing(20)
+        root.addSpacing(16)
 
         buttons_bottom = [
             ("💼 پروفایل‌های شهریه", self.open_pricing_profile_manager),
@@ -63,22 +78,29 @@ class DashboardWindow(QWidget):
 
         for title, handler in buttons_bottom:
             btn = QPushButton(title)
-            btn.setStyleSheet(button_style)
+            # برای این گروه، Secondary بهتره که آرام‌تر باشه
+            btn.setProperty("variant", "secondary")
+            ThemeManager.repolish(btn)
             if handler:
                 btn.clicked.connect(handler)
-            layout.addWidget(btn)
+            root.addWidget(btn)
+
 
         version_label = QLabel(f"نسخه نرم‌افزار: {__version__}")
-        version_label.setStyleSheet("color: gray; font-size: 12px; margin-top: 5px;")
+        version_label.setObjectName("MutedCaption")
         version_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(version_label)
+        root.addWidget(version_label)
         
         info_label = QLabel("ایمیل توسعه دهنده جهت ارتباط: aramesh_aria@yahoo.com")
-        info_label.setStyleSheet("color: gray; font-size: 12px; margin-top: 2px;")
+        info_label.setObjectName("MutedCaption")
         info_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(info_label)
+        root.addWidget(info_label)
 
-        self.setLayout(layout)
+        self.setCentralWidget(central)
+
+        # --- تولبار سراسری تم ---
+        self.toolbar = GlobalToolbar(self)
+        self.addToolBar(Qt.TopToolBarArea, self.toolbar)
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -130,6 +152,23 @@ class DashboardWindow(QWidget):
         self.attendance_window = AttendanceManager()
         self.attendance_window.show()
 
+    def open_reports(self):
+        from acasmart.ui.reports.reports_window import ReportsWindow
+        self.reports_window = ReportsWindow()
+        self.reports_window.show()
+
+    def open_sms_notification_manager(self):
+        from acasmart.ui.windows.sms_notification_window import SmsNotificationWindow
+        self.open_sms_notification_window = SmsNotificationWindow()
+        self.open_sms_notification_window.show()
+
+    def open_pricing_profile_manager(self):
+        from acasmart.ui.windows.pricing_profile_manager import PricingProfileManager
+        self.pricing_profile_window = PricingProfileManager()
+        self.pricing_profile_window.show()
+    
+    # ---------- بکاپ/ریستور ----------
+    
     def backup_database(self):
         options = QFileDialog.Options()
         filename, _ = QFileDialog.getSaveFileName(self, "ذخیره بکاپ دیتابیس", "acasmart_backup.db",
@@ -161,18 +200,3 @@ class DashboardWindow(QWidget):
                                         "فایل بکاپ با موفقیت بازیابی شد.\n\nبرای اعمال تغییرات، لطفاً برنامه را ببندید و دوباره اجرا کنید.")
             except Exception as e:
                 QMessageBox.critical(self, "خطا در بازیابی", f"مشکلی در بازیابی فایل پیش آمد:\n{str(e)}")
-
-    def open_reports(self):
-        from acasmart.ui.reports.reports_window import ReportsWindow
-        self.reports_window = ReportsWindow()
-        self.reports_window.show()
-
-    def open_sms_notification_manager(self):
-        from acasmart.ui.windows.sms_notification_window import SmsNotificationWindow
-        self.open_sms_notification_window = SmsNotificationWindow()
-        self.open_sms_notification_window.show()
-
-    def open_pricing_profile_manager(self):
-        from acasmart.ui.windows.pricing_profile_manager import PricingProfileManager
-        self.pricing_profile_window = PricingProfileManager()
-        self.pricing_profile_window.show()

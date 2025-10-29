@@ -17,6 +17,8 @@ datas = [
     ('../.env', '.'),
     *collect_data_files('dotenv'),
     *collect_data_files('openpyxl'),
+    ('src/acasmart/resources/fonts/*.ttf', 'acasmart/resources/fonts'),
+]
 ]
 
 hiddenimports = [

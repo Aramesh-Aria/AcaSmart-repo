@@ -4,9 +4,21 @@ from pathlib import Path
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import QSettings
+from PySide6.QtGui import QPalette, QColor
+from PySide6.QtCore import Qt
+from acasmart.style import theme as THEME
+from acasmart.style.qss import build_qss
+from PySide6.QtGui import QFontDatabase, QFont
+
+APP_ORG  = "AcaSmart"
+APP_NAME = "AcaSmart"
+SETTINGS_KEY = "ui/theme"  # "light" | "dark"
 
 class ThemeManager:
     """Manages application theme and ensures app icon is always WHITE"""
+    
+    _current_mode = "light"
+    _tokens = THEME.LIGHT
 
     def __init__(self):
         self.app = QApplication.instance()
@@ -165,6 +177,98 @@ class ThemeManager:
         for name in self.app_icon_candidates:
             p = self._get_resource_path(name)
             print(f"   {name}: {'✅' if p.exists() else '❌'} {p}")
+
+    @classmethod
+    def load_last(cls) -> str:
+        s = QSettings(APP_ORG, APP_NAME)
+        return s.value(SETTINGS_KEY, "light")
+
+    @classmethod
+    def save(cls, mode: str):
+        s = QSettings(APP_ORG, APP_NAME)
+        s.setValue(SETTINGS_KEY, mode)
+
+    @classmethod
+    def tokens(cls) -> dict:
+        return cls._tokens
+
+    @staticmethod
+    def repolish(widget):
+        # وقتی property تغییر می‌دهی (مثلاً variant/status) لازم می‌شود
+        if widget is None: return
+        style = widget.style()
+        style.unpolish(widget)
+        style.polish(widget)
+        widget.update()
+    @classmethod
+    def apply(cls, app: QApplication, mode: str | None = None):
+        """
+        اعمال تم به کل اپ: Fusion + QPalette + QSS
+        اگر mode=None باشد، آخرین حالت ذخیره‌شده را می‌خواند.
+        """
+        if mode is None:
+            mode = cls.load_last()
+
+        mode = mode if mode in ("light", "dark") else "light"
+        cls._current_mode = mode
+        cls._tokens = THEME.DARK if mode == "dark" else THEME.LIGHT
+
+        # یکدست کردن رندر (به‌خصوص در ویندوز/لینوکس)
+        try:
+            app.setStyle("Fusion")
+            cls._ensure_app_font(app)
+        except Exception as e:
+            print(f"error in {e}")
+        
+
+
+        t = cls._tokens
+        pal = QPalette()
+        pal.setColor(QPalette.Window, QColor(t["bg"]))
+        pal.setColor(QPalette.Base, QColor(t["surface"]))
+        pal.setColor(QPalette.AlternateBase, QColor(t["rowHover"]))
+        pal.setColor(QPalette.Text, QColor(t["text"]))
+        pal.setColor(QPalette.WindowText, QColor(t["text"]))
+        pal.setColor(QPalette.Button, QColor(t["surface"]))
+        pal.setColor(QPalette.ButtonText, QColor(t["text"]))
+        pal.setColor(QPalette.Highlight, QColor(t["primary"]))
+        pal.setColor(QPalette.HighlightedText, QColor(t["onPrimary"]))
+        pal.setColor(QPalette.ToolTipBase, QColor(t["surface"]))
+        pal.setColor(QPalette.ToolTipText, QColor(t["text"]))
+        pal.setColor(QPalette.PlaceholderText, QColor(t["muted"]))
+        app.setPalette(pal)
+
+        # QSS سراسری از روی توکن‌ها
+        app.setStyleSheet(build_qss(t))
+
+        cls.save(mode)
+    @classmethod
+    def current_mode(cls) -> str:
+        return cls._current_mode
+
+    @classmethod
+    def toggle(cls, app: QApplication):
+        new_mode = "dark" if cls._current_mode == "light" else "light"
+        cls.apply(app, new_mode)
+
+    @staticmethod
+    def _ensure_app_font(app: QApplication):
+        """Load Vazirmatn font if available, fallback to system fonts."""
+        try:
+            from acasmart.paths import resource_path
+            font_dir = resource_path("resources/fonts")
+            for style in ["Vazirmatn-Regular.ttf", "Vazirmatn-Medium.ttf", "Vazirmatn-Bold.ttf"]:
+                font_path = font_dir / style
+                if font_path.exists():
+                    QFontDatabase.addApplicationFont(str(font_path))
+            app.setFont(QFont("Vazirmatn", 10))
+            return "Vazirmatn"
+        except Exception as e:
+            print(f"⚠️ Could not load Vazirmatn font: {e}")
+            fallback_font = (".SF NS Text" if sys.platform == "darwin" else "Segoe UI")
+            app.setFont(QFont(fallback_font, 10))
+            return fallback_font
+        
 
 # Global theme manager instance
 _theme_manager = None
