@@ -7,6 +7,7 @@ from PySide6.QtCore import Qt
 from acasmart.data.repos.teachers_repo import fetch_teachers_simple
 import openpyxl
 import jdatetime
+from acasmart.ui.widgets.theme_manager import ThemeManager
 
 
 class TeacherSummaryWindow(QWidget):
@@ -16,6 +17,8 @@ class TeacherSummaryWindow(QWidget):
         self.setGeometry(300, 150, 1100, 600)
 
         layout = QVBoxLayout()
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(10)
         layout.addLayout(self.create_filter_box())
 
         self.table = QTableWidget()
@@ -31,6 +34,12 @@ class TeacherSummaryWindow(QWidget):
         layout.addWidget(self.summary_label)
 
         self.setLayout(layout)
+        # Apply QSS
+        for w in (self.table, self.summary_label):
+            try:
+                ThemeManager.repolish(w)
+            except Exception:
+                pass
         self.load_filter_options()
         self.load_data()
         self.showMaximized()
@@ -47,12 +56,15 @@ class TeacherSummaryWindow(QWidget):
         self.combo_day.addItems(["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنج‌شنبه", "جمعه"])
 
         btn_filter = QPushButton("اعمال فیلتر")
+        btn_filter.setProperty("variant", "primary")
         btn_filter.clicked.connect(lambda: self.load_data(apply_filters=True))
 
         btn_clear = QPushButton("🧹 پاکسازی فیلترها")
+        btn_clear.setProperty("variant", "secondary")
         btn_clear.clicked.connect(self.clear_filters)
 
         export_btn = QPushButton("📤 خروجی اکسل")
+        export_btn.setProperty("variant", "ghost")
         export_btn.clicked.connect(self.export_to_excel)
 
         for widget in [self.combo_teacher, self.combo_day, btn_filter, btn_clear, export_btn]:
@@ -70,6 +82,12 @@ class TeacherSummaryWindow(QWidget):
         layout.addStretch()
         layout.addWidget(export_btn)
 
+        # Apply QSS to filter widgets
+        for w in (self.combo_teacher, self.combo_day, btn_filter, btn_clear, export_btn):
+            try:
+                ThemeManager.repolish(w)
+            except Exception:
+                pass
         return layout
 
     def load_filter_options(self):

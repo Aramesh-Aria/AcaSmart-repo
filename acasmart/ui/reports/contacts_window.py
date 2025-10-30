@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
     QHeaderView, QLineEdit, QHBoxLayout
 )
 from PySide6.QtCore import Qt
+from acasmart.ui.widgets.theme_manager import ThemeManager
 
 
 class ContactsWindow(QWidget):
@@ -14,9 +15,10 @@ class ContactsWindow(QWidget):
 
         layout = QVBoxLayout()
         layout.setSpacing(10)
+        layout.setContentsMargins(12, 12, 12, 12)
 
         title = QLabel("📒 لیست شماره تماس هنرجویان و اساتید")
-        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        title.setProperty("sectionTitle", True)
         layout.addWidget(title)
 
         search_layout = QHBoxLayout()
@@ -33,6 +35,11 @@ class ContactsWindow(QWidget):
         layout.addWidget(self.table)
 
         self.setLayout(layout)
+        for w in (title, self.search_input, self.table):
+            try:
+                ThemeManager.repolish(w)
+            except Exception:
+                pass
         self.all_data = []
         self.load_data()
         self.showMaximized()

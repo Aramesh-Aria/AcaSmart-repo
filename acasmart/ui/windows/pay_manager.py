@@ -15,13 +15,14 @@ from acasmart.core.utils import format_currency_with_unit ,get_currency_unit,for
 from acasmart.ui.reports.payment_report_window import PaymentReportWindow
 from acasmart.core.fa_collation import sort_records_fa, contains_fa, nd
 from acasmart.core.utils import currency_label, format_currency_with_unit, parse_user_amount_to_toman
+from acasmart.ui.widgets.theme_manager import ThemeManager
 
 class PaymentManager(QWidget):
     
     def __init__(self):
         super().__init__()
         self.setWindowTitle("ثبت پرداخت‌ها و گزارش‌گیری مالی")
-        self.setGeometry(300, 200, 700, 700)
+        self.setGeometry(300, 200, 900, 700)
         self.showMaximized()
 
         self.last_payment_date = QDate.currentDate()
@@ -40,34 +41,57 @@ class PaymentManager(QWidget):
         self.classes = []
 
         layout = QVBoxLayout()
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
 
-        # ---------- فیلتر اولیه ----------
-        layout.addWidget(QLabel("جستجوی هنرجو:"))
+        # ---------- بخش جستجوی هنرجو ----------
+        title_student = QLabel("👤 جستجوی هنرجو")
+        title_student.setProperty("sectionTitle", True)
+        layout.addWidget(title_student)
+
         self.input_search_student = QLineEdit()
         self.input_search_student.setPlaceholderText("نام هنرجو یا استاد...")
         self.input_search_student.textChanged.connect(self.search_students)
         layout.addWidget(self.input_search_student)
 
         self.list_students = QListWidget()
+        self.list_students.setObjectName("StudentList")
         self.list_students.itemClicked.connect(self.select_student)
         layout.addWidget(self.list_students)
-
-        layout.addWidget(QLabel("انتخاب کلاس مرتبط:"))
+        
+        # ---------- انتخاب کلاس ----------
+        title_class = QLabel("🏫 انتخاب کلاس")
+        title_class.setProperty("sectionTitle", True)
+        layout.addWidget(title_class)
+        
         self.list_classes = QListWidget()
+        self.list_classes.setObjectName("ClassList2")
         self.list_classes.itemClicked.connect(self.select_class)
         layout.addWidget(self.list_classes)
 
         # ---------- انتخاب ترم ----------
-        layout.addWidget(QLabel("انتخاب ترم:"))
+        title_term = QLabel("📅 انتخاب ترم")
+        title_term.setProperty("sectionTitle", True)
+        layout.addWidget(title_term)
+
         self.combo_terms = QComboBox()
         self.combo_terms.currentIndexChanged.connect(self.select_term)
         layout.addWidget(self.combo_terms)
 
         # ---------- فرم پرداخت ----------
+        title_payment = QLabel("💳 فرم ثبت پرداخت")
+        title_payment.setProperty("sectionTitle", True)
+        layout.addWidget(title_payment)
+
         form_layout = QFormLayout()
         form_layout.setLabelAlignment(Qt.AlignRight)
+        form_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
+        form_layout.setHorizontalSpacing(10)
+        form_layout.setVerticalSpacing(6)
+
 
         self.input_amount = QLineEdit()
+        self.input_amount.setPlaceholderText("مبلغ ")
         self._set_amount_box_from_toman(self.term_fee)
         form_layout.addRow("💰 مبلغ پرداختی:", self.input_amount)
 
@@ -82,19 +106,21 @@ class PaymentManager(QWidget):
 
         self.input_description = QTextEdit()
         self.input_description.setPlaceholderText("مثلاً بابت ثبت‌نام ترم زمستان...")
-        self.input_description.setFixedHeight(60)
+        self.input_description.setFixedHeight(70)
         form_layout.addRow("📝 توضیحات:", self.input_description)
         layout.addLayout(form_layout)
-        layout.addSpacing(8)
 
-        # ---------- دکمه‌های پرداخت ----------
+        # ---------- دکمه‌ها ----------
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+
         self.btn_clear = QPushButton("🧹 پاک‌سازی فرم")
+        self.btn_clear.setProperty("variant", "secondary")
         self.btn_clear.clicked.connect(self.clear_form)
 
-        self.btn_add_payment = QPushButton("✅ ثبت پرداخت")
+        self.btn_add_payment = QPushButton("💰 ثبت پرداخت")
+        self.btn_add_payment.setProperty("variant", "primary")
         self.set_payment_button_enabled(False)
-
         self.btn_add_payment.clicked.connect(self.add_payment)
 
         btn_layout.addWidget(self.btn_clear)
@@ -103,20 +129,25 @@ class PaymentManager(QWidget):
 
         # ---------- خلاصه مالی ----------
         self.lbl_total = QLabel("مجموع پرداخت شده: " + format_currency_with_unit(0))
-        self.lbl_total.setStyleSheet("font-size:13px; color:gray;")
+        self.lbl_total.setProperty("caption", True)
         layout.addWidget(self.lbl_total)
 
         self.lbl_remaining = QLabel(f"باقی‌مانده شهریه (ترم جاری): {format_currency_with_unit(self.term_fee)}")
-        self.lbl_remaining.setStyleSheet("font-size:13px; color:gray; margin-bottom:10px;")
+        self.lbl_remaining.setProperty("caption", True)
         layout.addWidget(self.lbl_remaining)
 
-        # دکمه مشاهده گزارش
+        # ---------- گزارش ----------
         self.btn_show_report = QPushButton("📊 مشاهده گزارش پرداخت‌ها")
+        self.btn_show_report.setProperty("variant", "ghost")
         self.btn_show_report.clicked.connect(self.open_report_window)
         layout.addWidget(self.btn_show_report)
 
 
+        # ---------- اعمال تم ----------
         self.setLayout(layout)
+        for w in (self.btn_add_payment, self.btn_clear, self.btn_show_report, self.input_search_student,
+                  self.input_amount, self.combo_type, self.combo_terms, self.list_students, self.list_classes):
+            ThemeManager.repolish(w)
 
         # ---------- داده اولیه ----------
         self.load_students()
@@ -166,8 +197,7 @@ class PaymentManager(QWidget):
 
         # ریست و نمایش مجدد لیست هنرجویان
         self.load_students()
-        self.search_students()
-        self.btn_add_payment.setText("✅ ثبت پرداخت")
+        self.btn_add_payment.setText("💰 ثبت پرداخت")
 
         self.set_payment_button_enabled(False)
 
@@ -189,12 +219,20 @@ class PaymentManager(QWidget):
 
         self.list_students.clear()
 
+        if not raw:
+            for row in self.students:
+                if len(row) < 4:
+                    continue
+                sid, national_code, name, teacher = row[:4]
+                item = QListWidgetItem(f"{name} (استاد: {teacher})")
+                item.setData(Qt.UserRole, sid)
+                self.list_students.addItem(item)
+            return
         filtered = []
         for row in self.students:
             if len(row) < 4:
                 continue
-            sid, national_code, name, teacher = row[:4]
-
+            sid,national_code,name,teacher = row[:4]
             # تطبیق: نام/استاد به صورت فارسی، و کدملی با یکسان‌سازی ارقام
             if (contains_fa(name, q_name_or_teacher) or
                 contains_fa(teacher, q_name_or_teacher) or
@@ -352,19 +390,19 @@ class PaymentManager(QWidget):
         term_status = "تکمیل شده" if self.term_expired else "فعال"
         
         self.lbl_total.setText(f"ترم {term_status} — جلسات: {done} از {limit} — پرداخت: {format_currency_with_unit(total)}")
-        self.lbl_total.setStyleSheet("font-size:13px; color: #555555;")
+        self.lbl_total.setProperty("caption", True)
+        ThemeManager.repolish(self.lbl_total)
 
         # مانده شهریه رنگ‌بندی شود
         if rem_money == 0:
-            color = "rgb(0, 128, 0)" # سبز پررنگ
+            self.lbl_remaining.setProperty("status", "success")
         elif rem_money <= self.term_fee / 2:
-            color = "rgb(255, 140, 0)"  # زرد/نارنجی
+            self.lbl_remaining.setProperty("status", "warning")
         else:
-            color = "rgb(178, 34, 34)"   # قرمز پررنگ
+            self.lbl_remaining.setProperty("status", "error")
 
         self.lbl_remaining.setText(f"مانده شهریه: {format_currency_with_unit(rem_money)} — جلسات باقی: {rem_sessions}")
-        self.lbl_remaining.setStyleSheet(f"font-size:13px; color:{color}; margin-bottom:10px;")
-
+        ThemeManager.repolish(self.lbl_remaining)
 
         # sync amount box with current unit; prefer remaining for tuition ---
         try:
@@ -453,7 +491,7 @@ class PaymentManager(QWidget):
             QMessageBox.information(self, "ویرایش شد", "پرداخت با موفقیت ویرایش شد.")
             del self.editing_payment_id
             self.is_editing = False
-            self.btn_add_payment.setText("✅ ثبت پرداخت")
+            self.btn_add_payment.setText("💰 ثبت پرداخت")
 
         # ادامه پردازش
         try:

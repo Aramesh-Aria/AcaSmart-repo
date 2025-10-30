@@ -1,10 +1,10 @@
 from PySide6.QtWidgets import (
-    QWidget, QLabel, QPushButton,QHBoxLayout
-
+    QWidget, QLabel, QPushButton, QHBoxLayout
 )
-from PySide6.QtCore import QDate
+from PySide6.QtCore import QDate, Qt
 
 from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
+from acasmart.ui.widgets.theme_manager import ThemeManager
 import jdatetime
 from datetime import date
 class ShamsiDatePicker(QWidget):
@@ -21,6 +21,10 @@ class ShamsiDatePicker(QWidget):
         self.layout = QHBoxLayout()
         self.label = QLabel(label_text)
         self.button = QPushButton("📅 انتخاب تاریخ")
+        # بهتر: رفتار و استایل دکمه تاریخ مثل سایر دکمه‌های ثانویه
+        self.button.setProperty("variant", "secondary")
+        self.button.setCursor(Qt.PointingHandCursor)
+        self.button.setToolTip("برای انتخاب تاریخ کلیک کنید")
 
         # تاریخ پیش‌فرض: امروز (هم میلادی هم شمسی)
         self.selected_gregorian = QDate.currentDate()
@@ -31,6 +35,12 @@ class ShamsiDatePicker(QWidget):
         self.layout.addWidget(self.label)
         self.layout.addWidget(self.button)
         self.setLayout(self.layout)
+
+        # اعمال QSS بعد از setProperty
+        try:
+            ThemeManager.repolish(self.button)
+        except Exception:
+            pass
 
     def open_calendar(self):
         """

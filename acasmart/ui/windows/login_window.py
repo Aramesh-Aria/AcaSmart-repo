@@ -1,6 +1,8 @@
 from acasmart.data.db import get_connection
 import sqlite3
 from PySide6.QtWidgets import QMainWindow, QWidget, QFormLayout, QLineEdit, QPushButton, QMessageBox
+from PySide6.QtCore import Qt
+from acasmart.ui.widgets.theme_manager import ThemeManager
 from acasmart.ui.windows.dashboard_window import DashboardWindow
 from acasmart.core.utils import hash_password
 
@@ -28,6 +30,8 @@ class LoginWindow(QMainWindow):
         form_layout.addRow("Password:", self.input_password)
 
         self.btn_login = QPushButton("Login")
+        self.btn_login.setProperty("variant", "primary")
+        self.btn_login.setCursor(Qt.PointingHandCursor)
         self.btn_login.clicked.connect(self.handle_login)
         form_layout.addRow(self.btn_login)
 
@@ -36,6 +40,13 @@ class LoginWindow(QMainWindow):
 
         central_widget.setLayout(form_layout)
         self.setCentralWidget(central_widget)
+
+        # Apply theme/QSS to inputs and button
+        for w in (self.input_mobile, self.input_password, self.btn_login):
+            try:
+                ThemeManager.repolish(w)
+            except Exception:
+                pass
 
     def handle_login(self):
         mobile = self.input_mobile.text().strip()

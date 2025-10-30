@@ -1,5 +1,7 @@
 from acasmart.data.db import get_connection
 from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QPushButton, QMessageBox
+from PySide6.QtCore import Qt
+from acasmart.ui.widgets.theme_manager import ThemeManager
 from acasmart.core.utils import hash_password
 
 class ChangeCredentialsWindow(QWidget):
@@ -27,10 +29,24 @@ class ChangeCredentialsWindow(QWidget):
         form_layout.addRow(": تکرار رمز جدید", self.input_confirm_password)
 
         self.btn_submit = QPushButton("ثبت تغییرات")
+        self.btn_submit.setProperty("variant", "primary")
+        self.btn_submit.setCursor(Qt.PointingHandCursor)
         self.btn_submit.clicked.connect(self.update_credentials)
         form_layout.addRow(self.btn_submit)
 
         self.setLayout(form_layout)
+        # Apply theme/QSS
+        for w in (
+            self.input_new_mobile,
+            self.input_current_password,
+            self.input_new_password,
+            self.input_confirm_password,
+            self.btn_submit,
+        ):
+            try:
+                ThemeManager.repolish(w)
+            except Exception:
+                pass
 
     def update_credentials(self):
         current_pass = self.input_current_password.text().strip()

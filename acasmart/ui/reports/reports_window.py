@@ -1,5 +1,6 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel
 from PySide6.QtCore import Qt
+from acasmart.ui.widgets.theme_manager import ThemeManager
 
 class ReportsWindow(QWidget):
     def __init__(self):
@@ -9,8 +10,12 @@ class ReportsWindow(QWidget):
 
         layout = QVBoxLayout()
         layout.setSpacing(12)
+        layout.setContentsMargins(12, 12, 12, 12)
 
-        button_style = "font-size: 15px; padding: 10px;"
+        # title = QLabel("📊 گزارش‌ها")
+        # title.setAlignment(Qt.AlignRight)
+        # title.setProperty("sectionTitle", True)
+        # layout.addWidget(title)
 
         reports = [
             ("💵 گزارش مالی هنرجویان", self.open_financial_report),
@@ -20,13 +25,21 @@ class ReportsWindow(QWidget):
             ("📒 دفترچه تلفن", self.open_student_contacts),
         ]
 
-        for title, handler in reports:
-            btn = QPushButton(title)
-            btn.setStyleSheet(button_style)
+        for caption, handler in reports:
+            btn = QPushButton(caption)
+            btn.setProperty("variant", "secondary")
             btn.clicked.connect(handler)
             layout.addWidget(btn)
+            try:
+                ThemeManager.repolish(btn)
+            except Exception:
+                pass
 
         self.setLayout(layout)
+        try:
+            ThemeManager.repolish(title)
+        except Exception:
+            pass
 
     def open_financial_report(self):
         from acasmart.ui.reports.financial_report_window import FinancialReportWindow

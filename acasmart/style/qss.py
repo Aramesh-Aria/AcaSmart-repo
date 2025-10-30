@@ -43,15 +43,59 @@ QScrollBar::handle:vertical { background: %(border)s; border-radius: 6px; }
 QToolTip {
   background: %(surface)s; color: %(text)s; border: 1px solid %(border)s; padding: 6px;
 }
-
 /* Buttons with variants */
-QPushButton[variant="primary"]  { background: %(primary)s; color: %(onPrimary)s; }
-QPushButton[variant="secondary"]{ background: %(surface)s; color: %(text)s; border:1px solid %(border)s; }
-QPushButton[variant="ghost"]    { background: transparent; color: %(text)s; border: none; }
-QPushButton[variant="danger"]   { background: %(error)s; color: white; }
+QPushButton[variant="primary"]  {
+  background: %(primary)s;
+  color: %(onPrimary)s;
+  border: none;
+  border-radius: %(radius)s;
+  padding: 6px 12px;
+}
+QPushButton[variant="primary"]:hover {
+  background: %(primaryHover)s;
+}
+QPushButton[variant="primary"]:pressed {
+  background: %(primaryActive)s;
+}
+/* 👇 این مهمه */
+QPushButton[variant="primary"]:disabled {
+  background: %(border)s;
+  color: %(muted)s;
+}
 
-QPushButton[variant="secondary"]:hover { background: %(rowHover)s; }
-QPushButton[variant="ghost"]:hover     { background: %(rowHover)s; }
+/* secondary */
+QPushButton[variant="secondary"] {
+  background: %(surface)s;
+  color: %(text)s;
+  border: 1px solid %(border)s;
+  border-radius: %(radius)s;
+  padding: 6px 12px;
+}
+QPushButton[variant="secondary"]:hover {
+  background: %(rowHover)s;
+}
+QPushButton[variant="secondary"]:disabled {
+  background: %(surface)s;
+  color: %(muted)s;
+  border: 1px solid %(border)s;
+}
+
+/* ghost */
+QPushButton[variant="ghost"] {
+  background: transparent;
+  color: %(text)s;
+  border: none;
+  padding: 6px 12px;
+}
+QPushButton[variant="ghost"]:hover {
+  background: rgba(0, 0, 0, 0.04); /* ملایم‌تر از rowHover */
+}
+QPushButton[variant="ghost"]:disabled {
+  color: %(muted)s;
+  background: transparent;
+  opacity: 0.6;
+}
+
 
 /* Badge statuses */
 QLabel#Badge {
@@ -110,7 +154,133 @@ QMenu::separator {
   margin: 4px 8px;
 }
 
+/* ----- List Widgets ----- */
+QListWidget {
+  background: %(surface)s;
+  border: 1px solid %(border)s;
+  border-radius: %(radius)s;
+}
 
+QListWidget::item {
+  padding: 6px 10px;
+  border-radius: %(radius)s;
+  color: %(text)s;
+}
+
+/* لیست هنرجو – انتخاب‌شده */
+QListWidget#StudentList::item:selected {
+  background: %(primaryLight)s;
+  color: %(text)s;          /* نه onPrimary – که خوانا بمونه */
+  font-weight: 600;
+}
+QListWidget::item:selected {
+  background: %(primaryLight)s;
+  color: %(text)s;       
+}
+
+QListWidget::item:hover {
+  background: %(rowHover)s;
+}
+
+/* Specific tweaks for Class & Student lists */
+QListWidget#StudentList, QListWidget#ClassList2 {
+  margin-bottom: 6px;
+}
+
+
+/* لیست کلاس – انتخاب‌شده */
+QListWidget#ClassList {
+    background: transparent;
+    border: none;
+}
+
+QListWidget#ClassList::item {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 6px 0;
+}
+
+QListWidget#ClassList::item:selected,
+QListWidget#ClassList::item:selected,
+QListWidget#ClassList::item:hover,
+QListWidget#ClassList::item:selected:active,
+QListWidget#ClassList::item:selected:!active {
+    background: transparent;
+}
+
+
+/* هاور عمومی */
+QListWidget::item:hover {
+  background: %(rowHover)s;
+}
+
+QTableWidget#AttendanceTable::item {
+  padding: 4px 6px;
+}
+QTableWidget#AttendanceTable QCheckBox {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ----- Section Titles ----- */
+QLabel[sectionTitle="true"] {
+  font-weight: 600;
+  font-size: 14px;
+  color: %(textStrong)s;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+/* ----- Caption Labels ----- */
+QLabel[caption="true"] {
+  font-size: 12px;
+  color: %(muted)s;
+}
+
+QFormLayout > QLabel {
+  font-weight: 500;
+  color: %(text)s;
+  margin-right: 4px;
+}
+
+
+QLabel[caption="true"][status="success"] { color: rgb(0, 128, 0); }
+QLabel[caption="true"][status="warning"] { color: rgb(255, 140, 0); }
+QLabel[caption="true"][status="error"]   { color: rgb(178, 34, 34); }
+
+/* ----- Calendar ----- */
+QCalendarWidget {
+  background: %(surface)s;
+  border: 1px solid %(border)s;
+  border-radius: %(radius)s;
+}
+QCalendarWidget QWidget#qt_calendar_navigationbar {
+  background: %(surface)s;
+  border-bottom: 1px solid %(border)s;
+}
+QCalendarWidget QToolButton {
+  padding: 4px 8px;
+  border-radius: %(radius)s;
+}
+QCalendarWidget QToolButton:hover {
+  background: %(rowHover)s;
+}
+/* Days view hover/selection */
+QCalendarWidget QAbstractItemView::item:hover {
+  background: %(rowHover)s;
+}
+QCalendarWidget QAbstractItemView::item:selected {
+  background: %(primary)s;
+  color: %(onPrimary)s;
+}
+/* Today outline */
+QCalendarWidget QAbstractItemView::item:enabled:selected:active {
+  outline: none;
+}
+QCalendarWidget QAbstractItemView::item:enabled {
+  padding: 2px;
+}
 
 
 """

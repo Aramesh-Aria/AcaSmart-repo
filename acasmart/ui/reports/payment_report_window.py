@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTableWidget, QTableWidgetItem, QHeaderView, QLineEdit, QComboBox, QFileDialog,QMessageBox,QApplication
+    QTableWidget, QTableWidgetItem, QHeaderView, QLineEdit, QComboBox, QFileDialog, QMessageBox, QApplication
 )
 from PySide6.QtCore import Qt,Signal,QDate
 from PySide6.QtGui import QColor
@@ -14,6 +14,7 @@ from acasmart.data.repos.settings_repo import get_setting
 from acasmart.data.repos.classes_repo import fetch_classes
 from acasmart.core.utils import format_currency_with_unit
 from functools import partial
+from acasmart.ui.widgets.theme_manager import ThemeManager
 
 class PaymentReportWindow(QWidget):
     payment_changed = Signal()  # سیگنال برای اعلام تغییرات پرداخت
@@ -74,7 +75,9 @@ class PaymentReportWindow(QWidget):
         # --- دکمه‌ها ---
         btn_layout = QHBoxLayout()
         self.btn_clear = QPushButton("🧹 پاکسازی فیلتر")
+        self.btn_clear.setProperty("variant", "secondary")
         self.btn_export = QPushButton("📥 خروجی اکسل")
+        self.btn_export.setProperty("variant", "primary")
         self.btn_clear.clicked.connect(self.clear_filters)
         self.btn_export.clicked.connect(self.export_to_excel)
         btn_layout.addWidget(self.btn_clear)
@@ -98,6 +101,16 @@ class PaymentReportWindow(QWidget):
         layout.addWidget(self.lbl_total_filtered)
 
         self.setLayout(layout)
+        # Apply QSS to filters/buttons/table
+        for w in (
+            self.input_min_amount, self.input_max_amount, self.input_student_name, self.combo_class,
+            self.input_keyword, self.combo_filter_ptype, self.date_from, self.date_to,
+            self.btn_clear, self.btn_export, self.table_payments, self.lbl_total_filtered,
+        ):
+            try:
+                ThemeManager.repolish(w)
+            except Exception:
+                pass
 
         # اتصال تغییرات ورودی‌ها به فیلتر زنده
         self.input_min_amount.textChanged.connect(self.load_payments)
@@ -193,15 +206,24 @@ class PaymentReportWindow(QWidget):
             # ستون عملیات
             pid = row_data[0]
             btn_delete = QPushButton("❌ حذف")
+            btn_delete.setProperty("variant", "ghost")
             btn_delete.clicked.connect(partial(self.delete_payment, pid))
 
             btn_edit = QPushButton("✏️ ویرایش")
+            btn_edit.setProperty("variant", "secondary")
             btn_edit.clicked.connect(partial(self.edit_payment, pid))
 
             op_layout = QHBoxLayout()
             op_layout.addWidget(btn_edit)
             op_layout.addWidget(btn_delete)
             op_layout.setContentsMargins(0, 0, 0, 0)
+
+            # Repolish operation buttons
+            try:
+                ThemeManager.repolish(btn_delete)
+                ThemeManager.repolish(btn_edit)
+            except Exception:
+                pass
 
             op_widget = QWidget()
             op_widget.setLayout(op_layout)

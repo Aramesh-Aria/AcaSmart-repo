@@ -9,6 +9,7 @@ from PySide6.QtGui import QColor
 
 from acasmart.core.utils import format_currency_with_unit
 from acasmart.ui.widgets.shamsi_date_picker import ShamsiDatePicker
+from acasmart.ui.widgets.theme_manager import ThemeManager
 
 import jdatetime
 import openpyxl
@@ -25,14 +26,15 @@ class FinancialReportWindow(QWidget):
     def build_ui(self):
         layout = QVBoxLayout()
         layout.setSpacing(10)
+        layout.setContentsMargins(12, 12, 12, 12)
 
         title = QLabel("📊 گزارش مالی ترم‌های هنرجویان")
-        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        title.setProperty("sectionTitle", True)
         layout.addWidget(title)
 
         # ویجت خلاصه آماری
         self.summary_label = QLabel("")
-        self.summary_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #333;")
+        self.summary_label.setProperty("caption", True)
         layout.addWidget(self.summary_label)
 
         # فیلتر بالا
@@ -49,12 +51,15 @@ class FinancialReportWindow(QWidget):
         self.combo_status.addItems(["همه وضعیت‌ها", "تسویه", "بدهکار"])
 
         btn_filter = QPushButton("اعمال فیلتر")
+        btn_filter.setProperty("variant", "primary")
         btn_filter.clicked.connect(self.apply_filters)
 
         btn_clear = QPushButton("پاکسازی فیلتر")
+        btn_clear.setProperty("variant", "secondary")
         btn_clear.clicked.connect(self.reset_filters)
 
         btn_export = QPushButton("📤 خروجی اکسل")
+        btn_export.setProperty("variant", "ghost")
         btn_export.clicked.connect(self.export_to_excel)
 
         filter_layout.addWidget(self.input_student_name)
@@ -91,6 +96,18 @@ class FinancialReportWindow(QWidget):
         self.showMaximized()
 
         self.setLayout(layout)
+        # Apply QSS to key widgets
+        for w in (
+            title, self.summary_label, self.input_student_name,
+            self.combo_class, self.combo_status,
+            btn_filter, btn_clear, btn_export,
+            self.date_from_picker, self.date_to_picker,
+            self.table,
+        ):
+            try:
+                ThemeManager.repolish(w)
+            except Exception:
+                pass
         self.load_data()
 
     def load_data(self):

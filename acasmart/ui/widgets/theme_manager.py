@@ -9,6 +9,7 @@ from PySide6.QtCore import Qt
 from acasmart.style import theme as THEME
 from acasmart.style.qss import build_qss
 from PySide6.QtGui import QFontDatabase, QFont
+from acasmart.paths import resource_path
 
 APP_ORG  = "AcaSmart"
 APP_NAME = "AcaSmart"
@@ -19,6 +20,10 @@ class ThemeManager:
     
     _current_mode = "light"
     _tokens = THEME.LIGHT
+    # Preserve base app font across theme toggles
+    _base_font_family: str | None = None
+    _base_point_size: int | None = None
+    _qt_style_set: bool = False
 
     def __init__(self):
         self.app = QApplication.instance()
@@ -79,37 +84,42 @@ class ThemeManager:
         return qicon
 
     def _get_resource_path(self, filename: str) -> Path:
+        """Robust lookup for resources in dev and packaged modes.
+        Prioritize acasmart/resources/static and acasmart/resources via resource_path.
         """
-        مسیر‌یابی robust در dev و packaged.
-        """
+        # Packaged (PyInstaller): resource_path already points to package dir
         candidates: list[Path] = []
-        base = Path(__file__).resolve()
-        src_dir  = base.parent                                # .../AcaSmart-repo/src
-        repo_dir = src_dir.parent                             # .../AcaSmart-repo
-        proj_dir = repo_dir.parent                            # .../AcaSmart
-        exe_dir  = Path(sys.executable).resolve().parent if hasattr(sys, "executable") else Path.cwd()
-
-        # 1) PyInstaller MEIPASS (اگر بسته شده)
-        if getattr(sys, "frozen", False):
-            meipass = Path(sys._MEIPASS)  # type: ignore[attr-defined]
+        try:
             candidates += [
-                meipass / filename,
-                exe_dir / filename,
+                resource_path("resources", "static", filename),
+                resource_path("resources", filename),
+            ]
+        except Exception:
+            pass
+
+        # Fallbacks: walk up from this file and try to locate acasmart/resources
+        base = Path(__file__).resolve()
+        for parent in [base.parent, *base.parents]:
+            candidates += [
+                parent / "resources" / "static" / filename,
+                parent / "resources" / filename,
+                parent / "acasmart" / "resources" / "static" / filename,
+                parent / "acasmart" / "resources" / filename,
             ]
 
-        # 2) حالت توسعه: مسیر جدید منابع
+        # Last-resort: current working dir and executable dir
+        exe_dir = Path(sys.executable).resolve().parent if hasattr(sys, "executable") else Path.cwd()
         candidates += [
-            # New canonical location
-            src_dir / "acasmart" / "resources" / filename,
-            repo_dir / "src" / "acasmart" / "resources" / filename,
-            proj_dir / "AcaSmart-repo" / "src" / "acasmart" / "resources" / filename,
-            # Fallbacks
-            src_dir / filename,
+            exe_dir / filename,
+            Path.cwd() / filename,
         ]
 
         for p in candidates:
-            if p.exists():
-                return p
+            try:
+                if p and p.exists():
+                    return p
+            except Exception:
+                continue
         return candidates[0]
 
     def detect_system_theme(self) -> str:
@@ -153,7 +163,10 @@ class ThemeManager:
             try:
                 from AppKit import NSApplication, NSImage
                 icns_path = self._get_resource_path("AppIcon.icns")
-                if icns_path.exists():
+                if not icns_path.exists():
+                    # fallback to PNG if ICNS missing
+                    icns_path = self._get_resource_path("AppIcon.png")
+                if icns_path and icns_path.exists():
                     nsimg = NSImage.alloc().initWithContentsOfFile_(str(icns_path))
                     NSApplication.sharedApplication().setApplicationIconImage_(nsimg)
             except Exception:
@@ -199,7 +212,11 @@ class ThemeManager:
         style = widget.style()
         style.unpolish(widget)
         style.polish(widget)
-        widget.update()
+        try:
+            widget.update()
+        except TypeError:
+            # fallback امن‌تر
+            widget.repaint()
     @classmethod
     def apply(cls, app: QApplication, mode: str | None = None):
         """
@@ -215,11 +232,33 @@ class ThemeManager:
 
         # یکدست کردن رندر (به‌خصوص در ویندوز/لینوکس)
         try:
-            app.setStyle("Fusion")
+            if not cls._qt_style_set:
+                app.setStyle("Fusion")
+                cls._qt_style_set = True
             cls._ensure_app_font(app)
         except Exception as e:
             print(f"error in {e}")
         
+        # Set application metadata so Dock/task switcher shows proper name/icon
+        try:
+            app.setOrganizationName(APP_ORG)
+            app.setApplicationName(APP_NAME)
+            app.setApplicationDisplayName(APP_NAME)
+            if sys.platform.startswith("linux"):
+                try:
+                    app.setDesktopFileName("acasmart")
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        # On macOS, try to set process name for better Alt-Tab label when not bundled
+        if sys.platform == "darwin":
+            try:
+                from AppKit import NSProcessInfo
+                NSProcessInfo.processInfo().setProcessName_(APP_NAME)
+            except Exception:
+                pass
 
 
         t = cls._tokens
@@ -261,13 +300,23 @@ class ThemeManager:
                 font_path = font_dir / style
                 if font_path.exists():
                     QFontDatabase.addApplicationFont(str(font_path))
-            app.setFont(QFont("Vazirmatn", 10))
-            return "Vazirmatn"
+            # Keep original point size stable across toggles
+            if ThemeManager._base_point_size is None:
+                current_size = app.font().pointSize()
+                ThemeManager._base_point_size = current_size if current_size > 0 else 10
+            target_family = "Vazirmatn"
+            ThemeManager._base_font_family = ThemeManager._base_font_family or target_family
+            app.setFont(QFont(target_family, ThemeManager._base_point_size))
+            return target_family
         except Exception as e:
             print(f"⚠️ Could not load Vazirmatn font: {e}")
             fallback_font = (".SF NS Text" if sys.platform == "darwin" else "Segoe UI")
-            app.setFont(QFont(fallback_font, 10))
-            return fallback_font
+            if ThemeManager._base_point_size is None:
+                current_size = app.font().pointSize()
+                ThemeManager._base_point_size = current_size if current_size > 0 else 10
+            ThemeManager._base_font_family = ThemeManager._base_font_family or fallback_font
+            app.setFont(QFont(fallback_font, ThemeManager._base_point_size))
+            return ThemeManager._base_font_family
         
 
 # Global theme manager instance

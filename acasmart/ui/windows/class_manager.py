@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 
 from PySide6.QtCore import QTime, Qt, QSize
 from PySide6.QtGui import QColor
+from acasmart.ui.widgets.theme_manager import ThemeManager
 
 class ClassManager(QWidget):
     def __init__(self):
@@ -47,11 +48,15 @@ class ClassManager(QWidget):
         # Buttons
         self.btn_create_class = QPushButton("➕ ایجاد کلاس")
         self.btn_create_class.clicked.connect(self.create_class)
+        self.btn_create_class.setProperty("variant", "primary")
+
         self.btn_clear = QPushButton("🧹 پاک‌سازی فرم")
         self.btn_clear.clicked.connect(self.clear_form)
+        self.btn_clear.setProperty("variant", "secondary")
 
         # List
         self.list_classes = QListWidget()
+        self.list_classes.setObjectName("ClassList")
         self.list_classes.itemClicked.connect(self.load_class_into_form)
         self.list_classes.itemDoubleClicked.connect(self.delete_class)
 
@@ -78,6 +83,7 @@ class ClassManager(QWidget):
         # جستجوی پیشرفته
         self.btn_toggle_filter = QPushButton("فیلتر پیشرفته 🔽")
         self.btn_toggle_filter.clicked.connect(self.toggle_advanced_filter)
+        self.btn_toggle_filter.setProperty("variant", "ghost")
 
         # فیلدهای فیلتر
         self.filter_day = QComboBox()
@@ -111,6 +117,10 @@ class ClassManager(QWidget):
         self.filter_instrument.textChanged.connect(self.load_classes)
         self.filter_teacher.textChanged.connect(self.load_classes)
         self.filter_class_name.textChanged.connect(self.load_classes)
+
+
+        for btn in (self.btn_create_class, self.btn_clear, self.btn_toggle_filter):
+            ThemeManager.repolish(btn)
 
         self.showMaximized()
 
@@ -205,26 +215,45 @@ class ClassManager(QWidget):
         for cls in filtered:
             class_id, name, teacher_name, instrument, day, start_time, end_time, room = cls
 
-            main_text = f"<b>{name}</b> - <span style='color:#444'>{teacher_name} - {instrument}</span>"
-            detail_text = f"<span style='font-size:11px; color:#555'>{day} {start_time} - {end_time} | اتاق: {room}</span>"
+            main_text = f"<b>{name}</b> - {teacher_name} - {instrument}"
+            detail_text = f"<span>{day} {start_time} - {end_time} | اتاق: {room}</span>"
 
             label = QLabel(f"{main_text}<br>{detail_text}")
             label.setTextFormat(Qt.RichText)
+            label.setObjectName("ClassItem")
+            label.setWordWrap(True)
+            label.setFixedHeight(60)
+            bg = day_colors.get(day, "#FFFFFF")
+                    # این استایل دیگه با QSS قاطی نمی‌شه
             label.setStyleSheet(f"""
-                padding: 10px;
-                line-height: 1.6;
-                font-size: 13px;
-                border: 1px solid #ccc;
-                border-radius: 6px;
-                margin-bottom: 6px;
-                background-color: {day_colors.get(day, "#FFFFFF")};
+                QLabel#ClassItem {{
+                    background: {bg};
+                    border: 1px solid rgba(0, 0, 0, 0.02);
+                    border-radius: 12px;
+                    padding: 10px 14px;
+                }}
+                QLabel#ClassItem b {{
+                    font-size: 13px;
+                    color: #0B1F3A;
+                }}
+                QLabel#ClassItem span {{
+                    font-size: 11px;
+                    color: #0B1F3A;
+                    opacity: .85;
+                    display: block;
+                    margin-top: 4px;
+                    line-height: 1.4;
+                }}
             """)
+
             label.setAttribute(Qt.WA_TransparentForMouseEvents)
 
             item = QListWidgetItem()
-            item.setSizeHint(label.sizeHint())
+            item.setSizeHint(QSize(0, 70))
             item.setData(Qt.UserRole, class_id)
 
+            item.setBackground(Qt.transparent)
+            
             self.list_classes.addItem(item)
             self.list_classes.setItemWidget(item, label)
 

@@ -3,10 +3,11 @@ from acasmart.data.repos.profiles_repo import create_pricing_profile, list_prici
 from acasmart.data.repos.settings_repo import get_setting
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QTableWidgetItem,
-    QMessageBox, QDialog, QDialogButtonBox, QLabel, QLineEdit, QSpinBox, QCheckBox,QAbstractItemView
+    QMessageBox, QDialog, QDialogButtonBox, QLabel, QLineEdit, QSpinBox, QCheckBox, QAbstractItemView
 )
 from PySide6.QtCore import Qt
 from acasmart.core.utils import currency_label, format_currency_with_unit, parse_user_amount_to_toman
+from acasmart.ui.widgets.theme_manager import ThemeManager
 
 class PricingProfileDialog(QDialog):
     """
@@ -75,6 +76,18 @@ class PricingProfileDialog(QDialog):
         btns.accepted.connect(self.accept)
         btns.rejected.connect(self.reject)
         lay.addWidget(btns)
+        # Style dialog buttons
+        try:
+            okb = btns.button(QDialogButtonBox.Ok)
+            cb = btns.button(QDialogButtonBox.Cancel)
+            if okb:
+                okb.setProperty("variant", "primary")
+                ThemeManager.repolish(okb)
+            if cb:
+                cb.setProperty("variant", "secondary")
+                ThemeManager.repolish(cb)
+        except Exception:
+            pass
 
     def get_values(self):
         # مقدار ورودی کاربر (برحسب واحد فعلی UI) → تومان خام برای DB
@@ -112,9 +125,13 @@ class PricingProfileManager(QWidget):
         # دکمه‌ها
         row_btns = QHBoxLayout()
         self.btn_add = QPushButton("➕ افزودن پروفایل")
+        self.btn_add.setProperty("variant", "primary")
         self.btn_edit = QPushButton("✏️ ویرایش")
+        self.btn_edit.setProperty("variant", "secondary")
         self.btn_delete = QPushButton("🗑️ حذف")
+        self.btn_delete.setProperty("variant", "ghost")
         self.btn_default = QPushButton("⭐ تنظیم به‌عنوان پیش‌فرض")
+        self.btn_default.setProperty("variant", "secondary")
 
         for b in [self.btn_add, self.btn_edit, self.btn_delete, self.btn_default]:
             row_btns.addWidget(b)
@@ -128,6 +145,12 @@ class PricingProfileManager(QWidget):
         self.btn_default.clicked.connect(self.make_default)
 
         self.reload()
+        # Apply theme/QSS
+        for w in (self.tbl, self.btn_add, self.btn_edit, self.btn_delete, self.btn_default):
+            try:
+                ThemeManager.repolish(w)
+            except Exception:
+                pass
 
     # --- Utilities ---
     def _selected_profile_row_id(self):

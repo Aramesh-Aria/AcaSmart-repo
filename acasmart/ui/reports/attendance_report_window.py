@@ -11,6 +11,7 @@ import openpyxl
 import jdatetime
 
 from acasmart.ui.widgets.shamsi_date_picker import ShamsiDatePicker
+from acasmart.ui.widgets.theme_manager import ThemeManager
 from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
 
 
@@ -24,9 +25,10 @@ class AttendanceReportWindow(QWidget):
     def build_ui(self):
         layout = QVBoxLayout()
         layout.setSpacing(10)
+        layout.setContentsMargins(12, 12, 12, 12)
 
         title = QLabel("📅 گزارش کلی حضور و غیاب هنرجویان")
-        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        title.setProperty("sectionTitle", True)
         layout.addWidget(title)
 
         filter_layout = QHBoxLayout()
@@ -46,12 +48,15 @@ class AttendanceReportWindow(QWidget):
         self.combo_term_status.addItem("فقط پایان‌یافته", "finished")
 
         btn_filter = QPushButton("اعمال فیلتر")
+        btn_filter.setProperty("variant", "primary")
         btn_filter.clicked.connect(self.apply_filters)
 
         btn_clear = QPushButton("پاکسازی فیلتر")
+        btn_clear.setProperty("variant", "secondary")
         btn_clear.clicked.connect(self.reset_filters)
 
         btn_export = QPushButton("📤 خروجی اکسل")
+        btn_export.setProperty("variant", "ghost")
         btn_export.clicked.connect(self.export_to_excel)
 
         filter_layout.addWidget(self.input_student_name)
@@ -83,6 +88,16 @@ class AttendanceReportWindow(QWidget):
 
         self.showMaximized()
         self.setLayout(layout)
+        for w in (
+            title,
+            self.input_student_name, self.combo_teacher, self.combo_class, self.combo_term_status,
+            btn_filter, btn_clear, btn_export,
+            self.date_from_picker, self.date_to_picker, self.table, self.status_label,
+        ):
+            try:
+                ThemeManager.repolish(w)
+            except Exception:
+                pass
         self.load_data()
         self.table.setSortingEnabled(True)
 

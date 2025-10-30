@@ -4,6 +4,8 @@ LIGHT = {
     "text": "#0B1F3A",
     "muted": "#5A6B82",  # متن ثانویه
     "primary": "#1E3A5F",
+    "primaryLight": "#D6E4FF",   # ← رنگ پس‌زمینهٔ روشن‌تر primary برای حالت انتخاب
+    "textStrong": "#0B1F3A", # ← رنگ تیره‌تر تیترها (برای sectionTitle)
     "onPrimary": "#FFFFFF",
     "primaryHover": "#26a36f",
     "primaryActive": "#208e61",
@@ -25,6 +27,8 @@ DARK = {
     "text": "#F5F6FF",
     "muted": "#C9CCDA",
     "primary": "#1E3A5F",
+    "primaryLight": "#2A3B55",   # ← روشن‌تر از primary در حالت تیره
+    "textStrong": "#FFFFFF",     # ← روشن‌تر برای تیترها در حالت تیره
     "onPrimary": "#FFFFFF",
     "primaryHover": "#6f4ed6",
     "primaryActive": "#6245bf",

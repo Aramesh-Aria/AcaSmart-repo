@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from acasmart.services.sms_notifier import SmsNotifier
+from acasmart.ui.widgets.theme_manager import ThemeManager
 
 class SmsNotificationWindow(QWidget):
     def __init__(self):
@@ -18,18 +19,17 @@ class SmsNotificationWindow(QWidget):
 
     def build_ui(self):
         layout = QVBoxLayout()
-        layout.setSpacing(2)
-        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(8)
+        layout.setContentsMargins(12, 12, 12, 12)
 
         title = QLabel("📨 ارسال پیامک به هنرجویان")
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 17px; font-weight: bold; margin-bottom: 10px;")
+        title.setProperty("sectionTitle", True)
         layout.addWidget(title)
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("🔍 جستجوی هنرجو بر اساس نام...")
         self.search_input.textChanged.connect(self.filter_students)
-        self.search_input.setStyleSheet("padding: 6px;")
         layout.addWidget(self.search_input)
 
         # select_all_btn = QPushButton("✔️ انتخاب همه / لغو همه")
@@ -48,21 +48,17 @@ class SmsNotificationWindow(QWidget):
         layout.addWidget(scroll)
 
         self.btn_send_sms = QPushButton("📤 ارسال پیامک برای انتخاب‌شده‌ها")
+        self.btn_send_sms.setProperty("variant", "primary")
         self.btn_send_sms.clicked.connect(self.send_sms_to_selected)
-        self.btn_send_sms.setStyleSheet("""
-            QPushButton {
-                background-color: #2e7d32;
-                color: white;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #1b5e20;
-            }
-        """)
         layout.addWidget(self.btn_send_sms)
 
         self.setLayout(layout)
+        # Apply QSS
+        for w in (self.search_input, self.btn_send_sms, title):
+            try:
+                ThemeManager.repolish(w)
+            except Exception:
+                pass
         self.load_students()
 
     def toggle_select_all(self):
@@ -85,7 +81,6 @@ class SmsNotificationWindow(QWidget):
         for sid, name, gender, birth_date, national_code in data:
             cb = QCheckBox(f"{name} - کدملی: {national_code}")
             cb.setProperty("student_id", sid)
-            cb.setStyleSheet("padding: 2px; font-size: 13px;")
             self.checkboxes.append(cb)
             self.list_layout.addWidget(cb)
 

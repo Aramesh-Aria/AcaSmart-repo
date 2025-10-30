@@ -16,6 +16,7 @@ from PySide6.QtCore import Qt
 import jdatetime
 from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
 from acasmart.core.fa_collation import sort_records_fa, contains_fa, nd
+from acasmart.ui.widgets.theme_manager import ThemeManager
 
 class StudentManager(QWidget):
     def __init__(self):
@@ -72,19 +73,20 @@ class StudentManager(QWidget):
         self.btn_add = QPushButton("➕ افزودن هنرجو ")
         self.btn_add.clicked.connect(self.add_student)
         self.btn_add.setFixedHeight(40)
-        self.btn_add.setStyleSheet("font-size: 14px;")
         self.btn_add.setEnabled(False)
+        self.btn_add.setProperty("variant", "primary")
 
         # دکمه ویرایش
         self.btn_update = QPushButton("✏ ویرایش اطلاعات ️")
         self.btn_update.clicked.connect(self.update_student)
         self.btn_update.setEnabled(False)#اول کار غیر فعاله
         self.btn_update.setFixedHeight(40)
-        self.btn_update.setStyleSheet("font-size: 14px;")
+        self.btn_update.setProperty("variant", "secondary")
 
         # دکمه پاک‌سازی فرم
         self.btn_clear = QPushButton("🧹 پاک‌سازی فرم ")
         self.btn_clear.clicked.connect(self.clear_form)
+        self.btn_clear.setProperty("variant", "ghost")
 
         # search input
         self.search_input = QLineEdit()
@@ -134,7 +136,8 @@ class StudentManager(QWidget):
         #جستجو
         self.btn_advanced = QPushButton("فیلتر پیشرفته 🔽")
         self.btn_advanced.clicked.connect(self.toggle_advanced)
-        layout.addWidget(self.btn_advanced)
+        self.btn_advanced.setProperty("variant", "secondary")
+
 
         self.adv_widget = QWidget()
         adv_layout = QVBoxLayout()
@@ -178,6 +181,11 @@ class StudentManager(QWidget):
         layout.addWidget(self.lbl_count)
 
         self.setLayout(layout)
+
+        # برای اینکه QSS جدید رو بخونه
+        for btn in (self.btn_add, self.btn_update, self.btn_clear, self.btn_advanced):
+            ThemeManager.repolish(btn)
+        layout.addWidget(self.btn_advanced)
 
         # داده‌ها
         self.selected_student_id = None

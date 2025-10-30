@@ -1,4 +1,4 @@
-from acasmart.data.repos.classes_repo import get_day_and_time_for_class
+from acasmart.data.repos.classes_repo import get_day_and_time_for_class, get_class_by_id
 from acasmart.data.repos.notifications_repo import get_unnotified_expired_terms, mark_terms_as_notified
 from acasmart.data.repos.payments_repo import delete_term_if_no_payments
 from acasmart.data.repos.profiles_repo import list_pricing_profiles
@@ -11,13 +11,14 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QTimeEdit, QMessageBox, QDialog,
     QDialogButtonBox, QHBoxLayout, QComboBox, QRadioButton, QSpinBox
 )
-from PySide6.QtCore import QTime, Qt
+from PySide6.QtCore import QTime, Qt, QSize
 from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
 import jdatetime
 import sqlite3
 from acasmart.core.fa_collation import sort_records_fa, contains_fa,nd,fa_digits
 from acasmart.core.utils import currency_label, format_currency_with_unit, parse_user_amount_to_toman
 from acasmart.core.fa_collation import fa_digits
+from acasmart.ui.widgets.theme_manager import ThemeManager
 
 class TermConfigDialog(QDialog):
     """
@@ -93,6 +94,19 @@ class TermConfigDialog(QDialog):
         btns.rejected.connect(self.reject)
         lay.addWidget(btns)
 
+        # Style dialog buttons with theme variants
+        try:
+            ok_btn = btns.button(QDialogButtonBox.Ok)
+            cancel_btn = btns.button(QDialogButtonBox.Cancel)
+            if ok_btn:
+                ok_btn.setProperty("variant", "primary")
+                ThemeManager.repolish(ok_btn)
+            if cancel_btn:
+                cancel_btn.setProperty("variant", "secondary")
+                ThemeManager.repolish(cancel_btn)
+        except Exception:
+            pass
+
         # فعال/غیرفعال‌سازی ورودی‌های سفارشی
         def sync_enabled():
             custom = self.rb_custom.isChecked()
@@ -151,15 +165,20 @@ class SessionManager(QWidget):
         self.refresh_session_counts()        # ← اولین بارگیری
 
         layout = QVBoxLayout()
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(10)
 
         # Search students
-        layout.addWidget(QLabel("جستجوی هنرجو:"))
+        lbl_search_students = QLabel("جستجوی هنرجو:")
+        lbl_search_students.setProperty("sectionTitle", True)
+        layout.addWidget(lbl_search_students)
         self.input_search_student = QLineEdit()
         self.input_search_student.setPlaceholderText("نام هنرجو یا کد ملی هنرجو...")
         self.input_search_student.textChanged.connect(self.search_students)
         layout.addWidget(self.input_search_student)
 
         self.list_search_results = QListWidget()
+        self.list_search_results.setObjectName("StudentList")
         self.list_search_results.itemClicked.connect(self.select_student)
         layout.addWidget(self.list_search_results)
 
@@ -170,13 +189,19 @@ class SessionManager(QWidget):
 
 
         # Search class list (after student selected)
-        layout.addWidget(QLabel("انتخاب کلاس مرتبط:"))
+        lbl_select_class = QLabel("انتخاب کلاس مرتبط:")
+        lbl_select_class.setProperty("sectionTitle", True)
+        layout.addWidget(lbl_select_class)
         self.list_classes = QListWidget()
+        self.list_classes.setObjectName("ClassList")
         self.list_classes.itemClicked.connect(self.select_class)
         layout.addWidget(self.list_classes)
 
         # تاریخ شروع ترم
         self.date_btn = QPushButton("📅 انتخاب تاریخ شروع ترم")
+        self.date_btn.setProperty("variant", "secondary")
+        self.date_btn.setCursor(Qt.PointingHandCursor)
+        self.date_btn.setToolTip("برای انتخاب تاریخ کلیک کنید")
         self.date_btn.clicked.connect(self.open_date_picker)
         layout.addWidget(self.date_btn)
         self.selected_shamsi_date = None
@@ -184,7 +209,9 @@ class SessionManager(QWidget):
         self.date_btn.setText(f"📅 تاریخ شروع ترم: {self.selected_shamsi_date}")
 
         # ساعت جلسه
-        layout.addWidget(QLabel("ساعت جلسه:"))
+        lbl_time = QLabel("ساعت جلسه:")
+        lbl_time.setProperty("sectionTitle", True)
+        layout.addWidget(lbl_time)
         self.time_session = QTimeEdit()
         self.time_session.setTime(QTime(12, 0))
         self.time_session.timeChanged.connect(self.on_time_changed)
@@ -192,26 +219,32 @@ class SessionManager(QWidget):
 
         # دکمه افزودن جلسه
         self.btn_add_session = QPushButton("➕ افزودن جلسه")
+        self.btn_add_session.setProperty("variant", "primary")
         self.btn_add_session.clicked.connect(self.add_session_to_class)
 
         layout.addWidget(self.btn_add_session)
 
         # دکمه پاک‌سازی فرم
         self.btn_clear = QPushButton("🧹 پاک‌سازی فرم")
+        self.btn_clear.setProperty("variant", "ghost")
         self.btn_clear.clicked.connect(self.clear_form)
         layout.addWidget(self.btn_clear)
 
         # دکمه پاکسازی ترم پایان یافته
         self.btn_notify_expired = QPushButton("📣 نمایش ترم‌های پایان‌یافته (بدون حذف)")
+        self.btn_notify_expired.setProperty("variant", "secondary")
         self.btn_notify_expired.clicked.connect(self.check_and_notify_term_ends)
         layout.addWidget(self.btn_notify_expired)
 
         self.btn_cleanup = QPushButton("🗑️ پاکسازی جلسات آیندهٔ ترم‌های پایان‌یافته")
+        self.btn_cleanup.setProperty("variant", "secondary")
         self.btn_cleanup.clicked.connect(self.manual_cleanup_expired_sessions)
         layout.addWidget(self.btn_cleanup)
 
         # Sessions list
-        layout.addWidget(QLabel("جلسات این کلاس (برای حذف دوبار کلیک کنید):"))
+        lbl_sessions = QLabel("جلسات این کلاس (برای حذف دوبار کلیک کنید):")
+        lbl_sessions.setProperty("sectionTitle", True)
+        layout.addWidget(lbl_sessions)
         self.list_sessions = QListWidget()
         self.list_sessions.setSortingEnabled(False) # Qt خودش با متن سورت نکند
         self.list_sessions.itemDoubleClicked.connect(self.delete_session_from_class)
@@ -219,6 +252,15 @@ class SessionManager(QWidget):
         layout.addWidget(self.list_sessions)
 
         self.setLayout(layout)
+
+        # Apply theme/QSS to new widgets
+        for w in (self.date_btn, self.btn_add_session, self.btn_clear, self.btn_notify_expired, self.btn_cleanup,
+                  self.list_search_results, self.list_classes, self.list_sessions,
+                  lbl_search_students, lbl_select_class, lbl_time, lbl_sessions):
+            try:
+                ThemeManager.repolish(w)
+            except Exception:
+                pass
         self.load_students()
         self.search_students()  # نمایش اولیه
 
@@ -328,21 +370,83 @@ class SessionManager(QWidget):
         for cid, cname, teacher_name, day in classes:
             count = session_counts.get(cid, 0)
 
-            # ساخت QLabel با رنگ پس‌زمینه مخصوص روز
-            label = QLabel(f"<b>{cname}</b> - <span style='color:#444'>استاد: {teacher_name}</span><br>"
-                        f"<span style='font-size:11px; color:#555'>روز: {day} | {count} جلسه ثبت شده</span>")
+            # جزئیات کامل کلاس (زمان، اتاق، ساز)
+            try:
+                cls = get_class_by_id(cid)
+                if cls:
+                    _name, _teacher_id, instrument, day_str, start_time, end_time, room = cls
+                else:
+                    instrument, day_str, start_time, end_time, room = "", day, None, None, ""
+            except Exception:
+                instrument, day_str, start_time, end_time, room = "", day, None, None, ""
+
+            # متن اصلی و جزئیات (RichText)
+            main_text = f"<b>{cname}</b> - {teacher_name}"
+            if instrument:
+                main_text += f" - {instrument}"
+
+            time_part = ""
+            if start_time and end_time:
+                time_part = f"{start_time} - {end_time}"
+            elif start_time:
+                time_part = f"شروع {start_time}"
+
+            room_part = f" | اتاق: {room}" if room else ""
+            detail_text = f"<span>{day_str} {time_part}{room_part} | {count} جلسه ثبت شده</span>"
+
+            label = QLabel(f"{main_text}<br>{detail_text}")
             label.setTextFormat(Qt.RichText)
-            label.setStyleSheet(f"""
-                padding: 8px;
-                border: 1px solid #ccc;
-                border-radius: 5px;
-                background-color: {day_colors.get(day, "#FFFFFF")};
-            """)
+            label.setObjectName("ClassItem")
+            label.setWordWrap(True)
+            label.setFixedHeight(60)
+
+            # استایل هماهنگ با تم (رنگ پس‌زمینه بر اساس روز)
+            try:
+                t = ThemeManager.tokens()
+                bg = day_colors.get(day_str or day, t["surface"])  # حفظ رنگ روز
+                root_decl = (
+                    f"padding: 10px 14px;"
+                    f" background: {bg};"
+                    f" border: 1px solid {t['border']};"
+                    f" border-radius: {t['radius']};"
+                )
+                child_rules = f"""
+                    QLabel#ClassItem b {{
+                        font-size: 13px;
+                        color: {t['textStrong']};
+                    }}
+                    QLabel#ClassItem span {{
+                        font-size: 11px;
+                        color: {t['text']};
+                        opacity: .85;
+                        display: block;
+                        margin-top: 4px;
+                        line-height: 1.4;
+                    }}
+                """
+                base_style = root_decl + child_rules
+            except Exception:
+                bg = day_colors.get(day, "#FFFFFF")
+                root_decl = (
+                    f"padding: 10px 14px;"
+                    f" background: {bg};"
+                    f" border: 1px solid #ccc;"
+                    f" border-radius: 10px;"
+                )
+                child_rules = """
+                    QLabel#ClassItem b { font-size: 13px; color: #0B1F3A; }
+                    QLabel#ClassItem span { font-size: 11px; color: #0B1F3A; opacity: .85; display: block; margin-top: 4px; line-height: 1.4; }
+                """
+                base_style = root_decl + child_rules
+
+            label.setStyleSheet(base_style)
+            label.setProperty("baseStyle", base_style)
             label.setAttribute(Qt.WA_TransparentForMouseEvents)
 
             item = QListWidgetItem()
-            item.setSizeHint(label.sizeHint())
+            item.setSizeHint(QSize(0, 70))
             item.setData(Qt.UserRole, cid)
+            item.setBackground(Qt.transparent)
 
             self.list_classes.addItem(item)
             self.list_classes.setItemWidget(item, label)
@@ -714,14 +818,20 @@ class SessionManager(QWidget):
     pass  # اگر وجود ندارد، لازم نیست چیزی بنویسی
 
     def highlight_selected_class(self, selected_item):
+        tokens = None
+        try:
+            tokens = ThemeManager.tokens()
+        except Exception:
+            tokens = {"primary": "#0000FF"}
         for i in range(self.list_classes.count()):
             item = self.list_classes.item(i)
             widget = self.list_classes.itemWidget(item)
+            base_style = widget.property("baseStyle") or widget.styleSheet()
             if item == selected_item:
-                widget.setStyleSheet(widget.styleSheet() + "border: 2px solid #0000FF;")  # آبی پررنگ
+                widget.setStyleSheet(base_style + f" border: 2px solid {tokens['primary']};")
             else:
-                # حذف Border انتخاب
-                widget.setStyleSheet(widget.styleSheet().replace("border: 2px solid #0000FF;", "border: 1px solid #ccc;"))
+                # Reset to base style (thin themed border)
+                widget.setStyleSheet(base_style)
 
     def manual_cleanup_expired_sessions(self):
         # ۰) لیست "پایان ترم"هایی که هنوز اعلان نشده‌اند

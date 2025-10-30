@@ -1,5 +1,6 @@
 from acasmart.data.repos.settings_repo import get_setting, get_setting_bool, set_setting, set_setting_bool
 from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QPushButton, QMessageBox, QComboBox
+from acasmart.ui.widgets.theme_manager import ThemeManager
 import re
 from acasmart.core.utils import currency_label
 
@@ -18,7 +19,7 @@ class SettingsWindow(QWidget):
         self.setGeometry(350, 250, 300, 200)
 
         layout = QFormLayout()
-
+        
         # شهریه هر ترم
         self.input_term_fee = QLineEdit()
         # تومان خام در DB
@@ -61,10 +62,23 @@ class SettingsWindow(QWidget):
 
         # دکمه ذخیره
         self.btn_save = QPushButton("ذخیره تنظیمات")
+        self.btn_save.setProperty("variant", "primary")
         self.btn_save.clicked.connect(self.save_settings)
         layout.addRow(self.btn_save)
 
         self.setLayout(layout)
+        # Apply theme/QSS to fields and button
+        for w in (
+            self.input_term_fee,
+            self.input_term_sessions,
+            self.combo_currency,
+            self.combo_sms_enabled,
+            self.btn_save,
+        ):
+            try:
+                ThemeManager.repolish(w)
+            except Exception:
+                pass
     def _on_currency_changed(self, new_unit: str):
         """با عوض شدن تومان/ریال، نمایش فیلد شهریه را بدون تغییر تومان خام اصلاح کن."""
         old_unit = self._last_unit

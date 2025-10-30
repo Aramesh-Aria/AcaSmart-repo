@@ -25,6 +25,7 @@ import jdatetime
 import re
 from acasmart.core.fa_collation import sort_records_fa, contains_fa, fa_collator
 from functools import cmp_to_key
+from acasmart.ui.widgets.theme_manager import ThemeManager
 
 class TeacherManager(QWidget):
     def __init__(self):
@@ -42,12 +43,13 @@ class TeacherManager(QWidget):
         # اضافه کردن ساز(سازها)
         self.input_instrument = QLineEdit()
         self.input_instrument.setPlaceholderText("نام ساز های تدریس شده توسط این استاد را اضافه کنید")
-
+        
+        # دکمه افزودن ساز
         self.btn_add_instrument = QPushButton("➕ افزودن ساز")
         self.btn_add_instrument.clicked.connect(self.add_instrument_to_list)
+        self.btn_add_instrument.setProperty("variant", "secondary")
 
         self.list_instruments = QListWidget()
-        self.list_instruments.setStyleSheet("background-color: #f8f8f8;")
         self.list_instruments.itemDoubleClicked.connect(self.remove_instrument_from_list)
 
 
@@ -108,18 +110,19 @@ class TeacherManager(QWidget):
         self.btn_add.clicked.connect(self.add_teacher)
         self.btn_add.setEnabled(False)
         self.btn_add.setFixedHeight(40)
-        self.btn_add.setStyleSheet("font-size: 14px;")
-
+        self.btn_add.setProperty("variant", "primary")
+        
         # Update teacher data Button
         self.btn_update = QPushButton("✏ ویرایش استاد ️")
         self.btn_update.clicked.connect(self.update_teacher)
         self.btn_update.setEnabled(False)
         self.btn_update.setFixedHeight(40)
-        self.btn_update.setStyleSheet("font-size: 14px;")
-
+        self.btn_update.setProperty("variant", "secondary")
+        
         # Clear form Button
         self.btn_clear = QPushButton("🧹 پاک‌سازی فرم")
         self.btn_clear.clicked.connect(self.clear_form)
+        self.btn_clear.setProperty("variant", "ghost")
 
         #Search teachers form
         self.search_input = QLineEdit()
@@ -167,6 +170,9 @@ class TeacherManager(QWidget):
         layout.addWidget(self.list_teachers)
         layout.addWidget(self.lbl_count)
 
+        # برای اینکه QSS جدید رو بخونه
+        for btn in (self.btn_add, self.btn_update, self.btn_clear, self.btn_add_instrument):
+            ThemeManager.repolish(btn)
 
         self.setLayout(layout)
         self.selected_teacher_id = None # این متغیر ID استاد انتخاب‌شده رو نگه می‌داره,لازمه برای اینکه بدونیم کدوم رکورد باید ویرایش بشه

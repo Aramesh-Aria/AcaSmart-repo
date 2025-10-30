@@ -1,7 +1,7 @@
 from acasmart.data.repos.reports_repo import get_student_term_summary_rows
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,
-    QHeaderView, QHBoxLayout, QLineEdit, QComboBox, QPushButton, QGroupBox, QFileDialog
+    QHeaderView, QHBoxLayout, QGridLayout, QLineEdit, QComboBox, QPushButton, QGroupBox, QFileDialog, QSizePolicy
 )
 from acasmart.data.repos.teachers_repo import fetch_teachers_simple
 from acasmart.data.repos.classes_repo import fetch_classes
@@ -11,6 +11,7 @@ import jdatetime
 from acasmart.ui.widgets.shamsi_date_picker import ShamsiDatePicker
 from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
 import openpyxl
+from acasmart.ui.widgets.theme_manager import ThemeManager
 
 
 class StudentTermSummaryWindow(QWidget):
@@ -20,6 +21,8 @@ class StudentTermSummaryWindow(QWidget):
         self.setGeometry(300, 150, 1200, 600)
 
         layout = QVBoxLayout()
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(10)
         layout.addWidget(self.create_filter_box())
         layout.addWidget(self.create_table())
 
@@ -35,7 +38,11 @@ class StudentTermSummaryWindow(QWidget):
 
     def create_filter_box(self):
         group = QGroupBox("فیلترها")
-        layout = QHBoxLayout()
+        container = QVBoxLayout()
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(10)
+        grid.setVerticalSpacing(8)
+        grid.setContentsMargins(6, 6, 6, 6)
 
         self.input_student = QLineEdit()
         self.input_student.setPlaceholderText("نام هنرجو")
@@ -60,35 +67,67 @@ class StudentTermSummaryWindow(QWidget):
         self.combo_term_status.addItems(["همه ترم‌ها", "فقط فعال", "فقط پایان یافته"])
 
         self.btn_filter = QPushButton("اعمال فیلتر")
+        self.btn_filter.setProperty("variant", "primary")
         self.btn_filter.clicked.connect(lambda: self.load_data(apply_filters=True))
 
-        layout.addWidget(QLabel("🎓: هنرجو"))
-        layout.addWidget(self.input_student)
-        layout.addWidget(QLabel("👨‍🏫: استاد"))
-        layout.addWidget(self.combo_teacher)
-        layout.addWidget(QLabel("🎼: ساز"))
-        layout.addWidget(self.combo_instrument)
-        layout.addWidget(QLabel("🏫: کلاس"))
-        layout.addWidget(self.combo_class)
-        layout.addWidget(QLabel("🗓️: روز"))
-        layout.addWidget(self.combo_day)
-        layout.addWidget(QLabel(": از تاریخ"))
-        layout.addWidget(self.date_from)
-        layout.addWidget(QLabel(": تا تاریخ"))
-        layout.addWidget(self.date_to)
-        layout.addWidget(QLabel(": ترم"))
-        layout.addWidget(self.combo_term_status)
-        layout.addWidget(self.btn_filter)
+        # Row 0: دانشجو | استاد | ساز | کلاس
+        r0 = 0
+        grid.addWidget(QLabel("🎓: هنرجو"), r0, 0)
+        grid.addWidget(self.input_student, r0, 1)
+        grid.addWidget(QLabel("👨‍🏫: استاد"), r0, 2)
+        grid.addWidget(self.combo_teacher, r0, 3)
+        grid.addWidget(QLabel("🎼: ساز"), r0, 4)
+        grid.addWidget(self.combo_instrument, r0, 5)
+        grid.addWidget(QLabel("🏫: کلاس"), r0, 6)
+        grid.addWidget(self.combo_class, r0, 7)
 
+        # Row 1: روز | از تاریخ | تا تاریخ | ترم
+        r1 = 1
+        grid.addWidget(QLabel("🗓️: روز"), r1, 0)
+        grid.addWidget(self.combo_day, r1, 1)
+        grid.addWidget(QLabel(": از تاریخ"), r1, 2)
+        grid.addWidget(self.date_from, r1, 3)
+        grid.addWidget(QLabel(": تا تاریخ"), r1, 4)
+        grid.addWidget(self.date_to, r1, 5)
+        grid.addWidget(QLabel(": ترم"), r1, 6)
+        grid.addWidget(self.combo_term_status, r1, 7)
+
+        # Button row
+        btn_row = QHBoxLayout()
         self.btn_clear = QPushButton("پاکسازی فیلترها")
+        self.btn_clear.setProperty("variant", "secondary")
         self.btn_clear.clicked.connect(self.clear_filters)
-        layout.addWidget(self.btn_clear)
 
         self.btn_export = QPushButton("📤 خروجی اکسل")
+        self.btn_export.setProperty("variant", "ghost")
         self.btn_export.clicked.connect(self.export_to_excel)
-        layout.addWidget(self.btn_export)
 
-        group.setLayout(layout)
+        btn_row.addStretch(1)
+        btn_row.addWidget(self.btn_filter)
+        btn_row.addWidget(self.btn_clear)
+        btn_row.addWidget(self.btn_export)
+
+        # Size policies for readability
+        self.input_student.setMinimumWidth(160)
+        for w in (self.combo_teacher, self.combo_instrument, self.combo_class,
+                  self.combo_day, self.combo_term_status):
+            w.setMinimumWidth(140)
+            w.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        self.input_student.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        container.addLayout(grid)
+        container.addLayout(btn_row)
+        group.setLayout(container)
+        # Apply QSS to filter controls
+        for w in (
+            self.input_student, self.combo_teacher, self.combo_instrument, self.combo_class,
+            self.combo_day, self.date_from, self.date_to, self.combo_term_status,
+            self.btn_filter, self.btn_clear, self.btn_export
+        ):
+            try:
+                ThemeManager.repolish(w)
+            except Exception:
+                pass
         return group
 
     def create_table(self):

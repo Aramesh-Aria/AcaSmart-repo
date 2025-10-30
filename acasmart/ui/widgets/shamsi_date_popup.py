@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QCalendarWidget, QPushButton,
-    QComboBox, QSpinBox, QWidget
+    QComboBox, QSpinBox, QWidget, QAbstractItemView
 )
 from PySide6.QtGui import QKeySequence,QShortcut,QKeyEvent
 from PySide6.QtCore import QDate, Qt,QEvent
@@ -49,9 +49,14 @@ class ShamsiDatePopup(QDialog):
 
         # دکمه تایید نهایی تاریخ
         btn_ok = QPushButton("تأیید")
+        btn_ok.setProperty("variant", "primary")
         btn_ok.setDefault(True)  # ثبت تاریخ با زدن Enter
         btn_ok.clicked.connect(self.accept)
         self.layout().addWidget(btn_ok)
+        try:
+            ThemeManager.repolish(btn_ok)
+        except Exception:
+            pass
 
         # متغیرها برای جعبه‌های انتخاب ماه و سال
         self.month_box = None
@@ -70,6 +75,13 @@ class ShamsiDatePopup(QDialog):
             self.year_box.installEventFilter(self)  # مدیریت رفتار Enter روی سال
 
         self.calendar.installEventFilter(self)  # بررسی فشردن Enter روی خود تقویم
+        # فعال کردن hover روی سلول‌های روزها برای اعمال QSS :hover
+        try:
+            view = self.calendar.findChild(QAbstractItemView)
+            if view:
+                view.setMouseTracking(True)
+        except Exception:
+            pass
 
         # شورتکات‌های سراسری Enter (برای ثبت سریع)
         QShortcut(QKeySequence(Qt.Key_Return), self).activated.connect(self.try_accept)
@@ -130,3 +142,4 @@ class ShamsiDatePopup(QDialog):
         selected_date = self.calendar.selectedDate()
         if selected_date.isValid():
             self.accept()
+from acasmart.ui.widgets.theme_manager import ThemeManager
