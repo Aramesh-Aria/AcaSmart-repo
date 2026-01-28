@@ -37,6 +37,18 @@
 🧩 نسخه قابل نصب با فعال‌سازی از طریق کد لایسنس
 
 
+## 🧠 Architecture & Design
+
+The application is built using an object-oriented architecture:
+
+- Separation of UI and business logic
+- Dedicated classes for:
+  - Student
+  - Teacher
+  - Class
+  - Financial records
+- Central database manager for SQLite operations
+- Modular design for future scalability
 
 ---
 
