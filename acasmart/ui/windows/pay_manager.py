@@ -1,19 +1,20 @@
-from acasmart.data.repos.classes_repo import fetch_classes
 from acasmart.data.repos.payments_repo import get_payment_by_id, get_terms_for_payment_management, get_total_paid_for_term, insert_payment, update_payment_by_id
 from acasmart.data.repos.settings_repo import get_setting
 from acasmart.data.repos.students_repo import fetch_registered_classes_for_student, fetch_students_with_teachers
 from acasmart.data.repos.terms_repo import count_attendance_for_term, get_term_id_by_student_and_class, get_term_sessions_limit_by_id, get_term_tuition_by_id
 from PySide6.QtWidgets import (
     QWidget, QLabel, QLineEdit, QPushButton, QListWidget, QListWidgetItem,
-    QVBoxLayout, QHBoxLayout, QFormLayout, QTextEdit, QComboBox, QMessageBox
+    QVBoxLayout, QHBoxLayout, QFormLayout, QTextEdit, QComboBox, QMessageBox, QDialog
 )
 from PySide6.QtCore import QDate, Qt
-from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
 from acasmart.ui.widgets.shamsi_date_picker import ShamsiDatePicker
+from acasmart.ui.widgets.payment_student_picker_popup import PaymentStudentPickerPopup
+from acasmart.ui.widgets.payment_class_picker_popup import PaymentClassPickerPopup
+from acasmart.ui.widgets.payment_term_picker_popup import PaymentTermPickerPopup
 import jdatetime
-from acasmart.core.utils import format_currency_with_unit ,get_currency_unit,format_currency,parse_user_amount_to_toman
+from acasmart.core.utils import format_currency_with_unit, get_currency_unit, format_currency, parse_user_amount_to_toman
 from acasmart.ui.reports.payment_report_window import PaymentReportWindow
-from acasmart.core.fa_collation import sort_records_fa, contains_fa, nd
+from acasmart.core.fa_collation import sort_records_fa
 from acasmart.core.utils import currency_label, format_currency_with_unit, parse_user_amount_to_toman
 from acasmart.ui.widgets.theme_manager import ThemeManager
 
@@ -38,45 +39,45 @@ class PaymentManager(QWidget):
         self.selected_class_id = None
         self.selected_term_id = None
         self.students = []
-        self.classes = []
 
         layout = QVBoxLayout()
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
 
-        # ---------- بخش جستجوی هنرجو ----------
-        title_student = QLabel("👤 جستجوی هنرجو")
+        # ---------- انتخاب هنرجو (popup) ----------
+        title_student = QLabel("👤 هنرجو")
         title_student.setProperty("sectionTitle", True)
         layout.addWidget(title_student)
+        self.student_btn = QPushButton("👤 انتخاب هنرجو")
+        self.student_btn.setProperty("variant", "secondary")
+        self.student_btn.setCursor(Qt.PointingHandCursor)
+        self.student_btn.setToolTip("برای انتخاب هنرجو کلیک کنید")
+        self.student_btn.clicked.connect(self.open_student_picker)
+        layout.addWidget(self.student_btn)
 
-        self.input_search_student = QLineEdit()
-        self.input_search_student.setPlaceholderText("نام هنرجو یا استاد...")
-        self.input_search_student.textChanged.connect(self.search_students)
-        layout.addWidget(self.input_search_student)
-
-        self.list_students = QListWidget()
-        self.list_students.setObjectName("StudentList")
-        self.list_students.itemClicked.connect(self.select_student)
-        layout.addWidget(self.list_students)
-        
-        # ---------- انتخاب کلاس ----------
-        title_class = QLabel("🏫 انتخاب کلاس")
+        # ---------- انتخاب کلاس (popup) ----------
+        title_class = QLabel("🏫 کلاس")
         title_class.setProperty("sectionTitle", True)
         layout.addWidget(title_class)
-        
-        self.list_classes = QListWidget()
-        self.list_classes.setObjectName("ClassList2")
-        self.list_classes.itemClicked.connect(self.select_class)
-        layout.addWidget(self.list_classes)
+        self.class_btn = QPushButton("🏫 انتخاب کلاس")
+        self.class_btn.setProperty("variant", "secondary")
+        self.class_btn.setCursor(Qt.PointingHandCursor)
+        self.class_btn.setToolTip("ابتدا هنرجو را انتخاب کنید")
+        self.class_btn.setEnabled(False)
+        self.class_btn.clicked.connect(self.open_class_picker)
+        layout.addWidget(self.class_btn)
 
-        # ---------- انتخاب ترم ----------
-        title_term = QLabel("📅 انتخاب ترم")
+        # ---------- انتخاب ترم (popup) ----------
+        title_term = QLabel("📅 ترم")
         title_term.setProperty("sectionTitle", True)
         layout.addWidget(title_term)
-
-        self.combo_terms = QComboBox()
-        self.combo_terms.currentIndexChanged.connect(self.select_term)
-        layout.addWidget(self.combo_terms)
+        self.term_btn = QPushButton("📅 انتخاب ترم")
+        self.term_btn.setProperty("variant", "secondary")
+        self.term_btn.setCursor(Qt.PointingHandCursor)
+        self.term_btn.setToolTip("ابتدا هنرجو و کلاس را انتخاب کنید")
+        self.term_btn.setEnabled(False)
+        self.term_btn.clicked.connect(self.open_term_picker)
+        layout.addWidget(self.term_btn)
 
         # ---------- فرم پرداخت ----------
         title_payment = QLabel("💳 فرم ثبت پرداخت")
@@ -145,14 +146,12 @@ class PaymentManager(QWidget):
 
         # ---------- اعمال تم ----------
         self.setLayout(layout)
-        for w in (self.btn_add_payment, self.btn_clear, self.btn_show_report, self.input_search_student,
-                  self.input_amount, self.combo_type, self.combo_terms, self.list_students, self.list_classes):
+        for w in (self.btn_add_payment, self.btn_clear, self.btn_show_report, self.student_btn, self.class_btn, self.term_btn,
+                  self.input_amount, self.combo_type):
             ThemeManager.repolish(w)
 
         # ---------- داده اولیه ----------
         self.load_students()
-        self.search_students()
-        self.load_classes()
 
     # --- helpers for currency display ---
     def _display_amount(self, amount_toman: int) -> str:
@@ -182,166 +181,84 @@ class PaymentManager(QWidget):
         self.term_expired = True
         self.term_missing = False
 
-        self.input_search_student.clear()
-        self.list_students.clear()
-        self.list_classes.clear()
-        self.combo_terms.clear()
+        self.student_btn.setText("👤 انتخاب هنرجو")
+        self.class_btn.setText("🏫 انتخاب کلاس")
+        self.class_btn.setEnabled(False)
+        self.term_btn.setText("📅 انتخاب ترم")
+        self.term_btn.setEnabled(False)
         self._set_amount_box_from_toman(self.term_fee)
-
         self.input_description.clear()
-
         self.combo_type.setCurrentIndex(0)
 
         self.lbl_total.setText("مجموع پرداخت شده: " + format_currency_with_unit(0))
         self.lbl_remaining.setText(f"باقی‌مانده شهریه (ترم جاری): {format_currency_with_unit(self.term_fee)}")
 
-        # ریست و نمایش مجدد لیست هنرجویان
         self.load_students()
         self.btn_add_payment.setText("💰 ثبت پرداخت")
-
         self.set_payment_button_enabled(False)
 
-        # ریست تاریخ انتخاب شده
         self.last_payment_date = QDate.currentDate()
         self.date_payment_picker.setDate(self.last_payment_date)
 
 
     def load_students(self):
-        rows = fetch_students_with_teachers()  # [(sid, national_code, name, teacher), ...]
-        # سورت بر اساس نام (index=2) و در صورت تساوی بر اساس کدملی (index=1)
+        """بارگذاری لیست هنرجویان برای popup انتخاب هنرجو."""
+        rows = fetch_students_with_teachers()
         self.students = sort_records_fa(rows, name_index=2, tiebreak_index=1)
-        self.search_students()
 
-    def search_students(self):
-        raw = self.input_search_student.text().strip()
-        q_name_or_teacher = raw            # contains_fa خودش نرمال‌سازی ی/ي، ک/ك، اعراب/ZWNJ را انجام می‌دهد
-        q_code = nd(raw)                   # اگر کاربر کدملی با ارقام فارسی/لاتین بزند
-
-        self.list_students.clear()
-
-        if not raw:
-            for row in self.students:
-                if len(row) < 4:
-                    continue
-                sid, national_code, name, teacher = row[:4]
-                item = QListWidgetItem(f"{name} (استاد: {teacher})")
-                item.setData(Qt.UserRole, sid)
-                self.list_students.addItem(item)
-            return
-        filtered = []
-        for row in self.students:
-            if len(row) < 4:
-                continue
-            sid,national_code,name,teacher = row[:4]
-            # تطبیق: نام/استاد به صورت فارسی، و کدملی با یکسان‌سازی ارقام
-            if (contains_fa(name, q_name_or_teacher) or
-                contains_fa(teacher, q_name_or_teacher) or
-                (q_code and q_code in nd(national_code))):
-                filtered.append((sid, national_code, name, teacher))
-
-        # نتیجه‌ی فیلترشده را دوباره طبق نام فارسی بچین تا خروجی پایدار و درست باشد
-        filtered = sort_records_fa(filtered, name_index=2, tiebreak_index=1)
-
-        for sid, national_code, name, teacher in filtered:
-            item = QListWidgetItem(f"{name} (استاد: {teacher})")
-            item.setData(Qt.UserRole, sid)
-            self.list_students.addItem(item)
-
-    def load_classes(self):
-        self.classes = fetch_classes()
-
-    def select_student(self, item):
-        self.selected_student_id = item.data(Qt.UserRole)
-        for row in self.students:
-            sid, _, name, teacher = row[:4]
-            if sid == self.selected_student_id:
+    def open_student_picker(self):
+        """باز کردن popup انتخاب هنرجو؛ بعد از تأیید، هنرجو در ویجت نمایش داده می‌شود."""
+        dlg = PaymentStudentPickerPopup(self, students_data=self.students)
+        if dlg.exec_() == QDialog.Accepted:
+            result = dlg.get_selected_student()
+            if result:
+                sid, name, teacher = result
+                self.selected_student_id = sid
                 self.selected_student_teacher = teacher
-                break
+                self.student_btn.setText(f"👤 {name} (استاد: {teacher})")
+                self.selected_class_id = None
+                self.selected_term_id = None
+                self.class_btn.setText("🏫 انتخاب کلاس")
+                self.class_btn.setEnabled(True)
+                self.term_btn.setText("📅 انتخاب ترم")
+                self.term_btn.setEnabled(False)
+                self.lbl_total.setText("لطفاً یک کلاس را انتخاب کنید")
+                self.lbl_remaining.setText("")
+                self.set_payment_button_enabled(False)
 
-        # Load classes related to this teacher
-        self.list_classes.clear()
-        student_classes = fetch_registered_classes_for_student(self.selected_student_id)
-        for cid, cname, tname, instr, day, start, end, room in student_classes:
-            class_item = QListWidgetItem(f"{cname} ({day} {start}-{end}) - {tname}")
-            class_item.setData(Qt.UserRole, cid)
-            self.list_classes.addItem(class_item)
+    def open_class_picker(self):
+        """باز کردن popup انتخاب کلاس (کلاس‌های ثبت‌شدهٔ هنرجو)."""
+        if not self.selected_student_id:
+            return
+        dlg = PaymentClassPickerPopup(self, student_id=self.selected_student_id)
+        if dlg.exec_() == QDialog.Accepted:
+            cid = dlg.get_selected_class_id()
+            if cid is not None:
+                self.selected_class_id = cid
+                self.class_btn.setText(f"🏫 {dlg.get_selected_class_display()}")
+                self.selected_term_id = None
+                self.term_btn.setText("📅 انتخاب ترم")
+                self.term_btn.setEnabled(True)
+                self._load_terms_after_class_selected()
 
-        # اگر فقط یک کلاس وجود داره، همون رو اتومات انتخاب کن
-        if len(student_classes) == 1:
-            item = self.list_classes.item(0)
-            self.select_class(item)
-        else:
-            self.selected_class_id = None
-            self.term_expired = True
-            # فقط لیست پرداخت‌ها رو بارگذاری کن، نه اطلاعات مالی
-            self.lbl_total.setText("لطفاً یک کلاس را انتخاب کنید")
-            self.lbl_remaining.setText("")
-            self.set_payment_button_enabled(False)
-
-    def select_class(self, item):
-        self.selected_class_id = item.data(Qt.UserRole)
-        self.load_terms()
+    def _load_terms_after_class_selected(self):
+        """بعد از انتخاب کلاس، وضعیت ترم و برچسب‌های مالی را به‌روز کن."""
         self.update_term_status()
         self.update_financial_labels()
 
-    def load_terms(self):
-        """بارگذاری تمام ترم‌های هنرجو در کلاس انتخاب‌شده"""
-        self.combo_terms.clear()
-        self.selected_term_id = None
-        
+    def open_term_picker(self):
+        """باز کردن popup انتخاب ترم."""
         if not (self.selected_student_id and self.selected_class_id):
             return
-            
-        terms = get_terms_for_payment_management(self.selected_student_id, self.selected_class_id)
-        
-        if not terms:
-            self.combo_terms.addItem("هیچ ترمی یافت نشد", None)
-            return
-            
-        for term in terms:
-            term_id = term['term_id']
-            start_date = term['start_date']
-            end_date = term['end_date']
-            status = term['status']
-            term_status = term['term_status']
-            total_paid = term['total_paid']
-            debt = term['debt']
-            
-            # نمایش اطلاعات ترم
-            display_text = f"ترم {start_date}"
-            if end_date:
-                display_text += f" تا {end_date}"
-            display_text += f" - {term_status}"
-            
-            # نمایش وضعیت پرداخت
-            if debt == 0:
-                payment_status = "تسویه شده"
-            elif debt > 0:
-                payment_status = f"بدهکار: {format_currency_with_unit(debt)}"
-            else:
-                payment_status = "خطا"
-                
-            display_text += f" - {payment_status}"
-            if total_paid > 0:
-                display_text += f" (پرداخت: {format_currency_with_unit(total_paid)})"
-                
-            self.combo_terms.addItem(display_text, term_id)
-        
-        # انتخاب اولین ترم به عنوان پیش‌فرض
-        if self.combo_terms.count() > 0:
-            self.combo_terms.setCurrentIndex(0)
-
-    def select_term(self, index):
-        """انتخاب ترم و به‌روزرسانی اطلاعات مالی"""
-        if index >= 0:
-            self.selected_term_id = self.combo_terms.itemData(index)
-        else:
-            self.selected_term_id = None
-
-        # load term fee from the selected term/profile ---
-        self._load_term_fee_from_selected_term()
-        self.update_term_status()
-        self.update_financial_labels()
+        dlg = PaymentTermPickerPopup(self, student_id=self.selected_student_id, class_id=self.selected_class_id)
+        if dlg.exec_() == QDialog.Accepted:
+            term_id = dlg.get_selected_term_id()
+            if term_id is not None:
+                self.selected_term_id = term_id
+                self.term_btn.setText(f"📅 {dlg.get_selected_term_display()}")
+                self._load_term_fee_from_selected_term()
+                self.update_term_status()
+                self.update_financial_labels()
 
     def update_term_status(self):
         """Determine if student has a term, and if it's expired (by session count)."""
@@ -545,38 +462,62 @@ class PaymentManager(QWidget):
             QMessageBox.warning(self, "خطا", "پرداخت موردنظر یافت نشد.")
             return
 
-        # 1) هنرجو/کلاس/ترم را انتخاب کن
-        # مطمئن شو همه هنرجوها قابل مشاهده‌اند
-        self.input_search_student.setText("")
-        self.search_students()
+        self.load_students()
+        target_student_id = data["student_id"]
+        target_class_id = data["class_id"]
+        target_term_id = data.get("term_id")
 
-        # انتخاب هنرجو
-        target_student = data["student_id"]
-        for i in range(self.list_students.count()):
-            it = self.list_students.item(i)
-            if it and it.data(Qt.UserRole) == target_student:
-                self.list_students.setCurrentItem(it)
-                self.select_student(it)   # ← کلاس‌های همان هنرجو لود می‌شود
+        # تنظیم هنرجو و نمایش روی دکمه
+        for row in self.students:
+            if len(row) < 4:
+                continue
+            sid, _, name, teacher = row[:4]
+            if sid == target_student_id:
+                self.selected_student_id = sid
+                self.selected_student_teacher = teacher
+                self.student_btn.setText(f"👤 {name} (استاد: {teacher})")
+                self.class_btn.setEnabled(True)
                 break
 
-        # انتخاب کلاس
-        target_class = data["class_id"]
-        for j in range(self.list_classes.count()):
-            ic = self.list_classes.item(j)
-            if ic and ic.data(Qt.UserRole) == target_class:
-                self.list_classes.setCurrentItem(ic)
-                self.select_class(ic)     # ← ترم‌ها لود می‌شوند
+        # تنظیم کلاس و نمایش روی دکمه
+        student_classes = fetch_registered_classes_for_student(target_student_id)
+        for cid, cname, tname, instr, day, start, end, room in student_classes:
+            if cid == target_class_id:
+                self.selected_class_id = cid
+                self.class_btn.setText(f"🏫 {cname} ({day} {start}-{end}) - {tname}")
+                self.term_btn.setEnabled(True)
                 break
 
-        # انتخاب ترم (اگر برای پرداخت ثبت شده باشد)
-        target_term = data["term_id"]
-        if target_term:
-            for k in range(self.combo_terms.count()):
-                if self.combo_terms.itemData(k) == target_term:
-                    self.combo_terms.setCurrentIndex(k)  # سیگنال select_term خودت وصله
-                    break
+        # تنظیم ترم و نمایش روی دکمه
+        terms = get_terms_for_payment_management(target_student_id, target_class_id)
+        for term in terms:
+            if term["term_id"] == target_term_id:
+                self.selected_term_id = target_term_id
+                start_date = term["start_date"]
+                end_date = term["end_date"]
+                term_status = term["term_status"]
+                total_paid = term["total_paid"]
+                debt = term["debt"]
+                display = f"ترم {start_date}"
+                if end_date:
+                    display += f" تا {end_date}"
+                display += f" - {term_status}"
+                if debt == 0:
+                    display += " - تسویه شده"
+                elif debt > 0:
+                    display += f" - بدهکار: {format_currency_with_unit(debt)}"
+                if total_paid > 0:
+                    display += f" (پرداخت: {format_currency_with_unit(total_paid)})"
+                self.term_btn.setText(f"📅 {display}")
+                break
+        else:
+            self.selected_term_id = target_term_id
 
-        # 2) مقداردهی فیلدهای فرم
+        self._load_term_fee_from_selected_term()
+        self.update_term_status()
+        self.update_financial_labels()
+
+        # مقداردهی فیلدهای فرم
         # مبلغ
         try:
             from acasmart.core.utils import format_currency
