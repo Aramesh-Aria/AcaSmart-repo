@@ -4,20 +4,21 @@ from acasmart.data.repos.payments_repo import delete_term_if_no_payments
 from acasmart.data.repos.profiles_repo import list_pricing_profiles
 from acasmart.data.repos.sessions_repo import add_session, delete_session, delete_sessions_for_expired_terms, delete_sessions_for_term, fetch_sessions_by_class, get_session_by_id, get_session_count_per_class, get_session_count_per_student, has_teacher_weekly_time_conflict, has_weekly_time_conflict, is_class_slot_taken, update_session
 from acasmart.data.repos.settings_repo import get_setting
-from acasmart.data.repos.students_repo import fetch_classes_for_student, fetch_students_with_teachers
+from acasmart.data.repos.students_repo import fetch_students_with_teachers
 from acasmart.data.repos.terms_repo import get_finished_terms_with_future_sessions, get_last_term_end_date, insert_student_term_if_not_exists
 from PySide6.QtWidgets import (
-    QWidget, QLabel, QLineEdit, QPushButton, QListWidget, QListWidgetItem,
+    QWidget, QLabel, QPushButton, QListWidget, QListWidgetItem,
     QVBoxLayout, QTimeEdit, QMessageBox, QDialog,
     QDialogButtonBox, QHBoxLayout, QComboBox, QRadioButton, QSpinBox
 )
 from PySide6.QtCore import QTime, Qt, QSize
 from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
+from acasmart.ui.widgets.student_picker_popup import StudentPickerPopup
+from acasmart.ui.widgets.class_picker_popup import ClassPickerPopup
 import jdatetime
 import sqlite3
-from acasmart.core.fa_collation import sort_records_fa, contains_fa,nd,fa_digits
+from acasmart.core.fa_collation import sort_records_fa, fa_digits
 from acasmart.core.utils import currency_label, format_currency_with_unit, parse_user_amount_to_toman
-from acasmart.core.fa_collation import fa_digits
 from acasmart.ui.widgets.theme_manager import ThemeManager
 
 class TermConfigDialog(QDialog):
@@ -168,34 +169,28 @@ class SessionManager(QWidget):
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
 
-        # Search students
-        lbl_search_students = QLabel("جستجوی هنرجو:")
-        lbl_search_students.setProperty("sectionTitle", True)
-        layout.addWidget(lbl_search_students)
-        self.input_search_student = QLineEdit()
-        self.input_search_student.setPlaceholderText("نام هنرجو یا کد ملی هنرجو...")
-        self.input_search_student.textChanged.connect(self.search_students)
-        layout.addWidget(self.input_search_student)
+        # انتخاب هنرجو (popup)
+        lbl_student = QLabel("هنرجو:")
+        lbl_student.setProperty("sectionTitle", True)
+        layout.addWidget(lbl_student)
+        self.student_btn = QPushButton("👤 انتخاب هنرجو")
+        self.student_btn.setProperty("variant", "secondary")
+        self.student_btn.setCursor(Qt.PointingHandCursor)
+        self.student_btn.setToolTip("برای انتخاب هنرجو کلیک کنید")
+        self.student_btn.clicked.connect(self.open_student_picker)
+        layout.addWidget(self.student_btn)
 
-        self.list_search_results = QListWidget()
-        self.list_search_results.setObjectName("StudentList")
-        self.list_search_results.itemClicked.connect(self.select_student)
-        layout.addWidget(self.list_search_results)
-
-        self.input_search_class = QLineEdit()
-        self.input_search_class.setPlaceholderText("جستجو بین کلاس‌های هنرجو...")
-        self.input_search_class.textChanged.connect(self.filter_class_list)
-        layout.addWidget(self.input_search_class)
-
-
-        # Search class list (after student selected)
-        lbl_select_class = QLabel("انتخاب کلاس مرتبط:")
-        lbl_select_class.setProperty("sectionTitle", True)
-        layout.addWidget(lbl_select_class)
-        self.list_classes = QListWidget()
-        self.list_classes.setObjectName("ClassList")
-        self.list_classes.itemClicked.connect(self.select_class)
-        layout.addWidget(self.list_classes)
+        # انتخاب کلاس (popup، بعد از انتخاب هنرجو)
+        lbl_class = QLabel("کلاس:")
+        lbl_class.setProperty("sectionTitle", True)
+        layout.addWidget(lbl_class)
+        self.class_btn = QPushButton("📚 انتخاب کلاس")
+        self.class_btn.setProperty("variant", "secondary")
+        self.class_btn.setCursor(Qt.PointingHandCursor)
+        self.class_btn.setToolTip("ابتدا هنرجو را انتخاب کنید")
+        self.class_btn.setEnabled(False)
+        self.class_btn.clicked.connect(self.open_class_picker)
+        layout.addWidget(self.class_btn)
 
         # تاریخ شروع ترم
         self.date_btn = QPushButton("📅 انتخاب تاریخ شروع ترم")
@@ -255,24 +250,16 @@ class SessionManager(QWidget):
 
         # Apply theme/QSS to new widgets
         for w in (self.date_btn, self.btn_add_session, self.btn_clear, self.btn_notify_expired, self.btn_cleanup,
-                  self.list_search_results, self.list_classes, self.list_sessions,
-                  lbl_search_students, lbl_select_class, lbl_time, lbl_sessions):
+                  self.student_btn, self.class_btn, self.list_sessions,
+                  lbl_student, lbl_class, lbl_time, lbl_sessions):
             try:
                 ThemeManager.repolish(w)
             except Exception:
                 pass
         self.load_students()
-        self.search_students()  # نمایش اولیه
 
         self.check_and_notify_term_ends()
-        # delete_sessions_for_expired_terms()
         self.showMaximized()
-
-        #بررسی میکنه که آیا لیستی از هنرجویان نمایش داده شده یا نه- اگر بله کلاس های مرتبط رو لود میکنه
-        if self.list_search_results.count() > 0:
-            first_item = self.list_search_results.item(0)
-            self.list_search_results.setCurrentItem(first_item)
-            self.select_student(first_item)
 
     def refresh_session_counts(self):
         try:
@@ -302,31 +289,72 @@ class SessionManager(QWidget):
         # for term_id, *_ in to_mark:
         #     delete_sessions_for_term(term_id)
     
+    def open_student_picker(self):
+        """باز کردن popup انتخاب هنرجو؛ بعد از تأیید، هنرجو در ویجت نمایش داده می‌شود."""
+        dlg = StudentPickerPopup(self, students_data=self.students_data, session_counts=self.session_counts_by_student)
+        if dlg.exec_() == QDialog.Accepted:
+            result = dlg.get_selected_student()
+            if result:
+                sid, name, teacher = result
+                self.selected_student_id = sid
+                self.selected_student_teacher_name = teacher
+                self.class_btn.setEnabled(True)
+                self.student_btn.setText(f"👤 {name} — استاد: {teacher}")
+                self.selected_class_id = None
+                self.class_btn.setText("📚 انتخاب کلاس")
+                self.list_sessions.clear()
+
+    def open_class_picker(self):
+        """باز کردن popup انتخاب کلاس؛ بعد از تأیید، کلاس در ویجت نمایش داده می‌شود."""
+        if not self.selected_student_id:
+            return
+        dlg = ClassPickerPopup(self, student_id=self.selected_student_id)
+        if dlg.exec_() == QDialog.Accepted:
+            cid = dlg.get_selected_class_id()
+            if cid is not None:
+                self.selected_class_id = cid
+                try:
+                    cls = get_class_by_id(cid)
+                    if cls:
+                        _name, _tid, instrument, day_str, start_time, end_time, room = cls
+                        display = f"{_name}"
+                        if day_str:
+                            display += f" — {day_str}"
+                        if start_time:
+                            display += f" {start_time}"
+                        self.class_btn.setText(f"📚 {display}")
+                    else:
+                        self.class_btn.setText(f"📚 کلاس #{cid}")
+                except Exception:
+                    self.class_btn.setText(f"📚 کلاس #{cid}")
+                # تنظیم ساعت و بارگذاری جلسات
+                class_day, class_start_time = get_day_and_time_for_class(self.selected_class_id)
+                if class_start_time:
+                    try:
+                        self.time_session.setTime(QTime.fromString(class_start_time, "HH:mm"))
+                    except Exception:
+                        pass
+                elif self.last_time_per_class.get(self.selected_class_id):
+                    self.time_session.setTime(self.last_time_per_class[self.selected_class_id])
+                else:
+                    self.time_session.setTime(QTime(12, 0))
+                self.load_sessions()
+
     def clear_form(self):
-        """Reset date/time and editing state without clearing student/class list"""
-        self.input_search_student.clear()
-        self.input_search_class.clear()
+        """Reset date/time and editing state; reset student/class selection and buttons."""
+        self.selected_student_id = None
+        self.selected_student_teacher_name = None
+        self.selected_class_id = None
+        self.student_btn.setText("👤 انتخاب هنرجو")
+        self.class_btn.setText("📚 انتخاب کلاس")
+        self.class_btn.setEnabled(False)
         self.selected_shamsi_date = self.last_selected_date
         self.date_btn.setText(f"📅 تاریخ شروع ترم: {self.selected_shamsi_date}")
         self.is_editing = False
         self.btn_add_session.setText("➕ افزودن جلسه")
         self.selected_session_id = None
-        self.filter_class_list()
-        self.search_students()
-        
-        # تنظیم ساعت بر اساس کلاس انتخاب‌شده
-        if self.selected_class_id:
-            class_day, class_time = get_day_and_time_for_class(self.selected_class_id)
-            if class_time:
-                try:
-                    self.time_session.setTime(QTime.fromString(class_time, "HH:mm"))
-                except:
-                    self.time_session.setTime(QTime(12, 0))
-            else:
-                self.time_session.setTime(QTime(12, 0))
-        else:
-            self.time_session.setTime(QTime(12, 0))
-        
+        self.list_sessions.clear()
+        self.time_session.setTime(QTime(12, 0))
         self.last_selected_time = None
 
     def on_time_changed(self):
@@ -338,193 +366,9 @@ class SessionManager(QWidget):
             self.last_selected_time = None
 
     def load_students(self):
+        """بارگذاری لیست هنرجویان برای استفاده در popup انتخاب هنرجو."""
         rows = fetch_students_with_teachers()  # [(sid, national_code, name, teacher), ...]
-        # سورت بر اساس نام فارسی (index=2) و در صورت تساوی بر اساس کدملی (index=1)
         self.students_data = sort_records_fa(rows, name_index=2, tiebreak_index=1)
-        self.search_students()
-
-    def load_student_classes(self):
-        self.list_classes.clear()
-
-        if not self.selected_student_id:
-            return
-
-        classes = fetch_classes_for_student(self.selected_student_id)
-        session_counts = get_session_count_per_class()
-
-        # ترتیب روزهای هفته
-        week_order = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"]
-        classes.sort(key=lambda x: week_order.index(x[3]) if x[3] in week_order else 7)
-
-        # 🎨 رنگ‌ها برای هر روز هفته (بدون سبز و قرمز)
-        day_colors = {
-            "شنبه": "#ADD8E6",      # آبی روشن
-            "یکشنبه": "#FFD580",    # نارنجی روشن
-            "دوشنبه": "#E6E6FA",    # بنفش روشن
-            "سه‌شنبه": "#FFFACD",   # لیمویی
-            "چهارشنبه": "#FFC0CB",  # صورتی روشن
-            "پنجشنبه": "#D3D3D3",   # خاکستری روشن
-            "جمعه": "#F5DEB3",      # بژ روشن
-        }
-
-        for cid, cname, teacher_name, day in classes:
-            count = session_counts.get(cid, 0)
-
-            # جزئیات کامل کلاس (زمان، اتاق، ساز)
-            try:
-                cls = get_class_by_id(cid)
-                if cls:
-                    _name, _teacher_id, instrument, day_str, start_time, end_time, room = cls
-                else:
-                    instrument, day_str, start_time, end_time, room = "", day, None, None, ""
-            except Exception:
-                instrument, day_str, start_time, end_time, room = "", day, None, None, ""
-
-            # متن اصلی و جزئیات (RichText)
-            main_text = f"<b>{cname}</b> - {teacher_name}"
-            if instrument:
-                main_text += f" - {instrument}"
-
-            time_part = ""
-            if start_time and end_time:
-                time_part = f"{start_time} - {end_time}"
-            elif start_time:
-                time_part = f"شروع {start_time}"
-
-            room_part = f" | اتاق: {room}" if room else ""
-            detail_text = f"<span>{day_str} {time_part}{room_part} | {count} جلسه ثبت شده</span>"
-
-            label = QLabel(f"{main_text}<br>{detail_text}")
-            label.setTextFormat(Qt.RichText)
-            label.setObjectName("ClassItem")
-            label.setWordWrap(True)
-            label.setFixedHeight(60)
-
-            # استایل هماهنگ با تم (رنگ پس‌زمینه بر اساس روز)
-            try:
-                t = ThemeManager.tokens()
-                bg = day_colors.get(day_str or day, t["surface"])  # حفظ رنگ روز
-                root_decl = (
-                    f"padding: 10px 14px;"
-                    f" background: {bg};"
-                    f" border: 1px solid {t['border']};"
-                    f" border-radius: {t['radius']};"
-                )
-                child_rules = f"""
-                    QLabel#ClassItem b {{
-                        font-size: 13px;
-                        color: {t['textStrong']};
-                    }}
-                    QLabel#ClassItem span {{
-                        font-size: 11px;
-                        color: {t['text']};
-                        opacity: .85;
-                        display: block;
-                        margin-top: 4px;
-                        line-height: 1.4;
-                    }}
-                """
-                base_style = root_decl + child_rules
-            except Exception:
-                bg = day_colors.get(day, "#FFFFFF")
-                root_decl = (
-                    f"padding: 10px 14px;"
-                    f" background: {bg};"
-                    f" border: 1px solid #ccc;"
-                    f" border-radius: 10px;"
-                )
-                child_rules = """
-                    QLabel#ClassItem b { font-size: 13px; color: #0B1F3A; }
-                    QLabel#ClassItem span { font-size: 11px; color: #0B1F3A; opacity: .85; display: block; margin-top: 4px; line-height: 1.4; }
-                """
-                base_style = root_decl + child_rules
-
-            label.setStyleSheet(base_style)
-            label.setProperty("baseStyle", base_style)
-            label.setAttribute(Qt.WA_TransparentForMouseEvents)
-
-            item = QListWidgetItem()
-            item.setSizeHint(QSize(0, 70))
-            item.setData(Qt.UserRole, cid)
-            item.setBackground(Qt.transparent)
-
-            self.list_classes.addItem(item)
-            self.list_classes.setItemWidget(item, label)
-
-    def search_students(self):
-        raw = self.input_search_student.text().strip()
-        q_name = raw           # contains_fa خودش نرمال‌سازی فارسی را انجام می‌دهد
-        q_code = nd(raw)       # ← ارقام را یکسان کن
-
-        self.list_search_results.clear()
-
-        # فیلتر
-        filtered = []
-        for sid, national_code, name, teacher in self.students_data:
-            if contains_fa(name, q_name) or (q_code and q_code in nd(national_code)):
-                filtered.append((sid, national_code, name, teacher))
-
-        # سورت نتایج بر اساس نام فارسی
-        filtered = sort_records_fa(filtered, name_index=2, tiebreak_index=1)
-
-        # نمایش
-        for sid, national_code, name, teacher in filtered:
-            count = self.session_counts_by_student.get(sid, 0)
-            count_fa = fa_digits(count)
-            item = QListWidgetItem(f"{name} - کد ملی: {national_code} ( {count_fa} جلسه ثبت شده )")
-
-            item.setData(Qt.UserRole, sid)
-            self.list_search_results.addItem(item)
-            
-    def select_student(self, item):
-        self.selected_student_id = item.data(Qt.UserRole)
-
-        # ذخیره نام استاد
-        for sid, national_code, name, teacher in self.students_data:
-            if sid == self.selected_student_id:
-                self.selected_student_teacher_name = teacher
-                break
-
-        self.load_student_classes()
-        self.filter_class_list()
-
-        # ✅ اگر کلاس‌ها لود شدند، اولین کلاس رو انتخاب و ساعت رو آپدیت کن
-        if self.list_classes.count() > 0:
-            first_class_item = self.list_classes.item(0)
-            self.list_classes.setCurrentItem(first_class_item)
-            # Reset last_selected_time when switching students to ensure class start time is loaded
-            self.last_selected_time = None
-            self.select_class(first_class_item)
-
-    def select_class(self, item):
-        self.selected_class_id = item.data(Qt.UserRole)
-        
-        # گرفتن آخرین ساعت ثبت‌شده برای این کلاس
-        last_time = self.last_time_per_class.get(self.selected_class_id)
-
-        # اول سعی کن ساعت شروع کلاس را لود کن
-        class_day, class_start_time = get_day_and_time_for_class(self.selected_class_id)
-        if class_start_time:
-            try:
-                self.time_session.setTime(QTime.fromString(class_start_time, "HH:mm"))
-                # اگر این کلاس قبلاً ساعت دستی داشت، آن را حفظ کن
-                if last_time:
-                    self.last_time_per_class[self.selected_class_id] = self.time_session.time()
-            except:
-                # اگر فرمت زمان مشکل داشت، ادامه بده
-                pass
-        # اگر ساعت شروع کلاس موجود نبود یا مشکل داشت
-        elif last_time:
-            # اگر این کلاس قبلاً ساعت دستی داشت، از آن استفاده کن
-            self.time_session.setTime(last_time)
-        else:
-            # ساعت پیش‌فرض
-            self.time_session.setTime(QTime(12, 0))
-            
-        self.highlight_selected_class(item)
-
-        self.load_sessions()
-          # Load sessions for selected class
     def add_session_to_class(self):
         # بررسی انتخاب هنرجو و کلاس
         if not self.selected_class_id or not self.selected_student_id:
@@ -616,8 +460,8 @@ class SessionManager(QWidget):
             self.last_selected_time = self.time_session.time()
             self.last_time_per_class[self.selected_class_id] = self.last_selected_time
             self.refresh_session_counts()
-            self.search_students()
-            
+            self.load_students()
+
         except sqlite3.IntegrityError as e:
             print("🔴 IntegrityError:", e)
 
@@ -685,20 +529,13 @@ class SessionManager(QWidget):
         self.update_summary_bar()
         QMessageBox.information(self, "موفق", "جلسه و ترم مرتبط با موفقیت حذف شدند.")
 
-        # ✅ شمارش جلسات هنرجویان را ریفرش کن و لیست جستجو را بازترسیم کن
         self.refresh_session_counts()
-        self.search_students()
+        self.load_students()
 
         self.last_selected_time = self.time_session.time()
         self.last_time_per_class[self.selected_class_id] = self.last_selected_time
 
         self.clear_form()
-
-    def filter_class_list(self):
-        query = self.input_search_class.text().lower().strip()
-        for i in range(self.list_classes.count()):
-            item = self.list_classes.item(i)
-            item.setHidden(query not in item.text().lower())
 
     def load_session_for_editing(self, item):
         self.selected_session_id = item.data(1)
@@ -783,9 +620,8 @@ class SessionManager(QWidget):
             # اگر هنرجو هنوز ترمی نداشته، بساز
             insert_student_term_if_not_exists(self.selected_student_id, self.selected_class_id, date, time)
 
-            # ✅ شمارش جلسات هنرجویان را ریفرش کن و لیست جستجو را بازترسیم کن
             self.refresh_session_counts()
-            self.search_students()
+            self.load_students()
 
         except sqlite3.IntegrityError:
             QMessageBox.warning(self, "خطا", "امکان ویرایش به دلیل تداخل یا جلسه تکراری وجود ندارد.")
@@ -798,8 +634,6 @@ class SessionManager(QWidget):
         self.btn_add_session.setText("➕ افزودن جلسه")
         self.load_sessions()
         self.clear_form()
-        self.load_student_classes()
-
 
     def open_date_picker(self):
         dlg = ShamsiDatePopup(initial_date=self.selected_shamsi_date)
@@ -809,29 +643,13 @@ class SessionManager(QWidget):
             self.date_btn.setText(f"📅 {self.selected_shamsi_date}")
 
     def update_class_list(self):
-        """بروزرسانی لیست کلاس‌های هنرجو و تعداد جلسات ثبت‌شده"""
-        self.load_student_classes()
+        """بروزرسانی شمارش جلسات برای نمایش در popupها"""
+        self.refresh_session_counts()
 
     def update_summary_bar(self):
      """در صورت وجود نوار وضعیت، اطلاعات جلسات یا ترم‌ها را بروزرسانی می‌کند"""
     # فرض: self.statusBar یا یک QLabel دارید، آنجا اطلاعات جدید قرار می‌گیرد
     pass  # اگر وجود ندارد، لازم نیست چیزی بنویسی
-
-    def highlight_selected_class(self, selected_item):
-        tokens = None
-        try:
-            tokens = ThemeManager.tokens()
-        except Exception:
-            tokens = {"primary": "#0000FF"}
-        for i in range(self.list_classes.count()):
-            item = self.list_classes.item(i)
-            widget = self.list_classes.itemWidget(item)
-            base_style = widget.property("baseStyle") or widget.styleSheet()
-            if item == selected_item:
-                widget.setStyleSheet(base_style + f" border: 2px solid {tokens['primary']};")
-            else:
-                # Reset to base style (thin themed border)
-                widget.setStyleSheet(base_style)
 
     def manual_cleanup_expired_sessions(self):
         # ۰) لیست "پایان ترم"هایی که هنوز اعلان نشده‌اند
@@ -885,6 +703,5 @@ class SessionManager(QWidget):
         self.load_sessions()
         self.update_class_list()
         self.update_summary_bar()
-        # اختیاری: اگر می‌خواهی شمارش‌ها و لیست هنرجویان هم به‌روز شود:
         self.refresh_session_counts()
-        self.search_students()
+        self.load_students()
