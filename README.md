@@ -55,12 +55,35 @@
 
 
 
-## 🎥 پیش‌نمایش ویدیویی محیط برنامه
 
-<video src="src/video/project-1-demo.mp4"
-       controls
-       width="800">
-</video>
+### داشبورد اصلی
+
+![Dashboard](src/images/dashboard_preview.png)
+
+### مدیریت هنرجویان
+
+![Students](src/images/std_manager_preview.png)
+
+### مدیریت اساتید
+
+![Teachers](src/images/tea_manager_preview.png)
+
+### مدیریت کلاس‌ها
+
+![Classes](src/images/class_preview.png)
+
+### ثبت حضور و غیاب
+
+![Attendance](src/images/attendance_preview.png)
+
+### گزارش مالی و پرداخت‌ها
+
+![Finance](src/images/finance_preview.png)
+
+#
+
+[🎥 پیش‌نمایش ویدیویی محیط برنامه](src/video/project-1-demo.mp4)
+
 📸 برای مشاهده‌ی تصاویر بیشتر از محیط برنامه: [screenshots/](src/screenshots/)
 [images/](src/images/)
 
