@@ -1,45 +1,46 @@
+# -*- mode: python ; coding: utf-8 -*-
 from pathlib import Path
-import inspect
 from PyInstaller.utils.hooks import collect_data_files
-
-SPEC_PATH = Path(inspect.getframeinfo(inspect.currentframe()).filename).resolve()
-BASE = SPEC_PATH.parent                          # .../AcaSmart-repo
-PROJ = BASE.parent                               # .../AcaSmart
-SRC_DIR = BASE / 'src'
-STATIC_DIR = PROJ / 'static'
-SETUP_DIR = PROJ / 'Setup_files'                # .../AcaSmart/Setup_files
 
 block_cipher = None
 
-# فقط دیتاهای لازم؛ آیکن را در datas نمی‌گذاریم چون با پارامتر icon کپی می‌شود
+# Paths: PyInstaller injects SPEC (path to this spec file); repo root is parent of packaging/
+SPEC_PATH = Path(SPEC).resolve()
+BASE = SPEC_PATH.parent                    # .../AcaSmart-repo/packaging
+REPO_ROOT = BASE.parent                    # .../AcaSmart-repo (repo root)
+
+# Data files: (src, dest) 2-tuples; directories are collected recursively by PyInstaller
+# Note: resource_path() expects resources at _MEIPASS/resources/, not _MEIPASS/acasmart/resources/
 datas = [
-    ('../acasmart/resources/acasmart_template.db', '.'),
-    ('../.env', '.'),
+    (str(REPO_ROOT / 'acasmart' / 'resources' / 'acasmart_template.db'), 'resources'),
+    (str(REPO_ROOT / 'acasmart' / 'resources' / 'fonts'), 'resources/fonts'),
+    (str(REPO_ROOT / 'acasmart' / 'resources' / 'static'), 'resources/static'),
     *collect_data_files('dotenv'),
     *collect_data_files('openpyxl'),
-    ('src/acasmart/resources/fonts/*.ttf', 'acasmart/resources/fonts'),
 ]
-]
+if (REPO_ROOT / '.env').exists():
+    datas.append((str(REPO_ROOT / '.env'), '.'))
 
 hiddenimports = [
-    'PySide6.QtCore','PySide6.QtWidgets','PySide6.QtGui','shiboken6',
-    'sqlite3','pandas','numpy','jdatetime','openpyxl','requests',
-    'dotenv','et_xmlfile','cachetools','jinja2'
+    'PySide6.QtCore', 'PySide6.QtWidgets', 'PySide6.QtGui', 'shiboken6',
+    'sqlite3', 'pandas', 'numpy', 'jdatetime', 'openpyxl', 'requests',
+    'dotenv', 'et_xmlfile', 'cachetools', 'jinja2',
 ]
 
 a = Analysis(
-    [str((SRC_DIR / 'main.py').resolve())],
-    pathex=[str(BASE.resolve())],
+    [str(REPO_ROOT / 'main.py')],
+    pathex=[str(REPO_ROOT)],
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
-    runtime_hooks=[str((SRC_DIR / 'custom_runtime_hook.py').resolve())],
+    runtime_hooks=[str(REPO_ROOT / 'acasmart' / 'runtime' / 'custom_runtime_hook.py')],
     excludes=[
-        'matplotlib','scipy','IPython','jupyter','notebook','pytest','nbconvert',
-        'sphinx','setuptools','distutils','tkinter','PIL','pillow','cv2',
-        'opencv','tensorflow','torch','sklearn','scikit_learn','pkg_resources'
+        'matplotlib', 'scipy', 'IPython', 'jupyter', 'notebook', 'pytest', 'nbconvert',
+        'sphinx', 'setuptools', 'distutils', 'tkinter', 'PIL', 'pillow', 'cv2',
+        'opencv', 'tensorflow', 'torch', 'sklearn', 'scikit_learn', 'pkg_resources',
     ],
+    cipher=block_cipher,
     noarchive=False,
 )
 
@@ -57,28 +58,31 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
+    upx_exclude=[],
     runtime_tmpdir=None,
     console=False,
-    icon='../acasmart/resources/AppIcon.icns',
+    icon=str(REPO_ROOT / 'acasmart' / 'resources' / 'static' / 'AppIcon.icns'),
 )
+
+# Version for bundle (match acasmart.core.version)
+APP_VERSION = '1.1.11'
+APP_VERSION_INT = '1111'
 
 app = BUNDLE(
     exe,
     name='AcaSmart.app',
-    icon='../acasmart/resources/AppIcon.icns',
+    icon=str(REPO_ROOT / 'acasmart' / 'resources' / 'static' / 'AppIcon.icns'),
     bundle_identifier='ir.aramesh.AcaSmart',
     info_plist={
-        'CFBundleIdentifier' : 'ir.aramesh.AcaSmart',
+        'CFBundleIdentifier': 'ir.aramesh.AcaSmart',
         'CFBundleName': 'AcaSmart',
         'CFBundleDisplayName': 'AcaSmart',
         'CFBundleIconFile': 'AppIcon.icns',
-        'CFBundleShortVersionString': '1.1.08',
-        'CFBundleVersion': '1108',
+        'CFBundleShortVersionString': APP_VERSION,
+        'CFBundleVersion': APP_VERSION_INT,
         'NSHighResolutionCapable': True,
         'LSMinimumSystemVersion': '11.0',
         'LSApplicationCategoryType': 'public.app-category.productivity',
-        'NSRequiresAquaSystemAppearance': False,  # پشتیبانی از Dark Mode
-    
-
+        'NSRequiresAquaSystemAppearance': False,
     },
 )

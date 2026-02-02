@@ -1,21 +1,31 @@
 # -*- mode: python ; coding: utf-8 -*-
+from pathlib import Path
 from PyInstaller.utils.hooks import collect_data_files
 
 block_cipher = None
 
+# Paths: PyInstaller injects SPEC (path to this spec file); repo root is parent of packaging/
+SPEC_PATH = Path(SPEC).resolve()
+REPO_ROOT = SPEC_PATH.parent.parent        # .../AcaSmart-repo (repo root)
+
+# Data files: (src, dest) 2-tuples; directories are collected recursively by PyInstaller
+# Note: resource_path() expects resources at _MEIPASS/resources/, not _MEIPASS/acasmart/resources/
+_datas = [
+    (str(REPO_ROOT / 'acasmart' / 'resources' / 'acasmart_template.db'), 'resources'),
+    (str(REPO_ROOT / 'acasmart' / 'resources' / 'fonts'), 'resources/fonts'),
+    (str(REPO_ROOT / 'acasmart' / 'resources' / 'static'), 'resources/static'),
+    *collect_data_files('dotenv'),
+    *collect_data_files('openpyxl'),
+]
+if (REPO_ROOT / '.env').exists():
+    _datas.append((str(REPO_ROOT / '.env'), '.'))
+
+# Entry point is main.py at repo root; acasmart package is under repo root
 a = Analysis(
-    ['src/main.py'],
-    pathex=['.'],
+    [str(REPO_ROOT / 'main.py')],
+    pathex=[str(REPO_ROOT)],
     binaries=[],
-    datas=[
-        ('../acasmart/resources/acasmart_template.db', '.'),
-        ('../.env', '.'),
-        ('../acasmart/resources/AppIcon.ico', '.'),
-        ('../acasmart/resources/AppIcon.png', '.'),
-        ('src/acasmart/resources/fonts/*.ttf', 'acasmart/resources/fonts'),
-        *collect_data_files('dotenv'),
-        *collect_data_files('openpyxl'),
-    ],
+    datas=_datas,
     hiddenimports=[
         'PySide6.QtCore',
         'PySide6.QtWidgets',
@@ -29,16 +39,15 @@ a = Analysis(
         'requests',
         'dotenv',
         'et_xmlfile',
-        'cachetools'
+        'cachetools',
+        'jinja2',
     ],
     hookspath=[],
-    runtime_hooks=[
-        'src/custom_runtime_hook.py'
-    ],
+    runtime_hooks=[str(REPO_ROOT / 'acasmart' / 'runtime' / 'custom_runtime_hook.py')],
     excludes=[
-        'matplotlib', 'scipy', 'IPython', 'jupyter', 'notebook','pytest', 'nbconvert',
+        'matplotlib', 'scipy', 'IPython', 'jupyter', 'notebook', 'pytest', 'nbconvert',
         'sphinx', 'setuptools', 'distutils', 'tkinter', 'PIL', 'pillow', 'cv2',
-        'opencv', 'tensorflow', 'torch', 'sklearn', 'scikit_learn', 'pkg_resources'
+        'opencv', 'tensorflow', 'torch', 'sklearn', 'scikit_learn', 'pkg_resources',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -63,7 +72,7 @@ exe = EXE(
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,
-    icon='../acasmart/resources/AppIcon.ico'  # Default icon
+    icon=str(REPO_ROOT / 'acasmart' / 'resources' / 'static' / 'AppIcon.ico'),
 )
 
 coll = COLLECT(
@@ -74,5 +83,9 @@ coll = COLLECT(
     strip=False,
     upx=False,
     upx_exclude=[],
-    name='AcaSmart'
+    name='AcaSmart',
 )
+</think>
+Fixing the conditional .env entry and completing main.spec.
+<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
+StrReplace
