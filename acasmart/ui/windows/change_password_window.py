@@ -2,16 +2,18 @@ from acasmart.data.db import get_connection
 from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QPushButton, QMessageBox
 from PySide6.QtCore import Qt
 from acasmart.ui.widgets.theme_manager import ThemeManager
+from acasmart.ui.widgets.base_secondary_window import BaseSecondaryWindow
 from acasmart.core.utils import hash_password
 
-class ChangeCredentialsWindow(QWidget):
-    def __init__(self, logged_in_mobile):
-        super().__init__()
-        self.setWindowTitle("تغییر اطلاعات ورود")
+class ChangeCredentialsWindow(BaseSecondaryWindow):
+    def __init__(self, logged_in_mobile, return_target: QWidget | None = None):
+        super().__init__("تغییر اطلاعات ورود", return_target)
         self.setGeometry(300, 300, 350, 200)
         self.logged_in_mobile = logged_in_mobile
 
         form_layout = QFormLayout()
+        content_layout = self.content_layout()
+        content_layout.addLayout(form_layout)
 
         self.input_new_mobile = QLineEdit()
         form_layout.addRow(": نام کاربری جدید (اختیاری)", self.input_new_mobile)
@@ -33,8 +35,6 @@ class ChangeCredentialsWindow(QWidget):
         self.btn_submit.setCursor(Qt.PointingHandCursor)
         self.btn_submit.clicked.connect(self.update_credentials)
         form_layout.addRow(self.btn_submit)
-
-        self.setLayout(form_layout)
         # Apply theme/QSS
         for w in (
             self.input_new_mobile,

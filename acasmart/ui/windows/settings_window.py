@@ -1,6 +1,7 @@
 from acasmart.data.repos.settings_repo import get_setting, get_setting_bool, set_setting, set_setting_bool
 from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QPushButton, QMessageBox, QComboBox
 from acasmart.ui.widgets.theme_manager import ThemeManager
+from acasmart.ui.widgets.base_secondary_window import BaseSecondaryWindow
 import re
 from acasmart.core.utils import currency_label
 
@@ -12,13 +13,14 @@ def _digits_only(text: str) -> int:
     digits = ''.join(re.findall(r'\d+', s))
     return int(digits) if digits else 0
 
-class SettingsWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("تنظیمات آموزشگاه")
+class SettingsWindow(BaseSecondaryWindow):
+    def __init__(self, return_target: QWidget | None = None):
+        super().__init__("تنظیمات آموزشگاه", return_target)
         self.setGeometry(350, 250, 300, 200)
 
         layout = QFormLayout()
+        content_layout = self.content_layout()
+        content_layout.addLayout(layout)
         
         # شهریه هر ترم
         self.input_term_fee = QLineEdit()
@@ -65,8 +67,6 @@ class SettingsWindow(QWidget):
         self.btn_save.setProperty("variant", "primary")
         self.btn_save.clicked.connect(self.save_settings)
         layout.addRow(self.btn_save)
-
-        self.setLayout(layout)
         # Apply theme/QSS to fields and button
         for w in (
             self.input_term_fee,

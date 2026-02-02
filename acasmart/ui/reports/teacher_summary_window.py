@@ -8,16 +8,15 @@ from acasmart.data.repos.teachers_repo import fetch_teachers_simple
 import openpyxl
 import jdatetime
 from acasmart.ui.widgets.theme_manager import ThemeManager
+from acasmart.ui.widgets.base_secondary_window import BaseSecondaryWindow
 
 
-class TeacherSummaryWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("گزارش کلی اساتید")
+class TeacherSummaryWindow(BaseSecondaryWindow):
+    def __init__(self, return_target: QWidget | None = None):
+        super().__init__("گزارش کلی اساتید", return_target)
         self.setGeometry(300, 150, 1100, 600)
 
-        layout = QVBoxLayout()
-        layout.setContentsMargins(12, 12, 12, 12)
+        layout = self.content_layout()
         layout.setSpacing(10)
         layout.addLayout(self.create_filter_box())
 
@@ -32,8 +31,6 @@ class TeacherSummaryWindow(QWidget):
 
         self.summary_label = QLabel()
         layout.addWidget(self.summary_label)
-
-        self.setLayout(layout)
         # Apply QSS
         for w in (self.table, self.summary_label):
             try:

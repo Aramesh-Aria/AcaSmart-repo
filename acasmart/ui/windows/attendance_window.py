@@ -33,11 +33,11 @@ from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
 from acasmart.services.sms_notifier import SmsNotifier, SmsStatus
 
 from acasmart.ui.widgets.theme_manager import ThemeManager
+from acasmart.ui.widgets.base_secondary_window import BaseSecondaryWindow
 
-class AttendanceManager(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("مدیریت حضور و غیاب")
+class AttendanceManager(BaseSecondaryWindow):
+    def __init__(self, return_target: QWidget | None = None):
+        super().__init__("مدیریت حضور و غیاب", return_target)
         self.setGeometry(300, 200, 600, 500)
         
         self.selected_class_id = None
@@ -51,8 +51,7 @@ class AttendanceManager(QWidget):
             print(f"Error clearing expired sessions: {e}")
 
 
-        layout = QVBoxLayout()
-        layout.setContentsMargins(12, 12, 12, 12)
+        layout = self.content_layout()
         layout.setSpacing(10)
 
 
@@ -100,8 +99,6 @@ class AttendanceManager(QWidget):
         self.btn_save.setProperty("variant", "primary")
         self.btn_save.clicked.connect(self.save_attendance)
         layout.addWidget(self.btn_save)
-
-        self.setLayout(layout)
 
         self.showMaximized()
 

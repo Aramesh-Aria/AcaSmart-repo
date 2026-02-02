@@ -20,6 +20,7 @@ import sqlite3
 from acasmart.core.fa_collation import sort_records_fa, fa_digits
 from acasmart.core.utils import currency_label, format_currency_with_unit, parse_user_amount_to_toman
 from acasmart.ui.widgets.theme_manager import ThemeManager
+from acasmart.ui.widgets.base_secondary_window import BaseSecondaryWindow
 
 class TermConfigDialog(QDialog):
     """
@@ -141,10 +142,9 @@ class TermConfigDialog(QDialog):
             return {"sessions_limit": None, "tuition_fee": None, "currency_unit": None, "profile_id": None}
 
 
-class SessionManager(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("مدیریت جلسات هنرجویان")
+class SessionManager(BaseSecondaryWindow):
+    def __init__(self, return_target: QWidget | None = None):
+        super().__init__("مدیریت جلسات هنرجویان", return_target)
         self.setGeometry(350, 250, 500, 500)
 
 
@@ -165,8 +165,7 @@ class SessionManager(QWidget):
         self.session_counts_by_student = {}  # {student_id: count}
         self.refresh_session_counts()        # ← اولین بارگیری
 
-        layout = QVBoxLayout()
-        layout.setContentsMargins(12, 12, 12, 12)
+        layout = self.content_layout()
         layout.setSpacing(10)
 
         # انتخاب هنرجو (popup)
@@ -245,8 +244,6 @@ class SessionManager(QWidget):
         self.list_sessions.itemDoubleClicked.connect(self.delete_session_from_class)
         self.list_sessions.itemClicked.connect(self.load_session_for_editing)
         layout.addWidget(self.list_sessions)
-
-        self.setLayout(layout)
 
         # Apply theme/QSS to new widgets
         for w in (self.date_btn, self.btn_add_session, self.btn_clear, self.btn_notify_expired, self.btn_cleanup,

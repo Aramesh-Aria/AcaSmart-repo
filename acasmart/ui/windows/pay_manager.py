@@ -17,12 +17,12 @@ from acasmart.ui.reports.payment_report_window import PaymentReportWindow
 from acasmart.core.fa_collation import sort_records_fa
 from acasmart.core.utils import currency_label, format_currency_with_unit, parse_user_amount_to_toman
 from acasmart.ui.widgets.theme_manager import ThemeManager
+from acasmart.ui.widgets.base_secondary_window import BaseSecondaryWindow
 
-class PaymentManager(QWidget):
+class PaymentManager(BaseSecondaryWindow):
     
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("ثبت پرداخت‌ها و گزارش‌گیری مالی")
+    def __init__(self, return_target: QWidget | None = None):
+        super().__init__("ثبت پرداخت‌ها و گزارش‌گیری مالی", return_target)
         self.setGeometry(300, 200, 900, 700)
         self.showMaximized()
 
@@ -40,8 +40,7 @@ class PaymentManager(QWidget):
         self.selected_term_id = None
         self.students = []
 
-        layout = QVBoxLayout()
-        layout.setContentsMargins(16, 16, 16, 16)
+        layout = self.content_layout()
         layout.setSpacing(12)
 
         # ---------- انتخاب هنرجو (popup) ----------
@@ -145,7 +144,6 @@ class PaymentManager(QWidget):
 
 
         # ---------- اعمال تم ----------
-        self.setLayout(layout)
         for w in (self.btn_add_payment, self.btn_clear, self.btn_show_report, self.student_btn, self.class_btn, self.term_btn,
                   self.input_amount, self.combo_type):
             ThemeManager.repolish(w)
@@ -450,7 +448,8 @@ class PaymentManager(QWidget):
     def open_report_window(self):
         self.report_window = PaymentReportWindow(
             student_id=self.selected_student_id,
-            class_id=self.selected_class_id
+            class_id=self.selected_class_id,
+            return_target=self
         )
         self.report_window.payment_changed.connect(self.update_financial_labels)
         self.report_window.edit_requested.connect(self.load_payment_for_edit)

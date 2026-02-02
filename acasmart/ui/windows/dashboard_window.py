@@ -114,57 +114,57 @@ class DashboardWindow(QMainWindow):
 
     def open_student_manager(self):
         from acasmart.ui.windows.student_manager import StudentManager
-        self.student_window = StudentManager()
+        self.student_window = StudentManager(return_target=self)
         self.student_window.show()
 
     def open_teacher_manager(self):
         from acasmart.ui.windows.teacher_manager import TeacherManager
-        self.teacher_window = TeacherManager()
+        self.teacher_window = TeacherManager(return_target=self)
         self.teacher_window.show()
 
     def open_change_password(self):
         from acasmart.ui.windows.change_password_window import ChangeCredentialsWindow
-        self.change_password_window = ChangeCredentialsWindow(logged_in_mobile=self.logged_in_mobile)
+        self.change_password_window = ChangeCredentialsWindow(logged_in_mobile=self.logged_in_mobile, return_target=self)
         self.change_password_window.show()
 
     def open_class_manager(self):
         from acasmart.ui.windows.class_manager import ClassManager
-        self.class_window = ClassManager()
+        self.class_window = ClassManager(return_target=self)
         self.class_window.show()
 
     def open_session_manager(self):
         from acasmart.ui.windows.session_manager import SessionManager
-        self.session_window = SessionManager()
+        self.session_window = SessionManager(return_target=self)
         self.session_window.show()
 
     def open_payment_manager(self):
         from acasmart.ui.windows.pay_manager import PaymentManager
-        self.payment_manager_window = PaymentManager()
+        self.payment_manager_window = PaymentManager(return_target=self)
         self.payment_manager_window.show()
 
     def open_setting_manager(self):
         from acasmart.ui.windows.settings_window import SettingsWindow
-        self.setting_window = SettingsWindow()
+        self.setting_window = SettingsWindow(return_target=self)
         self.setting_window.show()
 
     def open_attndance_window(self):
         from acasmart.ui.windows.attendance_window import AttendanceManager
-        self.attendance_window = AttendanceManager()
+        self.attendance_window = AttendanceManager(return_target=self)
         self.attendance_window.show()
 
     def open_reports(self):
         from acasmart.ui.reports.reports_window import ReportsWindow
-        self.reports_window = ReportsWindow()
+        self.reports_window = ReportsWindow(return_target=self)
         self.reports_window.show()
 
     def open_sms_notification_manager(self):
         from acasmart.ui.windows.sms_notification_window import SmsNotificationWindow
-        self.open_sms_notification_window = SmsNotificationWindow()
+        self.open_sms_notification_window = SmsNotificationWindow(return_target=self)
         self.open_sms_notification_window.show()
 
     def open_pricing_profile_manager(self):
         from acasmart.ui.windows.pricing_profile_manager import PricingProfileManager
-        self.pricing_profile_window = PricingProfileManager()
+        self.pricing_profile_window = PricingProfileManager(return_target=self)
         self.pricing_profile_window.show()
     
     # ---------- بکاپ/ریستور ----------

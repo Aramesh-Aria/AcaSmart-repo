@@ -13,19 +13,18 @@ import jdatetime
 from acasmart.ui.widgets.shamsi_date_picker import ShamsiDatePicker
 from acasmart.ui.widgets.theme_manager import ThemeManager
 from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
+from acasmart.ui.widgets.base_secondary_window import BaseSecondaryWindow
 
 
-class AttendanceReportWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("گزارش حضور و غیاب هنرجویان")
+class AttendanceReportWindow(BaseSecondaryWindow):
+    def __init__(self, return_target: QWidget | None = None):
+        super().__init__("گزارش حضور و غیاب هنرجویان", return_target)
         self.setGeometry(250, 150, 1300, 600)
         self.build_ui()
 
     def build_ui(self):
-        layout = QVBoxLayout()
+        layout = self.content_layout()
         layout.setSpacing(10)
-        layout.setContentsMargins(12, 12, 12, 12)
 
         title = QLabel("📅 گزارش کلی حضور و غیاب هنرجویان")
         title.setProperty("sectionTitle", True)
@@ -87,7 +86,6 @@ class AttendanceReportWindow(QWidget):
         layout.addWidget(self.status_label)
 
         self.showMaximized()
-        self.setLayout(layout)
         for w in (
             title,
             self.input_student_name, self.combo_teacher, self.combo_class, self.combo_term_status,

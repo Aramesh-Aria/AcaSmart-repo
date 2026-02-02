@@ -5,17 +5,16 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from acasmart.ui.widgets.theme_manager import ThemeManager
+from acasmart.ui.widgets.base_secondary_window import BaseSecondaryWindow
 
 
-class ContactsWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("📒 دفترچه تلفن")
+class ContactsWindow(BaseSecondaryWindow):
+    def __init__(self, return_target: QWidget | None = None):
+        super().__init__("📒 دفترچه تلفن", return_target)
         self.setGeometry(300, 200, 700, 500)
 
-        layout = QVBoxLayout()
+        layout = self.content_layout()
         layout.setSpacing(10)
-        layout.setContentsMargins(12, 12, 12, 12)
 
         title = QLabel("📒 لیست شماره تماس هنرجویان و اساتید")
         title.setProperty("sectionTitle", True)
@@ -33,8 +32,6 @@ class ContactsWindow(QWidget):
         self.table.setHorizontalHeaderLabels(["نام", "کد ملی", "شماره تماس", "نقش"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.table)
-
-        self.setLayout(layout)
         for w in (title, self.search_input, self.table):
             try:
                 ThemeManager.repolish(w)

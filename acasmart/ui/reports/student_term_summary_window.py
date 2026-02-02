@@ -12,24 +12,21 @@ from acasmart.ui.widgets.shamsi_date_picker import ShamsiDatePicker
 from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
 import openpyxl
 from acasmart.ui.widgets.theme_manager import ThemeManager
+from acasmart.ui.widgets.base_secondary_window import BaseSecondaryWindow
 
 
-class StudentTermSummaryWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("گزارش کلی هنرجویان")
+class StudentTermSummaryWindow(BaseSecondaryWindow):
+    def __init__(self, return_target: QWidget | None = None):
+        super().__init__("گزارش کلی هنرجویان", return_target)
         self.setGeometry(300, 150, 1200, 600)
 
-        layout = QVBoxLayout()
-        layout.setContentsMargins(12, 12, 12, 12)
+        layout = self.content_layout()
         layout.setSpacing(10)
         layout.addWidget(self.create_filter_box())
         layout.addWidget(self.create_table())
 
         self.summary_label = QLabel("تعداد نتایج: ۰")
         layout.addWidget(self.summary_label)
-
-        self.setLayout(layout)
         self.load_filter_options()
         self.set_default_dates()
         self.load_data(apply_filters=False)

@@ -10,23 +10,22 @@ from PySide6.QtGui import QColor
 from acasmart.core.utils import format_currency_with_unit
 from acasmart.ui.widgets.shamsi_date_picker import ShamsiDatePicker
 from acasmart.ui.widgets.theme_manager import ThemeManager
+from acasmart.ui.widgets.base_secondary_window import BaseSecondaryWindow
 
 import jdatetime
 import openpyxl
 
 
-class FinancialReportWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("گزارش مالی هنرجویان")
+class FinancialReportWindow(BaseSecondaryWindow):
+    def __init__(self, return_target: QWidget | None = None):
+        super().__init__("گزارش مالی هنرجویان", return_target)
         self.setGeometry(300, 200, 1300, 500)
         self.all_data = []  # همه داده‌ها ذخیره می‌شن برای فیلتر کردن
         self.build_ui()
 
     def build_ui(self):
-        layout = QVBoxLayout()
+        layout = self.content_layout()
         layout.setSpacing(10)
-        layout.setContentsMargins(12, 12, 12, 12)
 
         title = QLabel("📊 گزارش مالی ترم‌های هنرجویان")
         title.setProperty("sectionTitle", True)
@@ -94,8 +93,6 @@ class FinancialReportWindow(QWidget):
         layout.addWidget(self.table)
         self.table.setSortingEnabled(True)
         self.showMaximized()
-
-        self.setLayout(layout)
         # Apply QSS to key widgets
         for w in (
             title, self.summary_label, self.input_student_name,

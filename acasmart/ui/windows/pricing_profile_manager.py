@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from acasmart.core.utils import currency_label, format_currency_with_unit, parse_user_amount_to_toman
 from acasmart.ui.widgets.theme_manager import ThemeManager
+from acasmart.ui.widgets.base_secondary_window import BaseSecondaryWindow
 
 class PricingProfileDialog(QDialog):
     """
@@ -100,16 +101,15 @@ class PricingProfileDialog(QDialog):
             "is_default": 1 if self.chk_default.isChecked() else 0
         }
 
-class PricingProfileManager(QWidget):
+class PricingProfileManager(BaseSecondaryWindow):
     """
     مدیریت پروفایل‌های شهریه
     """
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("مدیریت پروفایل‌های شهریه")
+    def __init__(self, return_target: QWidget | None = None):
+        super().__init__("مدیریت پروفایل‌های شهریه", return_target)
         self.resize(700, 450)
 
-        layout = QVBoxLayout(self)
+        layout = self.content_layout()
 
         # جدول
         self.tbl = QTableWidget(0, 5)

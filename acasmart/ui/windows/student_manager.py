@@ -17,17 +17,16 @@ import jdatetime
 from acasmart.ui.widgets.shamsi_date_popup import ShamsiDatePopup
 from acasmart.core.fa_collation import sort_records_fa, contains_fa, nd
 from acasmart.ui.widgets.theme_manager import ThemeManager
+from acasmart.ui.widgets.base_secondary_window import BaseSecondaryWindow
 
-class StudentManager(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("مدیریت هنرجویان")
+class StudentManager(BaseSecondaryWindow):
+    def __init__(self, return_target: QWidget | None = None):
+        super().__init__("مدیریت هنرجویان", return_target)
         self.setGeometry(200, 200, 500, 600)
 
 
-        layout = QVBoxLayout()
+        layout = self.content_layout()
         layout.setSpacing(10)  # فاصله بین اجزا
-        layout.setContentsMargins(15, 15, 15, 15)  # فاصله از لبه‌ها
 
 
         # get students data
@@ -179,8 +178,6 @@ class StudentManager(QWidget):
         self.lbl_count = QLabel("تعداد هنرجویان: ۰ نفر")
         self.lbl_count.setStyleSheet("font-size: 13px; color: gray; margin-top: 5px;")
         layout.addWidget(self.lbl_count)
-
-        self.setLayout(layout)
 
         # برای اینکه QSS جدید رو بخونه
         for btn in (self.btn_add, self.btn_update, self.btn_clear, self.btn_advanced):

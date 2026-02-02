@@ -15,13 +15,13 @@ from acasmart.data.repos.classes_repo import fetch_classes
 from acasmart.core.utils import format_currency_with_unit
 from functools import partial
 from acasmart.ui.widgets.theme_manager import ThemeManager
+from acasmart.ui.widgets.base_secondary_window import BaseSecondaryWindow
 
-class PaymentReportWindow(QWidget):
+class PaymentReportWindow(BaseSecondaryWindow):
     payment_changed = Signal()  # سیگنال برای اعلام تغییرات پرداخت
     edit_requested = Signal(int)
-    def __init__(self, student_id=None, class_id=None):
-        super().__init__()
-        self.setWindowTitle("📊 گزارش پرداخت‌ها")
+    def __init__(self, student_id=None, class_id=None, return_target: QWidget | None = None):
+        super().__init__("📊 گزارش پرداخت‌ها", return_target)
         self.resize(1300, 650)
         # پیدا کردن مرکز صفحه و جابه‌جا کردن پنجره
         screen_geometry = QApplication.primaryScreen().availableGeometry()
@@ -32,7 +32,7 @@ class PaymentReportWindow(QWidget):
         self.student_id = student_id
         self.class_id = class_id
 
-        layout = QVBoxLayout()
+        layout = self.content_layout()
 
         # --- فیلتر ها ---
         filter_layout = QHBoxLayout()
@@ -99,8 +99,6 @@ class PaymentReportWindow(QWidget):
         self.lbl_total_filtered = QLabel("مجموع پرداخت‌های نمایشی: 0 تومان")
         self.lbl_total_filtered.setStyleSheet("font-size:13px; color:green; margin-top:5px;")
         layout.addWidget(self.lbl_total_filtered)
-
-        self.setLayout(layout)
         # Apply QSS to filters/buttons/table
         for w in (
             self.input_min_amount, self.input_max_amount, self.input_student_name, self.combo_class,

@@ -9,11 +9,11 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QTime, Qt, QSize
 from PySide6.QtGui import QColor
 from acasmart.ui.widgets.theme_manager import ThemeManager
+from acasmart.ui.widgets.base_secondary_window import BaseSecondaryWindow
 
-class ClassManager(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("مدیریت کلاس‌ها")
+class ClassManager(BaseSecondaryWindow):
+    def __init__(self, return_target: QWidget | None = None):
+        super().__init__("مدیریت کلاس‌ها", return_target)
         self.setGeometry(300, 200, 500, 600)
 
         # Flag to distinguish create vs edit
@@ -21,7 +21,7 @@ class ClassManager(QWidget):
         self.selected_class_id = None
         self.teachers_map = {}
 
-        self.setLayout(self.build_ui())
+        self.build_ui()
 
         # Initial data load
         self.load_teachers()
@@ -65,7 +65,7 @@ class ClassManager(QWidget):
         self.lbl_class_count.setStyleSheet("font-size: 13px; color: gray; margin-top: 5px;")
 
         # Layouts
-        main_layout = QVBoxLayout()
+        main_layout = self.content_layout()
         form_layout = QFormLayout()
         form_layout.addRow(": نام کلاس", self.input_name)
         form_layout.addRow(": استاد", self.combo_teacher)
@@ -132,8 +132,6 @@ class ClassManager(QWidget):
         main_layout.addWidget(QLabel("لیست کلاس‌ها (برای حذف دوبار کلیک کنید):"))
         main_layout.addWidget(self.list_classes)
         main_layout.addWidget(self.lbl_class_count)
-
-        return main_layout
 
 
     def clear_form(self):

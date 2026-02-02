@@ -26,19 +26,17 @@ import re
 from acasmart.core.fa_collation import sort_records_fa, contains_fa, fa_collator
 from functools import cmp_to_key
 from acasmart.ui.widgets.theme_manager import ThemeManager
+from acasmart.ui.widgets.base_secondary_window import BaseSecondaryWindow
 
-class TeacherManager(QWidget):
-    def __init__(self):
-        super().__init__()
-
-        self.setWindowTitle("مدیریت اساتید")
+class TeacherManager(BaseSecondaryWindow):
+    def __init__(self, return_target: QWidget | None = None):
+        super().__init__("مدیریت اساتید", return_target)
         self.setGeometry(250, 250, 500, 600)
 
 
         #layout برای چیدن ویجت‌ها در یک ستون عمودی استفاده می‌شه
-        layout = QVBoxLayout()
+        layout = self.content_layout()
         layout.setSpacing(10)
-        layout.setContentsMargins(15, 15, 15, 15)
 
         # اضافه کردن ساز(سازها)
         self.input_instrument = QLineEdit()
@@ -173,8 +171,6 @@ class TeacherManager(QWidget):
         # برای اینکه QSS جدید رو بخونه
         for btn in (self.btn_add, self.btn_update, self.btn_clear, self.btn_add_instrument):
             ThemeManager.repolish(btn)
-
-        self.setLayout(layout)
         self.selected_teacher_id = None # این متغیر ID استاد انتخاب‌شده رو نگه می‌داره,لازمه برای اینکه بدونیم کدوم رکورد باید ویرایش بشه
         self.teachers_data = []
         self.load_teachers()

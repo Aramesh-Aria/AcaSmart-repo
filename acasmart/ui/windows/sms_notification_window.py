@@ -6,11 +6,11 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from acasmart.services.sms_notifier import SmsNotifier
 from acasmart.ui.widgets.theme_manager import ThemeManager
+from acasmart.ui.widgets.base_secondary_window import BaseSecondaryWindow
 
-class SmsNotificationWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("📲 ارسال پیامک به هنرجویان")
+class SmsNotificationWindow(BaseSecondaryWindow):
+    def __init__(self, return_target: QWidget | None = None):
+        super().__init__("📲 ارسال پیامک به هنرجویان", return_target)
         self.setGeometry(300, 200, 500, 600)
         self.students = []
         self.checkboxes = []
@@ -18,9 +18,8 @@ class SmsNotificationWindow(QWidget):
         self.build_ui()
 
     def build_ui(self):
-        layout = QVBoxLayout()
+        layout = self.content_layout()
         layout.setSpacing(8)
-        layout.setContentsMargins(12, 12, 12, 12)
 
         title = QLabel("📨 ارسال پیامک به هنرجویان")
         title.setAlignment(Qt.AlignCenter)
@@ -51,8 +50,6 @@ class SmsNotificationWindow(QWidget):
         self.btn_send_sms.setProperty("variant", "primary")
         self.btn_send_sms.clicked.connect(self.send_sms_to_selected)
         layout.addWidget(self.btn_send_sms)
-
-        self.setLayout(layout)
         # Apply QSS
         for w in (self.search_input, self.btn_send_sms, title):
             try:
