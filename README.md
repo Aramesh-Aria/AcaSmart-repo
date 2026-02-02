@@ -39,46 +39,30 @@
 
 ## 🧠 Architecture & Design
 
-The application is built using an object-oriented architecture:
+این نرم‌افزار با معماری شی‌گرا  ساخته شده است که شامل ویژگی‌های زیر می‌باشد
 
-- Separation of UI and business logic
-- Dedicated classes for:
-  - Student
-  - Teacher
-  - Class
-  - Financial records
-- Central database manager for SQLite operations
-- Modular design for future scalability
+- فصل‌بندی رابط کاربری و منطق تجاری
+- کلاس‌های اختصاصی برای:
+  - هنرجو
+  - استاد
+  - کلاس‌ها
+  - سوابق مالی
+- مدیریت مرکزی پایگاه داده برای عملیات SQLite
+- طراحی ماژولار برای مقیاس‌پذیری آینده
 
 ---
 
-## 🖼️ پیش‌نمایش
 
-### داشبورد اصلی
 
-![Dashboard](src/images/dashboard_preview.png)
 
-### مدیریت هنرجویان
+## 🎥 پیش‌نمایش ویدیویی محیط برنامه
 
-![Students](src/images/std_manager_preview.png)
-
-### مدیریت اساتید
-
-![Teachers](src/images/tea_manager_preview.png)
-
-### مدیریت کلاس‌ها
-
-![Classes](src/images/class_preview.png)
-
-### ثبت حضور و غیاب
-
-![Attendance](src/images/attendance_preview.png)
-
-### گزارش مالی و پرداخت‌ها
-
-![Finance](src/images/finance_preview.png)
-
+<video src="src/video/project-1-demo.mp4"
+       controls
+       width="800">
+</video>
 📸 برای مشاهده‌ی تصاویر بیشتر از محیط برنامه: [screenshots/](src/screenshots/)
+[images/](src/images/)
 
 ---
 ## ⚙️ نحوه نصب

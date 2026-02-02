@@ -64,3 +64,5 @@ artifacts/
 Setup_files/VC_redist.x64.exe
 *.exe
 *.dll
+
+GEMINI.md
