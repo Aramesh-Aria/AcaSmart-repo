@@ -82,7 +82,7 @@
 
 #
 
-[🎥 پیش‌نمایش ویدیویی محیط برنامه](src/video/project-1-demo.mp4)
+[🎥 پیش‌نمایش ویدیویی محیط برنامه](src/video/project-demo2.mp4)
 
 📸 برای مشاهده‌ی تصاویر بیشتر از محیط برنامه: [screenshots/](src/screenshots/)
 [images/](src/images/)
