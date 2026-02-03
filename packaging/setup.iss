@@ -7,7 +7,7 @@ OutputDir=dist
 OutputBaseFilename=setup_Acasmart
 Compression=lzma
 SolidCompression=yes
-LicenseFile=AmoozeshgahApp-repo\LICENSE
+LicenseFile=AcaSmart-repo\LICENSE
 ; Windows 7 compatibility
 MinVersion=6.1
 ; Additional Windows 7 compatibility settings
@@ -16,7 +16,7 @@ ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 
 [Files]
-Source: "AmoozeshgahApp-repo\dist\AcaSmart\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+Source: "AcaSmart-repo\dist\AcaSmart\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 Source: "Setup_files\VC_redist.x64.exe"; DestDir: "{tmp}"; Flags: ignoreversion
 ; Note: python3.dll and python38.dll are already included by PyInstaller, so we don't need to copy them separately
 
