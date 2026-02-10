@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from acasmart.data.repos.reports_repo import get_teacher_summary_rows
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTableWidget, QTableWidgetItem,

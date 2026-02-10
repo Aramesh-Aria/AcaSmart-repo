@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from acasmart.data.repos.classes_repo import class_exists, create_class, delete_class_by_id, fetch_classes, get_class_by_id, is_class_has_sessions, update_class_by_id,does_teacher_have_time_conflict
 from acasmart.data.repos.teacher_instruments_repo import fetch_teachers_with_instruments, get_instruments_for_teacher
 from PySide6.QtWidgets import (

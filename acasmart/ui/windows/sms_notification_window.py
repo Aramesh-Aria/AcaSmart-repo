@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from acasmart.data.repos.students_repo import fetch_students, get_student_contact
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea,

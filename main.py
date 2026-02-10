@@ -6,7 +6,7 @@ from pathlib import Path
 
 from acasmart.paths import APP_DATA_DIR, DB_PATH, resource_path
 from dotenv import load_dotenv
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 from acasmart.core.app_init import initialize_database
 from acasmart.ui.windows.login_window import LoginWindow
@@ -124,6 +124,47 @@ def safe_log_error(message):
         except Exception:
             pass  # Silent fail
 
+# ---------- Qt event/slot exception handler ----------
+class SafeApplication(QApplication):
+    """
+    Captures exceptions raised inside Qt event handlers / slots.
+    Without this, PySide apps can appear to "do nothing" on clicks,
+    especially in frozen builds where stdout/stderr are not visible.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._handling_exception = False
+
+    def notify(self, receiver, event):
+        try:
+            return super().notify(receiver, event)
+        except Exception:
+            if self._handling_exception:
+                raise
+
+            self._handling_exception = True
+            try:
+                tb = traceback.format_exc()
+                safe_log_error("Unhandled exception in Qt event/slot:\n" + tb)
+
+                try:
+                    log_path = APP_DATA_DIR / "acasmart.log"
+                    text = (
+                        "❌ خطای داخلی رخ داد.\n\n"
+                        "لطفاً فایل لاگ را برای پشتیبانی ارسال کنید:\n"
+                        "%LOCALAPPDATA%\\AcaSmart\\acasmart.log\n"
+                        "(یا)\n"
+                        f"{log_path}"
+                    )
+                    QMessageBox.critical(self.activeWindow(), "خطای داخلی", text)
+                except Exception:
+                    pass
+            finally:
+                self._handling_exception = False
+
+            return False
+
 # ---------- Uncaught Exception Handler ----------
 def log_uncaught_exceptions(exctype, value, tb):
     error_message = "".join(traceback.format_exception(exctype, value, tb))
@@ -179,7 +220,7 @@ if __name__ == "__main__":
         QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
         QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
     
-        app = QApplication(sys.argv)
+        app = SafeApplication(sys.argv)
         ThemeManager.apply(app, mode=None)   # از QSettings می‌خوانَد؛ یا "light"/"dark"
         
         # Apply theme icon before starting the GUI

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from acasmart.data.db import get_connection
 from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QPushButton, QMessageBox
 from PySide6.QtCore import Qt

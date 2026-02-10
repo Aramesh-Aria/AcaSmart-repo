@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from acasmart.data.db import get_connection
 from acasmart.data.repos.profiles_repo import create_pricing_profile, list_pricing_profiles
 from acasmart.data.repos.settings_repo import get_setting

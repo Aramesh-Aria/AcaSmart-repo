@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from acasmart.data.repos.attendance_repo import (
     count_attendance,
     fetch_attendance_by_date,

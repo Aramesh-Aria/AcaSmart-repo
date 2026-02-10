@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from acasmart.data.repos.teachers_repo import (
     delete_teacher_by_id,
     fetch_teachers,

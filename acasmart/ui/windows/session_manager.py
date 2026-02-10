@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from acasmart.data.repos.classes_repo import get_day_and_time_for_class, get_class_by_id
 from acasmart.data.repos.notifications_repo import get_unnotified_expired_terms, mark_terms_as_notified
 from acasmart.data.repos.payments_repo import delete_term_if_no_payments

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from acasmart.data.repos.reports_repo import get_all_student_terms_with_financials
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QHeaderView,

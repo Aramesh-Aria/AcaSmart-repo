@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from acasmart.data.repos.students_repo import (
     get_student_by_id,
     insert_student,

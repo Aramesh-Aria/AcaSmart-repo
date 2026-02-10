@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from acasmart.data.repos.reports_repo import get_attendance_report_rows
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QHeaderView,

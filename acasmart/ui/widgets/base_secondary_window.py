@@ -3,6 +3,8 @@
 وقتی کاربر دکمهٔ بازگشت را می‌زند، پنجره بسته می‌شود و پنجرهٔ مقصد (داشبورد یا والد) جلوی کاربر قرار می‌گیرد.
 کلید ESC نیز همان کار دکمه بازگشت را انجام می‌دهد.
 """
+from __future__ import annotations
+
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QToolBar
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeyEvent

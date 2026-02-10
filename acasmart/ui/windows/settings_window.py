@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from acasmart.data.repos.settings_repo import get_setting, get_setting_bool, set_setting, set_setting_bool
 from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QPushButton, QMessageBox, QComboBox
 from acasmart.ui.widgets.theme_manager import ThemeManager

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from acasmart.data.repos.payments_repo import get_payment_by_id, get_terms_for_payment_management, get_total_paid_for_term, insert_payment, update_payment_by_id
 from acasmart.data.repos.settings_repo import get_setting
 from acasmart.data.repos.students_repo import fetch_registered_classes_for_student, fetch_students_with_teachers
