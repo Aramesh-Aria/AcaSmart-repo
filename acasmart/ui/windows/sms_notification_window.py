@@ -103,7 +103,7 @@ class SmsNotificationWindow(BaseSecondaryWindow):
             name, phone = self.get_student_contact(student_id)
             if name and phone:
                 try:
-                    self.notifier.send_renew_term_notification(name, phone, "کلاس موسیقی")
+                    self.notifier.send_renew_term_notification(name, phone, " موسیقی")
                     count += 1
                 except Exception as e:
                     print(e)

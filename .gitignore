@@ -56,7 +56,9 @@ acasmart.db
 acasmart_backup.db
 acasmart_backup_1.db
 acasmart_backup_test.db
+acasmart_backup_akhari.db
 README_DEV.md
+گزارش_اساتید_14041225.xlsx
 old_db.py
 # Analysis artifacts (generated reports)
 artifacts/
