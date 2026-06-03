@@ -2,7 +2,6 @@ import logging
 from acasmart.data.db import get_connection
 from acasmart.data.migrations import (
 	migrate_attendance_unique_constraint,
-	migrate_drop_student_terms_term_id,
 )
 
 logger = logging.getLogger(__name__)
@@ -167,13 +166,6 @@ def create_tables():
 				currency_unit  = COALESCE(currency_unit,  ?)
 		""", (default_sessions, default_fee, default_unit))
 
-		# add term_id to student_terms
-		c.execute("PRAGMA table_info(student_terms)")
-		columns = [row[1] for row in c.fetchall()]
-		if "term_id" not in columns:
-			c.execute("ALTER TABLE student_terms ADD COLUMN term_id INTEGER")
-			logger.info("✅ ستون term_id به جدول student_terms اضافه شد و مقداردهی شد.")
-
 		# add start_time to student_terms (for distinguishing same-day sessions)
 		c.execute("PRAGMA table_info(student_terms)")
 		columns = [row[1] for row in c.fetchall()]
@@ -294,4 +286,3 @@ def create_tables():
 		conn.commit()
 
 	migrate_attendance_unique_constraint()  # اجرای مهاجرت بعد از ساخت جداول
-	migrate_drop_student_terms_term_id()

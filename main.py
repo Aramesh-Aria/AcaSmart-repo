@@ -11,7 +11,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 from acasmart.core.app_init import initialize_database
 from acasmart.ui.windows.login_window import LoginWindow
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QObject
 from acasmart.ui.widgets.theme_manager import ThemeManager, apply_theme_icon
 
 # ---------- Environment ----------
@@ -137,6 +137,11 @@ class SafeApplication(QApplication):
         self._handling_exception = False
 
     def notify(self, receiver, event):
+        # QApplication.notify expects a QObject as the first argument.
+        # Sometimes Qt passes non-QObjects (like QTableWidgetItem) which causes TypeError.
+        if not isinstance(receiver, QObject):
+            return False
+
         try:
             return super().notify(receiver, event)
         except Exception:
