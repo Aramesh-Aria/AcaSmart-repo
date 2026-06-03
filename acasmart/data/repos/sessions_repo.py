@@ -29,11 +29,11 @@ def ensure_term_config(term_id: int):
 def add_session(class_id, student_id, date, time,
 				term_sessions_limit=None, term_tuition_fee=None,
 				term_currency_unit=None, term_profile_id=None):
-	from acasmart.data.repos.terms_repo import insert_student_term_if_not_exists
+	from acasmart.data.repos.terms_repo import get_or_create_active_term
 	conn = get_connection()
 	c = conn.cursor()
 
-	term_id = insert_student_term_if_not_exists(
+	term_id = get_or_create_active_term(
 		student_id, class_id, date, time,
 		sessions_limit=term_sessions_limit,
 		tuition_fee=term_tuition_fee,
@@ -59,10 +59,12 @@ def add_session(class_id, student_id, date, time,
 			VALUES (?, ?, ?, ?, ?)
 		""", (class_id, student_id, term_id, date, time))
 		conn.commit()
-		return term_id
+		return c.lastrowid # بازگرداندن ID جلسه جدید
 	except sqlite3.IntegrityError:
 		logger.warning("⛔️ جلسه تکراری یا خطا در درج.")
 		return None
+	finally:
+		conn.close()
 
 
 def fetch_sessions_by_class(class_id):
@@ -84,11 +86,14 @@ def fetch_sessions_by_class(class_id):
 		return c.fetchall()
 
 
-def delete_future_sessions(student_id, class_id, session_date):
+def delete_future_sessions(term_id, session_date):
+	"""
+	حذف جلسات آینده یک ترم خاص.
+	"""
 	with get_connection() as conn:
 		conn.execute(
-			"DELETE FROM sessions WHERE student_id=? AND class_id=? AND date>=?",
-			(student_id, class_id, session_date)
+			"DELETE FROM sessions WHERE term_id=? AND date>?",
+			(term_id, session_date)
 		)
 		conn.commit()
 
@@ -139,7 +144,7 @@ def fetch_students_sessions_for_class_on_date(class_id, selected_date):
 	with get_connection() as conn:
 		c = conn.cursor()
 		c.execute("""
-			SELECT s.id, s.name, t.name, sess.time, sess.term_id
+			SELECT sess.id, s.name, t.name, sess.time, sess.term_id, s.id as student_id
 			FROM sessions sess
 			JOIN students s ON s.id = sess.student_id
 			JOIN classes c2 ON sess.class_id = c2.id

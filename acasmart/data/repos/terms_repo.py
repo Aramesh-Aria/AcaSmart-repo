@@ -4,32 +4,30 @@ from acasmart.data.db import get_connection
 logger = logging.getLogger(__name__)
 
 
-def insert_student_term_if_not_exists(
+def get_or_create_active_term(
 	student_id, class_id, start_date, start_time,
 	sessions_limit=None, tuition_fee=None, currency_unit=None, profile_id=None
 ):
+	"""
+	دریافت یا ایجاد ترم فعال برای هنرجو در یک کلاس.
+	برخلاف نسخه قبلی، start_time را برای چک کردن تکراری بودن نادیده می‌گیرد 
+	تا بتواند چندین جلسه در ساعات مختلف (مثلا کلاس ۱ ساعته) را در یک ترم بگنجاند.
+	"""
 	from acasmart.data.repos.settings_repo import get_setting  # local to avoid cycles
-	from acasmart.data.repos.sessions_repo import has_teacher_weekly_time_conflict  # avoid cycles
+	
 	with get_connection() as conn:
 		c = conn.cursor()
 
-		# جلوگیری از تداخل استاد در همین روز/ساعت
-		if has_teacher_weekly_time_conflict(class_id, start_time):
-			return None
-
-		# اگر ترم فعالِ دقیقا با همین start_date/start_time هست، همان را برگردان
+		# ۱) اگر ترم فعال برای این (هنرجو، کلاس) وجود دارد، همان را برگردان
 		c.execute("""
-			SELECT id
-			FROM student_terms
-			WHERE student_id=? AND class_id=? AND start_date=? AND start_time=? AND end_date IS NULL
-		""", (student_id, class_id, start_date, start_time))
+			SELECT id FROM student_terms
+			WHERE student_id=? AND class_id=? AND end_date IS NULL
+		""", (student_id, class_id))
 		row = c.fetchone()
 		if row:
 			term_id = row[0]
-			# اگر ترم موجود است ولی کاربر مقدار سفارشی داده، روی همان ترم ست کن
+			# بروزرسانی تنظیمات اگر کاربر مقدار جدید داده
 			if any(v is not None for v in (sessions_limit, tuition_fee, currency_unit, profile_id)):
-				if currency_unit is None:
-					currency_unit = get_setting("currency_unit", "toman")
 				c.execute("""
 					UPDATE student_terms
 					   SET sessions_limit = COALESCE(?, sessions_limit),
@@ -42,13 +40,7 @@ def insert_student_term_if_not_exists(
 				conn.commit()
 			return term_id
 
-		# اگر همان روز/ساعت جلسه‌ای برای این کلاس ثبت شده، بلاک
-		c.execute("SELECT COUNT(*) FROM sessions WHERE class_id=? AND date=? AND time=?",
-				  (class_id, start_date, start_time))
-		if c.fetchone()[0] > 0:
-			return None
-
-		# عدم شروع قبل از پایان ترم قبلی
+		# ۲) چک کردن اینکه تاریخ شروع ترم قبل از پایان ترم قبلی نباشد
 		c.execute("""
 			SELECT end_date FROM student_terms
 			WHERE student_id=? AND class_id=? AND end_date IS NOT NULL
@@ -58,7 +50,7 @@ def insert_student_term_if_not_exists(
 		if last and start_date < last[0]:
 			return None
 
-		# مقادیر پیش‌فرض برای فیلدهای سفارشی
+		# ۳) درج ترم جدید
 		if sessions_limit is None:
 			sessions_limit = int(get_setting("term_session_count", 12))
 		if tuition_fee is None:
@@ -66,7 +58,6 @@ def insert_student_term_if_not_exists(
 		if currency_unit is None:
 			currency_unit = get_setting("currency_unit", "toman")
 
-		# درج ترم جدید با مقادیر سفارشی
 		c.execute("""
 			INSERT INTO student_terms
 				(student_id, class_id, start_date, start_time, end_date,
@@ -76,6 +67,11 @@ def insert_student_term_if_not_exists(
 		      sessions_limit, tuition_fee, currency_unit, profile_id))
 		conn.commit()
 		return c.lastrowid
+
+
+def insert_student_term_if_not_exists(student_id, class_id, start_date, start_time, **kwargs):
+	"""Legacy wrapper for get_or_create_active_term."""
+	return get_or_create_active_term(student_id, class_id, start_date, start_time, **kwargs)
 
 
 def delete_student_term_by_id(term_id):

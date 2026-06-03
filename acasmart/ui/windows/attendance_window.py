@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from acasmart.data.repos.attendance_repo import (
     count_attendance,
-    fetch_attendance_by_date,
-    insert_attendance_with_date,
+    fetch_attendance_by_session,
+    insert_attendance_for_session,
     count_attendance_by_term,
-    delete_attendance,
+    delete_attendance_for_session,
     count_present_attendance_for_term,
 )
 from acasmart.data.repos.settings_repo import get_setting_bool
@@ -85,13 +85,14 @@ class AttendanceManager(BaseSecondaryWindow):
         layout.addLayout(class_layout)
 
         # --------- جدول حضور ----------
-        # جدول حضور: ID مخفی، نام هنرجو، چک‌باکس حاضر، چک‌باکس غائب
+        # جدول حضور: ID مخفی (session_id), نام هنرجو, ساعت, حاضر, غائب, term_id, عملیات
         self.table = QTableWidget()
         self.table.setObjectName("AttendanceTable")
-        self.table.setColumnCount(7)
-        self.table.setHorizontalHeaderLabels(["ID", "نام هنرجو", "ساعت", "حاضر", "غائب", "term_id", "عملیات"])
+        self.table.setColumnCount(8)
+        self.table.setHorizontalHeaderLabels(["Session ID", "نام هنرجو", "ساعت", "حاضر", "غائب", "term_id", "عملیات", "student_id"])
         self.table.setColumnHidden(0, True)
         self.table.setColumnHidden(5, True)
+        self.table.setColumnHidden(7, True)
 
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.table)
@@ -177,14 +178,14 @@ class AttendanceManager(BaseSecondaryWindow):
         selected_date = self.selected_shamsi_date
         self.table.setRowCount(0)
 
-# رنگ‌ها از تم
+        # رنگ‌ها از تم
         tokens = ThemeManager.tokens()
-        muted = tokens["muted"]
-        danger = tokens["error"]
-        primary = tokens["primary"]
+        # muted = tokens["muted"]
+        # danger = tokens["error"]
+        # primary = tokens["primary"]
 
         rows = fetch_students_sessions_for_class_on_date(self.selected_class_id, selected_date)
-        for sid, name, teacher, session_time, term_id in rows:
+        for sess_id, name, teacher, session_time, term_id, sid in rows:
             cfg = get_term_config(term_id)
             term_limit = int(cfg.get("sessions_limit") or 12)
             notify_session_number = max(0, term_limit - 1)
@@ -192,16 +193,21 @@ class AttendanceManager(BaseSecondaryWindow):
             # شمارش کل ثبت‌ها برای همان ترم (حاضر + غایب)
             done_total = count_attendance_by_term(sid, self.selected_class_id, term_id)
 
-            # رکورد امروز (None/True/False)
-            record = fetch_attendance_by_date(sid, self.selected_class_id, selected_date, term_id)
+            # رکورد این جلسه (None/True/False)
+            record = fetch_attendance_by_session(sess_id)
 
             row = self.table.rowCount()
             self.table.insertRow(row)
 
+            # ستون مخفی: session_id
+            sess_item = QTableWidgetItem(str(sess_id))
+            sess_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+            self.table.setItem(row, 0, sess_item)
+
             # ستون مخفی: student_id
-            id_item = QTableWidgetItem(str(sid))
-            id_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-            self.table.setItem(row, 0, id_item)
+            sid_item = QTableWidgetItem(str(sid))
+            sid_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+            self.table.setItem(row, 7, sid_item)
 
             # ستون مخفی: term_id
             term_item = QTableWidgetItem(str(term_id))
@@ -265,21 +271,17 @@ class AttendanceManager(BaseSecondaryWindow):
             # دکمه حذف رکورد امروز
             btn_delete = QPushButton("❌ حذف")
             btn_delete.setProperty("variant", "danger")
-            btn_delete.setToolTip("حذف حضور/غیاب ثبت‌شده در این تاریخ")
-            # اگر رکوردی برای این روز ثبت نشده، دکمه را غیرفعال کن
+            btn_delete.setToolTip("حذف حضور/غیاب ثبت‌شده برای این جلسه")
             btn_delete.setEnabled(record is not None)
 
             btn_delete.clicked.connect(
                 functools.partial(
                     self.delete_attendance_row,
-                    sid,
-                    self.selected_class_id,
-                    term_id,
-                    selected_date
+                    sess_id,
+                    term_id
                 )
             )
 
-            # چون داخل جدولیم، بعد از setProperty باید repolish کنیم
             ThemeManager.repolish(btn_delete)
 
             op_wrap = QWidget()
@@ -318,7 +320,8 @@ class AttendanceManager(BaseSecondaryWindow):
         any_saved = False
 
         for row in range(self.table.rowCount()):
-            sid = int(self.table.item(row, 0).text())
+            sess_id = int(self.table.item(row, 0).text())
+            sid = int(self.table.item(row, 7).text())
             present_chk = self.table.cellWidget(row, 3)
             absent_chk  = self.table.cellWidget(row, 4)
             present = present_chk.isChecked() if present_chk else False
@@ -350,10 +353,8 @@ class AttendanceManager(BaseSecondaryWindow):
                     any_saved = True   # ✅ الان می‌دونیم حداقل یک ردیف ذخیره شد
                     is_present = 1 if present else 0
 
-                    # --- ثبت واقعی رکورد امروز ---
-                    ended = insert_attendance_with_date(
-                        sid, self.selected_class_id, term_id, selected_date, is_present
-                    )
+                    # --- ثبت واقعی رکورد جلسه ---
+                    ended = insert_attendance_for_session(sess_id, is_present)
 
                     # شمارش بعد از ثبت (کل: حاضر+غایب)
                     total_after = count_attendance_by_term(sid, self.selected_class_id, term_id)
@@ -384,7 +385,7 @@ class AttendanceManager(BaseSecondaryWindow):
                             # ترجیحاً با end_date جدید پاک کن
                             _start, _end = get_term_dates(term_id)
                             cutoff = _end or selected_date
-                            delete_future_sessions(sid, self.selected_class_id, cutoff)
+                            delete_future_sessions(term_id, cutoff)
                         except sqlite3.Error as e:
                             QMessageBox.warning(self, "خطا", f"حذف جلسات باقی‌مانده با خطا مواجه شد: {e}")
 
@@ -415,11 +416,11 @@ class AttendanceManager(BaseSecondaryWindow):
 
     # ------------------- DELETE ROW -------------------
 
-    def delete_attendance_row(self, student_id: int, class_id: int, term_id: int, date_value: str):
-        """حذف حضور/غیابِ همان روز و بازخوانی جدول؛ سپس بازمحاسبهٔ پایان ترم."""
+    def delete_attendance_row(self, session_id: int, term_id: int):
+        """حذف حضور/غیابِ همان جلسه و بازخوانی جدول؛ سپس بازمحاسبهٔ پایان ترم."""
         try:
-            # حذف بر اساس ستون date
-            deleted = delete_attendance(student_id, class_id, term_id, date_value)
+            # حذف بر اساس session_id
+            deleted = delete_attendance_for_session(session_id)
 
             # اگر با حذف، مجموع از limit کمتر شد و end_date قبلاً ست بود → بازش کن
             try:
@@ -428,7 +429,7 @@ class AttendanceManager(BaseSecondaryWindow):
                 pass
 
             if deleted == 0:
-                print(f"[WARN] No attendance row deleted for ({student_id}, {class_id}, {term_id}, {date_value})")
+                print(f"[WARN] No attendance row deleted for session_id={session_id}")
 
             self.load_attendance()
         except Exception as e:

@@ -204,35 +204,32 @@ def update_payment_by_id(payment_id, amount, date, payment_type, description):
 
 
 def delete_term_if_no_payments(student_id, class_id, term_id):
+	"""
+	حذف ترم اگر هیچ پرداخت و هیچ حضور/غیابی ندارد.
+	"""
 	conn = get_connection()
 	c = conn.cursor()
-	c.execute(
-		"""
-		SELECT COUNT(*) FROM payments
-		WHERE student_id = ? AND class_id = ? AND term_id = ?
-		""",
-		(student_id, class_id, term_id)
-	)
-	has_payments = c.fetchone()[0] > 0
-
-	if has_payments:
+	
+	# ۱) چک پرداخت
+	c.execute("SELECT COUNT(*) FROM payments WHERE term_id = ?", (term_id,))
+	if c.fetchone()[0] > 0:
 		conn.close()
 		return False
 
-	# حذف ترم و تمام جلسات آن ترم
-	c.execute(
-		"""
-		DELETE FROM sessions WHERE student_id = ? AND class_id = ? AND term_id = ?
-		""",
-		(student_id, class_id, term_id)
-	)
+	# ۲) چک حضور (با جوین به سشن)
+	c.execute("""
+		SELECT COUNT(a.id) 
+		FROM attendance a
+		JOIN sessions s ON a.session_id = s.id
+		WHERE s.term_id = ?
+	""", (term_id,))
+	if c.fetchone()[0] > 0:
+		conn.close()
+		return False
 
-	c.execute(
-		"""
-		DELETE FROM student_terms WHERE student_id = ? AND class_id = ? AND id = ?
-		""",
-		(student_id, class_id, term_id)
-	)
+	# ۳) حذف جلسات و خود ترم
+	c.execute("DELETE FROM sessions WHERE term_id = ?", (term_id,))
+	c.execute("DELETE FROM student_terms WHERE id = ?", (term_id,))
 
 	conn.commit()
 	conn.close()

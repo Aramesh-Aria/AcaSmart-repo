@@ -1,7 +1,7 @@
 import logging
 from acasmart.data.db import get_connection
 from acasmart.data.migrations import (
-	migrate_attendance_unique_constraint,
+	run_all_migrations,
 )
 
 logger = logging.getLogger(__name__)
@@ -109,7 +109,7 @@ def create_tables():
 			);
 		""")
 
-		# student_terms table
+		# student_terms table (Phase 2 will rebuild this cleanly)
 		c.execute("""
 			CREATE TABLE IF NOT EXISTS student_terms (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -117,6 +117,11 @@ def create_tables():
 				class_id INTEGER NOT NULL,
 				start_date TEXT NOT NULL,
 				end_date TEXT,
+				start_time TEXT,
+				sessions_limit INTEGER,
+				tuition_fee INTEGER,
+				currency_unit TEXT,
+				profile_id INTEGER,
 				created_at TEXT DEFAULT (datetime('now','localtime')),
 				updated_at TEXT DEFAULT (datetime('now','localtime')),
 				FOREIGN KEY(student_id)
@@ -126,7 +131,10 @@ def create_tables():
 				FOREIGN KEY(class_id)
 					REFERENCES classes(id)
 					ON DELETE CASCADE
-					ON UPDATE CASCADE
+					ON UPDATE CASCADE,
+				FOREIGN KEY(profile_id)
+					REFERENCES pricing_profiles(id)
+					ON DELETE SET NULL ON UPDATE CASCADE
 			);
 		""")
 		# profiles table
@@ -143,17 +151,6 @@ def create_tables():
 			);
 		""")
 
-		c.execute("PRAGMA table_info(student_terms)")
-		cols = [row[1] for row in c.fetchall()]
-		if "sessions_limit" not in cols:
-			c.execute("ALTER TABLE student_terms ADD COLUMN sessions_limit INTEGER")
-		if "tuition_fee" not in cols:
-			c.execute("ALTER TABLE student_terms ADD COLUMN tuition_fee INTEGER")
-		if "currency_unit" not in cols:
-			c.execute("ALTER TABLE student_terms ADD COLUMN currency_unit TEXT")
-		if "profile_id" not in cols:
-			c.execute("ALTER TABLE student_terms ADD COLUMN profile_id INTEGER REFERENCES pricing_profiles(id) ON DELETE SET NULL")
-
 		# بک‌فیل مقادیر خالی
 		from acasmart.data.repos.settings_repo import get_setting  # lazy import to avoid circular
 		default_fee = int(get_setting("term_fee", get_setting("term_tuition", 6000000)))
@@ -164,14 +161,8 @@ def create_tables():
 			SET sessions_limit = COALESCE(sessions_limit, ?),
 				tuition_fee    = COALESCE(tuition_fee,    ?),
 				currency_unit  = COALESCE(currency_unit,  ?)
+			WHERE sessions_limit IS NULL OR tuition_fee IS NULL OR currency_unit IS NULL
 		""", (default_sessions, default_fee, default_unit))
-
-		# add start_time to student_terms (for distinguishing same-day sessions)
-		c.execute("PRAGMA table_info(student_terms)")
-		columns = [row[1] for row in c.fetchall()]
-		if "start_time" not in columns:
-			c.execute("ALTER TABLE student_terms ADD COLUMN start_time TEXT")
-			logger.info("✅ ستون start_time به جدول student_terms اضافه شد.")
 
 		# Payments table
 		c.execute("""
@@ -200,7 +191,7 @@ def create_tables():
 			);
 		""")
 
-		# Attendance table (ساخت اولیه یا بعد از مهاجرت)
+		# Attendance table
 		c.execute("""
 			CREATE TABLE IF NOT EXISTS attendance (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -240,42 +231,33 @@ def create_tables():
 				UNIQUE(student_id, term_id)
 			);
 		""")
-		# بلافاصله بعد از ساخت جدول notified_terms
+		
+		# Ensure additional columns exist in notified_terms
 		c.execute("PRAGMA table_info(notified_terms)")
-		columns = [row[1] for row in c.fetchall()]
-		if "session_date" not in columns:
+		cols = [row[1] for row in c.fetchall()]
+		if "session_date" not in cols:
 			c.execute("ALTER TABLE notified_terms ADD COLUMN session_date TEXT")
-			print("✅ ستون session_date به جدول notified_terms اضافه شد.")
-
-		if "session_time" not in columns:
+		if "session_time" not in cols:
 			c.execute("ALTER TABLE notified_terms ADD COLUMN session_time TEXT")
-			print("✅ ستون session_time به جدول notified_terms اضافه شد.")
 
 		# Indexes for faster lookups
-		# For faster connection between students and classes
 		c.execute("CREATE INDEX IF NOT EXISTS idx_sessions_student_id ON sessions(student_id);")
 		c.execute("CREATE INDEX IF NOT EXISTS idx_sessions_class_id ON sessions(class_id);")
-
-		# For linking the class with the instructor
 		c.execute("CREATE INDEX IF NOT EXISTS idx_classes_teacher_id ON classes(teacher_id);")
-
-		# If you search frequently, use the class day as a filter
 		c.execute("CREATE INDEX IF NOT EXISTS idx_classes_day ON classes(day);")
-
-		# If you want to sort the payments by student, class, or date
 		c.execute("CREATE INDEX IF NOT EXISTS idx_payments_student_id ON payments(student_id);")
 		c.execute("CREATE INDEX IF NOT EXISTS idx_payments_class_id ON payments(class_id);")
 		c.execute("CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(payment_date);")
-		
-		# create index for finance reports window and attendace 
 		c.execute("CREATE INDEX IF NOT EXISTS idx_attendance_term_id ON attendance(term_id);")
 		c.execute("CREATE INDEX IF NOT EXISTS idx_payments_term_id   ON payments(term_id);")
 		c.execute("CREATE INDEX IF NOT EXISTS idx_terms_student_class ON student_terms(student_id, class_id);")
+		
 		# Composite indexes (idempotent)
 		c.execute("CREATE INDEX IF NOT EXISTS idx_sessions_class_date_time ON sessions(class_id, date, time);")
 		c.execute("CREATE INDEX IF NOT EXISTS idx_attendance_term_date     ON attendance(term_id, date);")
 		c.execute("CREATE INDEX IF NOT EXISTS idx_payments_term_date       ON payments(term_id, payment_date);")
-		# فقط وقتی دیتابیس تازه ساخته شده و جدول خالیه، مقادیر پیش‌فرض رو وارد کن
+		
+		# Initial settings
 		c.execute("SELECT COUNT(*) FROM settings")
 		if c.fetchone()[0] == 0:
 			c.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("currency_unit", "toman"))
@@ -285,4 +267,4 @@ def create_tables():
 
 		conn.commit()
 
-	migrate_attendance_unique_constraint()  # اجرای مهاجرت بعد از ساخت جداول
+	run_all_migrations()  # اجرای مهاجرت‌ها بعد از ساخت جداول

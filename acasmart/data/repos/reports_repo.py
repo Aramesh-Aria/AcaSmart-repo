@@ -103,15 +103,16 @@ def get_attendance_report_rows():
 
 		result = []
 
-		# مرحله ۲: گرفتن حضور و غیاب هر ترم
+		# مرحله ۲: گرفتن حضور و غیاب هر ترم (با جوین به سشن)
 		for (term_id, student_name, start_date, end_date,
 			 class_id, class_name, instrument, teacher_name) in terms:
 
 			c.execute("""
-				SELECT date, is_present
-				FROM attendance
-				WHERE term_id = ?
-				ORDER BY date ASC
+				SELECT s.date, a.is_present
+				FROM attendance a
+				JOIN sessions s ON a.session_id = s.id
+				WHERE s.term_id = ?
+				ORDER BY s.date ASC
 			""", (term_id,))
 			attendance_rows = c.fetchall()
 
@@ -207,12 +208,13 @@ def get_student_term_summary_rows(student_name='', teacher_name='', class_name='
 			start_date, end_date
 		) = term
 
-		# شمارش جلسات
+		# شمارش جلسات (با جوین به سشن)
 		cursor.execute("""
-			SELECT COUNT(*),
-				   SUM(CASE WHEN is_present = 1 THEN 1 ELSE 0 END)
-			FROM attendance
-			WHERE term_id = ?
+			SELECT COUNT(a.id),
+				   SUM(CASE WHEN a.is_present = 1 THEN 1 ELSE 0 END)
+			FROM attendance a
+			JOIN sessions s ON a.session_id = s.id
+			WHERE s.term_id = ?
 		""", (term_id,))
 		session_row = cursor.fetchone()
 		total_sessions = session_row[0] or 0

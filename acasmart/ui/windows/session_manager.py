@@ -7,7 +7,7 @@ from acasmart.data.repos.profiles_repo import list_pricing_profiles
 from acasmart.data.repos.sessions_repo import add_session, delete_session, delete_sessions_for_expired_terms, delete_sessions_for_term, fetch_sessions_by_class, get_session_by_id, get_session_count_per_class, get_session_count_per_student, has_teacher_weekly_time_conflict, has_weekly_time_conflict, is_class_slot_taken, update_session
 from acasmart.data.repos.settings_repo import get_setting
 from acasmart.data.repos.students_repo import fetch_students_with_teachers
-from acasmart.data.repos.terms_repo import get_finished_terms_with_future_sessions, get_last_term_end_date, insert_student_term_if_not_exists
+from acasmart.data.repos.terms_repo import get_finished_terms_with_future_sessions, get_last_term_end_date, get_or_create_active_term
 from PySide6.QtWidgets import (
     QWidget, QLabel, QPushButton, QListWidget, QListWidgetItem,
     QVBoxLayout, QTimeEdit, QMessageBox, QDialog,
@@ -412,7 +412,7 @@ class SessionManager(BaseSecondaryWindow):
 
         # قبل از ثبت جلسه، اطمینان حاصل کن که ترم وجود دارد
         start_time = self.time_session.time().toString("HH:mm")
-        self.selected_term_id = insert_student_term_if_not_exists(
+        self.selected_term_id = get_or_create_active_term(
             self.selected_student_id,
             self.selected_class_id,
             date,
@@ -617,7 +617,7 @@ class SessionManager(BaseSecondaryWindow):
             QMessageBox.information(self, "موفق", "جلسه با موفقیت ویرایش شد.")
 
             # اگر هنرجو هنوز ترمی نداشته، بساز
-            insert_student_term_if_not_exists(self.selected_student_id, self.selected_class_id, date, time)
+            get_or_create_active_term(self.selected_student_id, self.selected_class_id, date, time)
 
             self.refresh_session_counts()
             self.load_students()
@@ -687,10 +687,12 @@ class SessionManager(BaseSecondaryWindow):
         total_deleted = 0
         for term_id in term_ids:
             try:
-                deleted = delete_sessions_for_term(term_id)  # طبق پیاده‌سازی تو: فقط جلسات آینده ترم را حذف می‌کند
-                total_deleted += int(deleted or 0)
+                # گرفتن end_date ترم
+                term_info = get_term_dates(term_id)
+                if term_info and term_info[1]:
+                    delete_future_sessions(term_id, term_info[1])
+                    total_deleted += 1 # We don't have rowcount here easily, just count terms cleaned
             except Exception:
-                # اگر repo مقدار برنگرداند یا خطا داد، ادامه می‌دهیم ولی عدد حذف را اضافه نمی‌کنیم
                 pass
 
         # ۳) اطلاع نتیجه و رفرش UI
