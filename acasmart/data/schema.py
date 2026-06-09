@@ -109,6 +109,12 @@ def create_tables():
 			);
 		""")
 
+		# تضمین وجود term_id در sessions (اگر از قبل وجود داشت)
+		c.execute("PRAGMA table_info(sessions)")
+		cols = [row[1] for row in c.fetchall()]
+		if "term_id" not in cols:
+			c.execute("ALTER TABLE sessions ADD COLUMN term_id INTEGER")
+
 		# student_terms table (Phase 2 will rebuild this cleanly)
 		c.execute("""
 			CREATE TABLE IF NOT EXISTS student_terms (
@@ -137,6 +143,21 @@ def create_tables():
 					ON DELETE SET NULL ON UPDATE CASCADE
 			);
 		""")
+
+		# تضمین وجود ستون‌های جدید در student_terms (اگر از قبل وجود داشت)
+		c.execute("PRAGMA table_info(student_terms)")
+		cols = [row[1] for row in c.fetchall()]
+		if "sessions_limit" not in cols:
+			c.execute("ALTER TABLE student_terms ADD COLUMN sessions_limit INTEGER")
+		if "tuition_fee" not in cols:
+			c.execute("ALTER TABLE student_terms ADD COLUMN tuition_fee INTEGER")
+		if "currency_unit" not in cols:
+			c.execute("ALTER TABLE student_terms ADD COLUMN currency_unit TEXT")
+		if "profile_id" not in cols:
+			c.execute("ALTER TABLE student_terms ADD COLUMN profile_id INTEGER")
+		if "start_time" not in cols:
+			c.execute("ALTER TABLE student_terms ADD COLUMN start_time TEXT")
+
 		# profiles table
 		c.execute("""
 			CREATE TABLE IF NOT EXISTS pricing_profiles (
@@ -183,6 +204,12 @@ def create_tables():
 			);
 		""")
 
+		# تضمین وجود term_id در payments (اگر از قبل وجود داشت)
+		c.execute("PRAGMA table_info(payments)")
+		cols = [row[1] for row in c.fetchall()]
+		if "term_id" not in cols:
+			c.execute("ALTER TABLE payments ADD COLUMN term_id INTEGER")
+
 		# Settings table
 		c.execute("""
 			CREATE TABLE IF NOT EXISTS settings (
@@ -208,6 +235,15 @@ def create_tables():
 			UNIQUE(student_id, class_id, term_id, date)
 		);
 		""")
+
+		# تضمین وجود term_id در attendance (اگر از قبل وجود داشت)
+		c.execute("PRAGMA table_info(attendance)")
+		cols = [row[1] for row in c.fetchall()]
+		if "term_id" not in cols:
+			c.execute("ALTER TABLE attendance ADD COLUMN term_id INTEGER")
+		if "date" not in cols:
+			c.execute("ALTER TABLE attendance ADD COLUMN date TEXT")
+
 		# Table of registered terms for which the end-of-term message has already been displayed.
 		c.execute("""
 			CREATE TABLE IF NOT EXISTS notified_terms (
@@ -248,14 +284,28 @@ def create_tables():
 		c.execute("CREATE INDEX IF NOT EXISTS idx_payments_student_id ON payments(student_id);")
 		c.execute("CREATE INDEX IF NOT EXISTS idx_payments_class_id ON payments(class_id);")
 		c.execute("CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(payment_date);")
-		c.execute("CREATE INDEX IF NOT EXISTS idx_attendance_term_id ON attendance(term_id);")
-		c.execute("CREATE INDEX IF NOT EXISTS idx_payments_term_id   ON payments(term_id);")
+		
+		# Check if term_id and date columns exist before creating indexes
+		c.execute("PRAGMA table_info(attendance)")
+		att_cols = [row[1] for row in c.fetchall()]
+		if "term_id" in att_cols:
+			c.execute("CREATE INDEX IF NOT EXISTS idx_attendance_term_id ON attendance(term_id);")
+		
+		c.execute("PRAGMA table_info(payments)")
+		pay_cols = [row[1] for row in c.fetchall()]
+		if "term_id" in pay_cols:
+			c.execute("CREATE INDEX IF NOT EXISTS idx_payments_term_id   ON payments(term_id);")
+			
 		c.execute("CREATE INDEX IF NOT EXISTS idx_terms_student_class ON student_terms(student_id, class_id);")
 		
 		# Composite indexes (idempotent)
 		c.execute("CREATE INDEX IF NOT EXISTS idx_sessions_class_date_time ON sessions(class_id, date, time);")
-		c.execute("CREATE INDEX IF NOT EXISTS idx_attendance_term_date     ON attendance(term_id, date);")
-		c.execute("CREATE INDEX IF NOT EXISTS idx_payments_term_date       ON payments(term_id, payment_date);")
+		
+		if "term_id" in att_cols and "date" in att_cols:
+			c.execute("CREATE INDEX IF NOT EXISTS idx_attendance_term_date     ON attendance(term_id, date);")
+		
+		if "term_id" in pay_cols:
+			c.execute("CREATE INDEX IF NOT EXISTS idx_payments_term_date       ON payments(term_id, payment_date);")
 		
 		# Initial settings
 		c.execute("SELECT COUNT(*) FROM settings")
