@@ -199,16 +199,12 @@ class ClassManager(BaseSecondaryWindow):
         week_order = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"]
         filtered.sort(key=lambda x: week_order.index(x[4]) if x[4] in week_order else 7)
 
-        # رنگ‌ها برای هر روز
-        day_colors = {
-            "شنبه": "#ADD8E6",      # آبی روشن
-            "یکشنبه": "#FFD580",    # نارنجی روشن
-            "دوشنبه": "#E6E6FA",    # بنفش روشن
-            "سه‌شنبه": "#FFFACD",   # لیمویی
-            "چهارشنبه": "#FFC0CB",  # صورتی روشن
-            "پنجشنبه": "#D3D3D3",   # خاکستری روشن
-            "جمعه": "#F5DEB3",      # بژ روشن
-        }
+        t = ThemeManager.tokens()
+        day_colors = t.get("dayColors", {})
+        text_color = t.get("text", "#0B1F3A")
+        text_strong_color = t.get("textStrong", "#0B1F3A")
+        default_bg = t.get("surface", "#FFFFFF")
+        border_color = t.get("border", "rgba(0, 0, 0, 0.02)")
 
         self.list_classes.clear()
 
@@ -223,22 +219,22 @@ class ClassManager(BaseSecondaryWindow):
             label.setObjectName("ClassItem")
             label.setWordWrap(True)
             label.setFixedHeight(60)
-            bg = day_colors.get(day, "#FFFFFF")
-                    # این استایل دیگه با QSS قاطی نمی‌شه
+            bg = day_colors.get(day, default_bg)
+            
             label.setStyleSheet(f"""
                 QLabel#ClassItem {{
                     background: {bg};
-                    border: 1px solid rgba(0, 0, 0, 0.02);
+                    border: 1px solid {border_color};
                     border-radius: 12px;
                     padding: 10px 14px;
                 }}
                 QLabel#ClassItem b {{
                     font-size: 13px;
-                    color: #0B1F3A;
+                    color: {text_strong_color};
                 }}
                 QLabel#ClassItem span {{
                     font-size: 11px;
-                    color: #0B1F3A;
+                    color: {text_color};
                     opacity: .85;
                     display: block;
                     margin-top: 4px;

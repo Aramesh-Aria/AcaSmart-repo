@@ -156,6 +156,40 @@ def migrate_v2_modernize_schema():
 				other_ids = [r[0] for r in c.fetchall()]
 				
 				for old_id in other_ids:
+					# Clean duplicate attendance records first to prevent UNIQUE constraint violations
+					c.execute("""
+						DELETE FROM attendance 
+						WHERE term_id = ? 
+						  AND EXISTS (
+							  SELECT 1 FROM attendance a2 
+							  WHERE a2.term_id = ? 
+							    AND a2.student_id = attendance.student_id 
+							    AND a2.class_id = attendance.class_id 
+							    AND a2.date = attendance.date
+						  )
+					""", (old_id, keep_id))
+					
+					# Clean duplicate notified_terms
+					c.execute("""
+						DELETE FROM notified_terms 
+						WHERE term_id = ? 
+						  AND EXISTS (
+							  SELECT 1 FROM notified_terms n2 
+							  WHERE n2.term_id = ?
+						  )
+					""", (old_id, keep_id))
+					
+					# Clean duplicate sms_notifications
+					c.execute("""
+						DELETE FROM sms_notifications 
+						WHERE term_id = ? 
+						  AND EXISTS (
+							  SELECT 1 FROM sms_notifications s2 
+							  WHERE s2.term_id = ? 
+							    AND s2.student_id = sms_notifications.student_id
+						  )
+					""", (old_id, keep_id))
+
 					# Move sessions, payments, attendance to the kept term
 					c.execute("UPDATE sessions SET term_id = ? WHERE term_id = ?", (keep_id, old_id))
 					c.execute("UPDATE payments SET term_id = ? WHERE term_id = ?", (keep_id, old_id))
@@ -166,21 +200,18 @@ def migrate_v2_modernize_schema():
 					c.execute("DELETE FROM student_terms WHERE id = ?", (old_id,))
 
 			# --- 2) Ensure every attendance has a session ---
-			# In the old model, attendance was date-based. In the new model, it's session-based.
-			# We find (student, class, term, date) in attendance that don't have a matching session.
+			# We group by student_id, class_id, date to ensure we only insert ONE session per unique date
 			c.execute("""
-				SELECT a.student_id, a.class_id, a.term_id, a.date, a.is_present, a.created_at
+				SELECT a.student_id, a.class_id, MAX(a.term_id) as term_id, a.date, MAX(a.is_present) as is_present, MAX(a.created_at) as created_at
 				FROM attendance a
 				LEFT JOIN sessions s ON a.student_id = s.student_id 
 				                    AND a.class_id = s.class_id 
-				                    AND a.term_id = s.term_id 
 				                    AND a.date = s.date
 				WHERE s.id IS NULL
+				GROUP BY a.student_id, a.class_id, a.date
 			""")
 			orphans = c.fetchall()
 			for sid, cid, tid, date, is_present, created_at in orphans:
-				# Create a placeholder session. We'll use a dummy time if we don't know it.
-				# Try to get time from other sessions in that class? Or just 00:00.
 				c.execute("SELECT time FROM sessions WHERE class_id=? LIMIT 1", (cid,))
 				row = c.fetchone()
 				session_time = row[0] if row else "00:00"
@@ -231,7 +262,7 @@ def migrate_v2_modernize_schema():
 					FOREIGN KEY(session_id) REFERENCES sessions(id) ON DELETE CASCADE ON UPDATE CASCADE
 				);
 			""")
-			# Link old attendance to sessions
+			# Link old attendance to sessions (Step 1: Match with term_id)
 			c.execute("""
 				INSERT OR IGNORE INTO attendance (session_id, is_present, created_at, updated_at)
 				SELECT s.id, a.is_present, a.created_at, a.updated_at
@@ -240,6 +271,16 @@ def migrate_v2_modernize_schema():
 				               AND a.class_id = s.class_id 
 				               AND a.term_id = s.term_id 
 				               AND a.date = s.date;
+			""")
+			# Link old attendance to sessions (Step 2: Fallback to match on date/student/class if not already linked)
+			c.execute("""
+				INSERT OR IGNORE INTO attendance (session_id, is_present, created_at, updated_at)
+				SELECT s.id, a.is_present, a.created_at, a.updated_at
+				FROM attendance_old a
+				JOIN sessions s ON a.student_id = s.student_id 
+				               AND a.class_id = s.class_id 
+				               AND a.date = s.date
+				WHERE s.id NOT IN (SELECT session_id FROM attendance);
 			""")
 			c.execute("DROP TABLE attendance_old;")
 
