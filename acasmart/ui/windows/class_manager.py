@@ -199,32 +199,12 @@ class ClassManager(BaseSecondaryWindow):
         week_order = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"]
         filtered.sort(key=lambda x: week_order.index(x[4]) if x[4] in week_order else 7)
 
-        # رنگ‌ها برای هر روز — دو مجموعه: روشن و تیره
-        is_dark = ThemeManager.current_mode() == "dark"
-
-        day_colors_light = {
-            "شنبه":    "#ADD8E6",   # آبی روشن
-            "یکشنبه":  "#FFD580",   # نارنجی روشن
-            "دوشنبه":  "#E6E6FA",   # بنفش روشن
-            "سه‌شنبه": "#FFFACD",   # لیمویی
-            "چهارشنبه":"#FFC0CB",   # صورتی روشن
-            "پنجشنبه": "#D3D3D3",   # خاکستری روشن
-            "جمعه":    "#F5DEB3",   # بژ روشن
-        }
-        day_colors_dark = {
-            "شنبه":    "#1E4560",   # آبی عمیق
-            "یکشنبه":  "#5C3D00",   # نارنجی/قهوه‌ای تیره
-            "دوشنبه":  "#2E2A50",   # بنفش تیره
-            "سه‌شنبه": "#3D3A10",   # زرد/زیتونی تیره
-            "چهارشنبه":"#4A1C28",   # صورتی/کرمزی تیره
-            "پنجشنبه": "#2A2A2A",   # خاکستری تیره
-            "جمعه":    "#3B2E10",   # بژ/قهوه‌ای تیره
-        }
-
-        day_colors = day_colors_dark if is_dark else day_colors_light
-        text_color  = "#F5F6FF" if is_dark else "#0B1F3A"
-        muted_color = "#C9CCDA" if is_dark else "#3A4D63"
-        border_rgba = "rgba(255,255,255,0.06)" if is_dark else "rgba(0,0,0,0.06)"
+        t = ThemeManager.tokens()
+        day_colors = t.get("dayColors", {})
+        text_color = t.get("text", "#0B1F3A")
+        text_strong_color = t.get("textStrong", "#0B1F3A")
+        default_bg = t.get("surface", "#FFFFFF")
+        border_color = t.get("border", "rgba(0, 0, 0, 0.02)")
 
         self.list_classes.clear()
 
@@ -239,22 +219,24 @@ class ClassManager(BaseSecondaryWindow):
             label.setObjectName("ClassItem")
             label.setWordWrap(True)
             label.setFixedHeight(60)
-            bg = day_colors.get(day, "#2A2A32" if is_dark else "#FFFFFF")
-            # این استایل دیگه با QSS قاطی نمی‌شه
+            bg = day_colors.get(day, default_bg)
+
             label.setStyleSheet(f"""
                 QLabel#ClassItem {{
                     background: {bg};
-                    border: 1px solid {border_rgba};
+                    border: 1px solid {border_color};
                     border-radius: 12px;
                     padding: 10px 14px;
                 }}
                 QLabel#ClassItem b {{
                     font-size: 13px;
-                    color: {text_color};
+                    color: {text_strong_color};
+
                 }}
                 QLabel#ClassItem span {{
                     font-size: 11px;
-                    color: {muted_color};
+                    color: {text_color};
+                    opacity: .85;
                     display: block;
                     margin-top: 4px;
                     line-height: 1.4;

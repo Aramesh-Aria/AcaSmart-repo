@@ -110,7 +110,7 @@ class ClassPickerPopup(QDialog):
 
             try:
                 t = ThemeManager.tokens()
-                bg = DAY_COLORS.get(day_str or day, t["surface"])
+                bg = t.get("dayColors", {}).get(day_str or day, t["surface"])
                 root_decl = (
                     f"padding: 10px 14px;"
                     f" background: {bg};"
@@ -118,12 +118,12 @@ class ClassPickerPopup(QDialog):
                     f" border-radius: {t['radius']};"
                 )
                 child_rules = f"""
-                    QLabel#ClassItem b {{ font-size: 13px; color: {t['textStrong']}; }}
+                    QLabel#ClassItem b {{ font-size: 13px; color: {t['text']}; }}
                     QLabel#ClassItem span {{ font-size: 11px; color: {t['text']}; opacity: .85; display: block; margin-top: 4px; line-height: 1.4; }}
                 """
                 base_style = root_decl + child_rules
             except Exception:
-                bg = DAY_COLORS.get(day, "#FFFFFF")
+                bg = DAY_COLORS.get(day_str or day, "#FFFFFF")
                 root_decl = (
                     f"padding: 10px 14px; background: {bg}; border: 1px solid #ccc; border-radius: 10px;"
                 )
