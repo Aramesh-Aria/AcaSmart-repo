@@ -68,4 +68,5 @@ Setup_files/VC_redist.x64.exe
 *.dll
 
 GEMINI.md
+plan.md
 .DS_Store
