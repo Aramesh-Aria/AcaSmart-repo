@@ -386,25 +386,33 @@ class PaymentManager(BaseSecondaryWindow):
                     return
 
             # درج پرداخت جدید
-            insert_payment(
-                self.selected_student_id,
-                self.selected_class_id,
-                self.selected_term_id,
-                amount,
-                date_str,
-                ptype,
-                desc
-            )
+            try:
+                insert_payment(
+                    self.selected_student_id,
+                    self.selected_class_id,
+                    self.selected_term_id,
+                    amount,
+                    date_str,
+                    ptype,
+                    desc
+                )
+            except ValueError:
+                QMessageBox.warning(self, "خطا", "ثبت پرداخت ممکن نیست: مبلغ از مانده شهریه بیشتر است یا نامعتبر است.")
+                return
             QMessageBox.information(self, "موفق", "پرداخت با موفقیت ثبت شد.")
         else:
             # ویرایش پرداخت قبلی (نیاز به term_id ندارد)
-            update_payment_by_id(
-                payment_id=self.editing_payment_id,
-                amount=amount,
-                date=date_str,
-                payment_type=ptype,
-                description=desc
-            )
+            try:
+                update_payment_by_id(
+                    payment_id=self.editing_payment_id,
+                    amount=amount,
+                    date=date_str,
+                    payment_type=ptype,
+                    description=desc
+                )
+            except ValueError:
+                QMessageBox.warning(self, "خطا", "ویرایش پرداخت ممکن نیست: مبلغ از مانده شهریه بیشتر است یا نامعتبر است.")
+                return
             QMessageBox.information(self, "ویرایش شد", "پرداخت با موفقیت ویرایش شد.")
             del self.editing_payment_id
             self.is_editing = False

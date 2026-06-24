@@ -39,22 +39,83 @@ logger = logging.getLogger(__name__)
 # attendance-UNIQUE migration). Existing installs are stamped to this with no data change.
 BASELINE_VERSION = 1
 
+def _migrate_v2_payments_integrity(conn):
+    """v2: add CHECK(amount > 0 AND payment_type IN ('tuition','extra')) to payments.
+
+    SQLite can't ALTER-ADD a constraint, so the table is rebuilt. Money is never
+    changed silently: rows with amount <= 0 or an invalid (non-null) payment_type
+    abort the migration (the framework then restores the backup). A NULL
+    payment_type is coerced to the schema default 'tuition'.
+    """
+    # Pre-scan: refuse to touch money silently.
+    bad = conn.execute(
+        "SELECT COUNT(*) FROM payments "
+        "WHERE amount <= 0 "
+        "   OR (payment_type IS NOT NULL AND payment_type NOT IN ('tuition','extra'))"
+    ).fetchone()[0]
+    if bad:
+        sample = conn.execute(
+            "SELECT id, term_id, amount, payment_type FROM payments "
+            "WHERE amount <= 0 "
+            "   OR (payment_type IS NOT NULL AND payment_type NOT IN ('tuition','extra')) "
+            "LIMIT 10"
+        ).fetchall()
+        raise RuntimeError(
+            f"payments integrity migration aborted: {bad} row(s) violate "
+            f"amount>0 / valid payment_type. Fix these manually first. "
+            f"Sample (id, term_id, amount, type): {[tuple(r) for r in sample]}"
+        )
+
+    conn.execute("PRAGMA foreign_keys=OFF")
+    try:
+        with transactional(conn):
+            conn.execute("""
+                CREATE TABLE payments_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    student_id INTEGER NOT NULL,
+                    class_id INTEGER NOT NULL,
+                    term_id INTEGER,
+                    amount INTEGER NOT NULL,
+                    payment_date TEXT NOT NULL,
+                    payment_type TEXT NOT NULL DEFAULT 'tuition',
+                    description TEXT,
+                    created_at TEXT DEFAULT (datetime('now','localtime')),
+                    updated_at TEXT DEFAULT (datetime('now','localtime')),
+                    CHECK (amount > 0 AND payment_type IN ('tuition','extra')),
+                    FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE ON UPDATE CASCADE,
+                    FOREIGN KEY(class_id)   REFERENCES classes(id)  ON DELETE CASCADE ON UPDATE CASCADE,
+                    FOREIGN KEY(term_id)    REFERENCES student_terms(id) ON DELETE CASCADE ON UPDATE CASCADE
+                )
+            """)
+            conn.execute("""
+                INSERT INTO payments_new
+                    (id, student_id, class_id, term_id, amount, payment_date,
+                     payment_type, description, created_at, updated_at)
+                SELECT
+                    id, student_id, class_id, term_id, amount, payment_date,
+                    COALESCE(payment_type, 'tuition'), description, created_at, updated_at
+                FROM payments
+            """)
+            conn.execute("DROP TABLE payments")
+            conn.execute("ALTER TABLE payments_new RENAME TO payments")
+            # Recreate indexes (dropped together with the old table).
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_payments_student_id ON payments(student_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_payments_class_id   ON payments(class_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_payments_date       ON payments(payment_date)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_payments_term_id    ON payments(term_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_payments_term_date  ON payments(term_id, payment_date)")
+            violations = conn.execute("PRAGMA foreign_key_check").fetchall()
+            if violations:
+                raise RuntimeError(f"payments FK check failed after rebuild: {violations[:5]}")
+    finally:
+        conn.execute("PRAGMA foreign_keys=ON")
+
+
 # Ordered list of hardening migrations. Each: (target_version, name, fn(conn)).
 # Versions must be contiguous and strictly greater than BASELINE_VERSION.
-# Example (commented until implemented):
-#
-#   def _migrate_v2_payments_check(conn):
-#       # table-rebuild migration: manage FK + transaction explicitly
-#       conn.execute("PRAGMA foreign_keys=OFF")
-#       with transactional(conn):
-#           conn.execute("CREATE TABLE payments_new ( ... CHECK (amount > 0 ...) )")
-#           conn.execute("INSERT INTO payments_new SELECT ... FROM payments")
-#           conn.execute("DROP TABLE payments")
-#           conn.execute("ALTER TABLE payments_new RENAME TO payments")
-#       conn.execute("PRAGMA foreign_keys=ON")
-#
-#   MIGRATIONS = [(2, "payments_check", _migrate_v2_payments_check)]
-MIGRATIONS: list = []
+MIGRATIONS = [
+    (2, "payments_integrity", _migrate_v2_payments_integrity),
+]
 
 
 @contextmanager

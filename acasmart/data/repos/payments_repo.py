@@ -4,14 +4,46 @@ from acasmart.data.db import get_connection
 logger = logging.getLogger(__name__)
 
 
+def get_remaining_tuition_debt(term_id, exclude_payment_id=None):
+	"""باقی‌ماندهٔ بدهی شهریهٔ یک ترم.
+
+	= شهریهٔ ثبت‌شدهٔ ترم (با fallback به تنظیمات) منهای مجموع پرداخت‌های شهریه.
+	در حالت ویرایش، پرداختِ در حال ویرایش (exclude_payment_id) از مجموع کنار گذاشته می‌شود.
+	خروجی None یعنی سقفی اعمال نمی‌شود (ترم نامشخص).
+	"""
+	if term_id is None:
+		return None
+	with get_connection() as conn:
+		c = conn.cursor()
+		c.execute("SELECT COALESCE(tuition_fee, 0) FROM student_terms WHERE id = ?", (term_id,))
+		row = c.fetchone()
+		term_fee = row[0] if row else 0
+		if not term_fee:
+			from acasmart.data.repos.settings_repo import get_setting
+			term_fee = int(get_setting("term_fee", get_setting("term_tuition", 6000000)))
+		query = "SELECT COALESCE(SUM(amount), 0) FROM payments WHERE term_id = ? AND payment_type = 'tuition'"
+		params = [term_id]
+		if exclude_payment_id is not None:
+			query += " AND id != ?"
+			params.append(exclude_payment_id)
+		c.execute(query, params)
+		paid = c.fetchone()[0]
+	return term_fee - paid
+
+
 def insert_payment(student_id, class_id, term_id, amount, payment_date, payment_type='tuition', description=None):
 	"""
 	ثبت پرداخت با ترم و نوع پرداخت.
 	"""
 	if payment_type not in {"tuition", "extra"}:
 		raise ValueError("invalid payment_type")
-	if amount < 0:
-		raise ValueError("amount must be non-negative")
+	if amount <= 0:
+		raise ValueError("amount must be positive")
+	# سقف بدهی شهریه: پرداخت شهریه نباید از مانده بیشتر باشد (دفاع لایه‌ای، مستقل از UI)
+	if payment_type == "tuition" and term_id is not None:
+		remaining = get_remaining_tuition_debt(term_id)
+		if remaining is not None and amount > remaining:
+			raise ValueError(f"tuition payment {amount} exceeds remaining debt {remaining}")
 	with get_connection() as conn:
 		conn.execute(
 			"""
@@ -189,8 +221,17 @@ def update_payment_by_id(payment_id, amount, date, payment_type, description):
 	# Soft validations
 	if payment_type not in {"tuition", "extra"}:
 		raise ValueError("invalid payment_type")
-	if amount < 0:
-		raise ValueError("amount must be non-negative")
+	if amount <= 0:
+		raise ValueError("amount must be positive")
+	# سقف بدهی شهریه هنگام ویرایش (مانده با کنارگذاشتنِ خودِ همین پرداخت محاسبه می‌شود)
+	if payment_type == "tuition":
+		with get_connection() as conn:
+			row = conn.execute("SELECT term_id FROM payments WHERE id = ?", (payment_id,)).fetchone()
+		term_id = row[0] if row else None
+		if term_id is not None:
+			remaining = get_remaining_tuition_debt(term_id, exclude_payment_id=payment_id)
+			if remaining is not None and amount > remaining:
+				raise ValueError(f"tuition payment {amount} exceeds remaining debt {remaining}")
 	with get_connection() as conn:
 		conn.execute(
 			"""
