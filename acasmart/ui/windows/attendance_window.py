@@ -14,6 +14,7 @@ from acasmart.data.repos.sessions_repo import (
     delete_future_sessions,
     delete_sessions_for_expired_terms,
     fetch_students_sessions_for_class_on_date,
+    fetch_term_students_for_class_on_date,
 )
 from acasmart.data.repos.classes_repo import fetch_classes_on_weekday
 from acasmart.data.repos.notifications_repo import (
@@ -87,6 +88,12 @@ class AttendanceManager(BaseSecondaryWindow):
         class_layout.addWidget(class_label)
         class_layout.addWidget(self.combo_class)
         layout.addLayout(class_layout)
+
+        # --------- نمایش ترم‌های تکمیل‌شده (برای ویرایش گذشته / ارسال مجدد پیامک) ----------
+        self.chk_show_completed = QCheckBox("نمایش ترم‌های تکمیل‌شده هم (برای ویرایش جلسات گذشته یا ارسال مجدد پیامک)")
+        self.chk_show_completed.setToolTip("ترم‌هایی که به پایان رسیده‌اند را هم برای این تاریخ نشان بده")
+        self.chk_show_completed.stateChanged.connect(self._on_show_completed_changed)
+        layout.addWidget(self.chk_show_completed)
 
         # --------- جدول حضور ----------
         # جدول حضور: ID مخفی، نام هنرجو، چک‌باکس حاضر، چک‌باکس غائب
@@ -168,6 +175,11 @@ class AttendanceManager(BaseSecondaryWindow):
         if self.selected_class_id is not None:
             self.load_attendance()
 
+    def _on_show_completed_changed(self, _state):
+        """بازخوانی جدول هنگام تغییرِ نمایشِ ترم‌های تکمیل‌شده."""
+        if self.selected_class_id is not None:
+            self.load_attendance()
+
     def load_attendance(self):
         """بارگذاری لیست حضور/غیاب با سقفِ per-term و شمارش کل جلسات (حاضر+غایب)."""
         if self.selected_class_id is None:
@@ -187,7 +199,13 @@ class AttendanceManager(BaseSecondaryWindow):
         danger = tokens["error"]
         primary = tokens["primary"]
 
-        rows = fetch_students_sessions_for_class_on_date(self.selected_class_id, selected_date)
+        # اگر «نمایش ترم‌های تکمیل‌شده» روشن است، فهرست را بر مبنای ترم بساز (شاملِ تکمیل‌شده‌ها)؛
+        # در غیر این صورت همان رفتارِ قبلی (بر مبنای جلسات) را نگه‌دار.
+        show_completed = getattr(self, "chk_show_completed", None) is not None and self.chk_show_completed.isChecked()
+        if show_completed:
+            rows = fetch_term_students_for_class_on_date(self.selected_class_id, selected_date, include_completed=True)
+        else:
+            rows = fetch_students_sessions_for_class_on_date(self.selected_class_id, selected_date)
         for sid, name, teacher, session_time, term_id in rows:
             cfg = get_term_config(term_id)
             term_limit = int(cfg.get("sessions_limit") or 12)

@@ -136,25 +136,69 @@ def get_all_terms_for_student_class(student_id, class_id):
 		return c.fetchall()
 
 
-def recalc_term_end_by_id(term_id: int):
+def refresh_term_completion(term_id):
+	"""وضعیتِ تکمیلِ ترم را از روی شمارشِ حضور (حاضر+غایب) بازمحاسبه می‌کند (ADR-0005).
+
+	تکمیل یک «وضعیتِ مشتق‌شده» است، نه قفلِ یک‌طرفه:
+	- اگر جلسات مصرف‌شده (به‌جزِ لغوشده) به سقفِ ترم برسد → end_date = آخرین تاریخِ مصرف‌شده.
+	- در غیرِ این صورت → end_date = NULL (ترم دوباره فعال می‌شود و ویرایشِ گذشته ممکن می‌گردد).
+
+	برای حفظِ قاعدهٔ «یک ترمِ فعال» (آیتم ۶)، اگر بازکردنِ این ترم باعثِ وجودِ دو ترمِ فعال برای
+	همان هنرجو/کلاس شود، end_date را NULL نمی‌کند و مارکر را نگه می‌دارد.
+	خروجی: True اگر ترم اکنون تکمیل‌شده است.
+	"""
+	from acasmart.data.repos.settings_repo import get_setting  # local to avoid cycles
 	with get_connection() as conn:
 		c = conn.cursor()
 		c.execute("""
-			SELECT MAX(date)
-			FROM attendance
-			WHERE term_id = ? AND status != 'canceled'
+			SELECT student_id, class_id, sessions_limit, end_date
+			FROM student_terms WHERE id = ?
 		""", (term_id,))
 		row = c.fetchone()
-		if not row or not row[0]:
-			return None
-		last_date = row[0]
+		if not row:
+			return False
+		sid, cid, term_limit, current_end = row[0], row[1], row[2], row[3]
+		try:
+			term_limit = int(term_limit)
+		except (TypeError, ValueError):
+			term_limit = int(get_setting("term_session_count", 12))
+
 		c.execute("""
-			UPDATE student_terms
-			SET end_date = ?, updated_at = datetime('now','localtime')
-			WHERE id = ?
-		""", (last_date, term_id))
-		conn.commit()
-		return last_date
+			SELECT COUNT(*), MAX(date) FROM attendance
+			WHERE term_id = ? AND status != 'canceled'
+		""", (term_id,))
+		crow = c.fetchone()
+		total = crow[0] or 0
+		last_date = crow[1]
+
+		if total >= term_limit:
+			new_end = last_date or current_end
+			if current_end != new_end:
+				c.execute("""
+					UPDATE student_terms SET end_date = ?, updated_at = datetime('now','localtime')
+					WHERE id = ?
+				""", (new_end, term_id))
+				conn.commit()
+			return True
+
+		# زیرِ سقف → ترم باید فعال باشد، مگر اینکه ترمِ فعالِ دیگری برای همان هنرجو/کلاس وجود داشته باشد
+		if current_end is not None:
+			c.execute("""
+				SELECT COUNT(*) FROM student_terms
+				WHERE student_id = ? AND class_id = ? AND end_date IS NULL AND id != ?
+			""", (sid, cid, term_id))
+			if c.fetchone()[0] == 0:
+				c.execute("""
+					UPDATE student_terms SET end_date = NULL, updated_at = datetime('now','localtime')
+					WHERE id = ?
+				""", (term_id,))
+				conn.commit()
+		return False
+
+
+def recalc_term_end_by_id(term_id: int):
+	"""سازگاریِ به‌عقب: اکنون از refresh_term_completion (تکمیلِ دوطرفه) استفاده می‌کند."""
+	refresh_term_completion(term_id)
 
 
 def get_term_dates(term_id):
@@ -198,44 +242,9 @@ def get_term_sessions_limit_by_id(term_id: int):
 
 
 def check_and_set_term_end_by_id(term_id, student_id, class_id, session_date):
-	from acasmart.data.repos.settings_repo import get_setting  # local to avoid cycles
-	with get_connection() as conn:
-		c = conn.cursor()
-
-		# سقف ترم + end_date فعلی
-		c.execute("""
-			SELECT sessions_limit, end_date
-			FROM student_terms
-			WHERE id = ?
-		""", (term_id,))
-		row = c.fetchone()
-		if not row:
-			return False
-
-		term_limit, current_end = row[0], row[1]
-		if term_limit is None:
-			# fallback به تنظیم سراسری اگر snapshot ترم خالی باشد
-			term_limit = int(get_setting("term_session_count", 12))
-		else:
-			try:
-				term_limit = int(term_limit)
-			except:
-				term_limit = int(get_setting("term_session_count", 12))
-
-		# شمارش جلسات مصرف‌شده (حاضر + غایب)؛ جلسهٔ لغوشده حساب نمی‌شود
-		c.execute("SELECT COUNT(*) FROM attendance WHERE term_id = ? AND status != 'canceled'", (term_id,))
-		total = c.fetchone()[0] or 0
-
-		if current_end is None and total >= term_limit:
-			c.execute("""
-				UPDATE student_terms
-				SET end_date = ?, updated_at = datetime('now','localtime')
-				WHERE id = ?
-			""", (session_date, term_id))
-			conn.commit()
-			return True
-
-		return False
+	"""سازگاریِ به‌عقب: اکنون از refresh_term_completion (تکمیلِ دوطرفه) استفاده می‌کند.
+	خروجی: True اگر ترم پس از این ثبت تکمیل شده باشد."""
+	return refresh_term_completion(term_id)
 
 
 def get_all_expired_terms():

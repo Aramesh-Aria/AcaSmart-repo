@@ -135,6 +135,35 @@ def fetch_students_with_active_terms_for_class(class_id, selected_date):
 		return c.fetchall()
 
 
+def fetch_term_students_for_class_on_date(class_id, selected_date, include_completed=False):
+	"""هنرجویانِ یک کلاس در یک تاریخ، بر مبنای ترم (نه جلسه) — برای دیدن/ویرایشِ ترم‌های تکمیل‌شده.
+
+	اگر include_completed=False فقط ترم‌های فعال (end_date IS NULL)؛ در غیر این صورت هر ترمی که
+	بازه‌اش شاملِ این تاریخ است (شاملِ تکمیل‌شده‌ها). خروجی هم‌شکلِ
+	fetch_students_sessions_for_class_on_date است: (sid, name, teacher, time, term_id).
+	"""
+	with get_connection() as conn:
+		c = conn.cursor()
+		query = """
+			SELECT s.id, s.name, t.name, st.start_time, st.id
+			FROM student_terms st
+			JOIN students s ON s.id = st.student_id
+			JOIN classes c2 ON st.class_id = c2.id
+			JOIN teachers t ON c2.teacher_id = t.id
+			WHERE st.class_id = ?
+			  AND st.start_date <= ?
+		"""
+		params = [class_id, selected_date]
+		if include_completed:
+			query += " AND (st.end_date IS NULL OR st.end_date >= ?)"
+			params.append(selected_date)
+		else:
+			query += " AND st.end_date IS NULL"
+		query += " ORDER BY st.start_time, s.name COLLATE NOCASE"
+		c.execute(query, params)
+		return c.fetchall()
+
+
 def fetch_students_sessions_for_class_on_date(class_id, selected_date):
 	with get_connection() as conn:
 		c = conn.cursor()
