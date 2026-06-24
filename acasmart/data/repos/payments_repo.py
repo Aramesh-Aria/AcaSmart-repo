@@ -203,7 +203,13 @@ def update_payment_by_id(payment_id, amount, date, payment_type, description):
 		conn.commit()
 
 
-def delete_term_if_no_payments(student_id, class_id, term_id):
+def delete_term_if_no_history(student_id, class_id, term_id):
+	"""حذف ترم و جلسات آن، فقط در صورتی که هیچ سابقه‌ای نداشته باشد.
+
+	سابقه = هرگونه پرداخت (شهریه/مازاد) یا هرگونه رکورد حضور و غیاب.
+	حذف فقط برای «اشتباهِ ثبتِ اولیه» مجاز است؛ ترمی که سابقه دارد ویرایش
+	می‌شود، نه حذف. خروجی: True اگر حذف شد، False اگر به‌دلیل وجود سابقه حذف نشد.
+	"""
 	conn = get_connection()
 	c = conn.cursor()
 	c.execute(
@@ -215,7 +221,16 @@ def delete_term_if_no_payments(student_id, class_id, term_id):
 	)
 	has_payments = c.fetchone()[0] > 0
 
-	if has_payments:
+	c.execute(
+		"""
+		SELECT COUNT(*) FROM attendance
+		WHERE student_id = ? AND class_id = ? AND term_id = ?
+		""",
+		(student_id, class_id, term_id)
+	)
+	has_attendance = c.fetchone()[0] > 0
+
+	if has_payments or has_attendance:
 		conn.close()
 		return False
 

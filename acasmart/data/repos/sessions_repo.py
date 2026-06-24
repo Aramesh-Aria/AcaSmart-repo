@@ -213,7 +213,7 @@ def get_session_by_id(session_id):
 		return c.fetchone()
 
 def delete_session(session_id):
-	from acasmart.data.repos.payments_repo import delete_term_if_no_payments
+	from acasmart.data.repos.payments_repo import delete_term_if_no_history
 	with get_connection() as conn:
 		# اطلاعات جلسه را ابتدا بگیر
 		c = conn.cursor()
@@ -227,8 +227,8 @@ def delete_session(session_id):
 		conn.execute("DELETE FROM sessions WHERE id= ?", (session_id,))
 		conn.commit()
 
-	# اگر ترم هیچ پرداختی ندارد و هیچ جلسه‌ای دیگر ندارد، آن را حذف کن
-	delete_term_if_no_payments(student_id, class_id, term_id)
+	# اگر ترم هیچ سابقه‌ای (پرداخت یا حضور و غیاب) ندارد، آن را حذف کن
+	delete_term_if_no_history(student_id, class_id, term_id)
 
 
 def get_session_count_per_class():

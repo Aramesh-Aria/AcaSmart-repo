@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from acasmart.data.repos.classes_repo import get_day_and_time_for_class, get_class_by_id
 from acasmart.data.repos.notifications_repo import get_unnotified_expired_terms, mark_terms_as_notified
-from acasmart.data.repos.payments_repo import delete_term_if_no_payments
+from acasmart.data.repos.payments_repo import delete_term_if_no_history
 from acasmart.data.repos.profiles_repo import list_pricing_profiles
 from acasmart.data.repos.sessions_repo import add_session, delete_session, delete_sessions_for_expired_terms, delete_sessions_for_term, fetch_sessions_by_class, get_session_by_id, get_session_count_per_class, get_session_count_per_student, has_teacher_weekly_time_conflict, has_weekly_time_conflict, is_class_slot_taken, update_session
 from acasmart.data.repos.settings_repo import get_setting
@@ -464,8 +464,8 @@ class SessionManager(BaseSecondaryWindow):
         except sqlite3.IntegrityError as e:
             print("🔴 IntegrityError:", e)
 
-            # 🧨 اگر جلسه درج نشد، ترم ساخته‌شده را حذف کن (مشروط به اینکه پرداختی نداشته باشد)
-            delete_term_if_no_payments(self.selected_student_id, self.selected_class_id, self.selected_term_id)
+            # 🧨 اگر جلسه درج نشد، ترم تازه‌ساخته‌شده را حذف کن (مشروط به نبودِ سابقه: پرداخت یا حضور و غیاب)
+            delete_term_if_no_history(self.selected_student_id, self.selected_class_id, self.selected_term_id)
 
             QMessageBox.warning(self, "جلسه تکراری", "این جلسه قبلاً ثبت شده است یا تداخل زمانی دارد.")
             return
@@ -513,12 +513,13 @@ class SessionManager(BaseSecondaryWindow):
             QMessageBox.warning(self, "خطا", "اطلاعات جلسه یافت نشد.")
             return
         student_id, class_id, term_id = session_info
-        # قبل از حذف جلسه، بررسی کن که ترم پرداختی دارد یا نه
-        has_payment = not delete_term_if_no_payments(student_id, class_id, term_id)
+        # قبل از حذف جلسه، بررسی کن که ترم سابقه (پرداخت یا حضور و غیاب) دارد یا نه
+        has_history = not delete_term_if_no_history(student_id, class_id, term_id)
 
-        if has_payment:
+        if has_history:
             QMessageBox.warning(self, "حذف ممکن نیست",
-                                "برای ترم این هنرجو پرداخت ثبت شده است. لطفاً ابتدا پرداخت‌ها را حذف کنید، سپس اقدام به حذف جلسه نمایید.")
+                                "برای ترم این هنرجو سابقه (پرداخت یا حضور و غیاب) ثبت شده است. "
+                                "ترمی که سابقه دارد حذف نمی‌شود؛ در صورت نیاز آن را ویرایش کنید.")
             return
 
         # اگر پرداختی ندارد، حذف جلسه و پیام موفقیت
