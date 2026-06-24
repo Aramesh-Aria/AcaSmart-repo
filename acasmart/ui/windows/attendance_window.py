@@ -16,7 +16,11 @@ from acasmart.data.repos.sessions_repo import (
     fetch_students_sessions_for_class_on_date,
 )
 from acasmart.data.repos.classes_repo import fetch_classes_on_weekday
-from acasmart.data.repos.notifications_repo import has_renew_sms_been_sent, mark_renew_sms_sent
+from acasmart.data.repos.notifications_repo import (
+    has_renew_sms_been_sent,
+    mark_renew_sms_sent,
+    clear_renew_sms_sent,
+)
 from acasmart.data.repos.reports_repo import get_class_and_teacher_name
 from acasmart.data.repos.profiles_repo import get_term_config
 from acasmart.data.repos.students_repo import get_student_contact
@@ -288,6 +292,17 @@ class AttendanceManager(BaseSecondaryWindow):
             op_layout.setContentsMargins(0, 0, 0, 0)
             op_layout.setAlignment(Qt.AlignCenter)
 
+            # دکمه ارسال مجدد پیامک یادآوری (وقتی موعدِ یادآوری رسیده و ارسال فعال است)
+            if sms_enabled and done_total >= notify_session_number:
+                btn_resend = QPushButton("📩 ارسال مجدد")
+                btn_resend.setProperty("variant", "primary")
+                btn_resend.setToolTip("ارسال مجدد پیامک یادآوری تمدید")
+                btn_resend.clicked.connect(
+                    functools.partial(self.resend_renewal_sms, sid, term_id)
+                )
+                ThemeManager.repolish(btn_resend)
+                op_layout.addWidget(btn_resend)
+
             self.table.setCellWidget(row, 6, op_wrap)
 
     # ------------------- MUTUAL EXCLUSIVITY -------------------
@@ -299,6 +314,52 @@ class AttendanceManager(BaseSecondaryWindow):
     def _on_absent_changed(self, other_chk, state):
         if state == Qt.Checked:
             other_chk.setChecked(False)
+
+
+    # ------------------- RENEWAL SMS -------------------
+
+    def _send_renewal_sms(self, sid: int, term_id: int):
+        """ارسال پیامک یادآوری تمدید.
+
+        فلگ «ارسال‌شده» فقط در صورت موفقیت قطعی (SmsStatus.SENT) ثبت می‌شود؛
+        حالت‌های غیرفعال/ناموفق/خطا قابلِ ارسال مجدد باقی می‌مانند.
+        خروجی: SmsStatus یا None (نبودِ شماره یا خطای ارتباطی).
+        """
+        name, phone = get_student_contact(sid)
+        if not phone:
+            return None
+        class_name, _ = get_class_and_teacher_name(self.selected_class_id)
+        try:
+            result = self.notifier.send_renew_term_notification(name, phone, class_name)
+        except Exception as e:
+            print(f"[ERROR] SMS failed for sid={sid}, term_id={term_id}: {e}")
+            return None
+        status = result.get("status") if isinstance(result, dict) else None
+        if status == SmsStatus.SENT:
+            mark_renew_sms_sent(sid, term_id)
+            print(f"[INFO] SMS sent for sid={sid}, term_id={term_id}")
+        elif status == SmsStatus.DISABLED:
+            print(f"[INFO] SMS disabled for sid={sid}, term_id={term_id}")
+        else:
+            print(f"[WARN] SMS not sent (status={status}) for sid={sid}, term_id={term_id}")
+        return status
+
+    def resend_renewal_sms(self, sid: int, term_id: int):
+        """ارسال مجدد دستیِ پیامک یادآوری تمدید توسط کاربر."""
+        # اگر قبلاً (احتمالاً به‌اشتباهِ باگ قدیمی) ارسال‌شده علامت خورده،
+        # ابتدا فلگ را پاک کن تا ارسال مجدد واقعاً انجام شود.
+        clear_renew_sms_sent(sid, term_id)
+        status = self._send_renewal_sms(sid, term_id)
+        if status == SmsStatus.SENT:
+            QMessageBox.information(self, "موفق", "پیامک یادآوری تمدید ارسال شد.")
+        elif status == SmsStatus.DISABLED:
+            QMessageBox.warning(self, "غیرفعال", "ارسال پیامک در تنظیمات غیرفعال است.")
+        else:
+            QMessageBox.warning(
+                self, "خطای پیامک",
+                "ارسال مجدد پیامک ناموفق بود. می‌توانید دوباره تلاش کنید."
+            )
+        self.load_attendance()
 
 
     # ------------------- SAVE -------------------
@@ -360,23 +421,12 @@ class AttendanceManager(BaseSecondaryWindow):
 
                     # اگر حالا «دقیقاً یک جلسه مانده» → SMS (و نه جلسه بعدی)
                     if (total_after == notify_session_number) and (not has_renew_sms_been_sent(sid, term_id)):
-                        name, phone = get_student_contact(sid)
-                        if phone:
-                            class_name, _ = get_class_and_teacher_name(self.selected_class_id)
-
-                            try:
-                                # send sms
-                                result = self.notifier.send_renew_term_notification(name, phone, class_name)
-                                # اگر ارسال غیرفعال بود، فلگ ارسال را نزن
-                                if isinstance(result, dict) and result.get("status") == SmsStatus.DISABLED:
-                                    print(f"[INFO] SMS disabled for sid={sid}, term_id={term_id}")
-                                else:
-                                    # flag as send
-                                    mark_renew_sms_sent(sid, term_id)
-                                print(f"[INFO] SMS sent for sid={sid}, term_id={term_id}")
-                            except Exception as e:
-                                print(f"[ERROR] SMS failed for sid={sid}: {e}")
-                                failed_sms.append(name)
+                        status = self._send_renewal_sms(sid, term_id)
+                        # فقط وقتی ارسال فعال بوده ولی موفق نشد، به کاربر گزارش بده؛
+                        # حالت غیرفعال (DISABLED) خطا نیست و قابل ارسال مجدد می‌ماند.
+                        if status not in (SmsStatus.SENT, SmsStatus.DISABLED):
+                            name, _ = get_student_contact(sid)
+                            failed_sms.append(name)
 
                     # اگر با همین ثبت، ترم بسته شد → جلسات آینده را حذف کن
                     if ended:

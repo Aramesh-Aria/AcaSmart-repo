@@ -64,3 +64,16 @@ def mark_renew_sms_sent(student_id, term_id):
 			VALUES (?, ?)
 		""", (student_id, term_id))
 		conn.commit()
+
+
+def clear_renew_sms_sent(student_id, term_id):
+	"""
+	پاک‌کردن فلگ «پیامک تمدید ارسال شد» تا امکان ارسال مجدد فراهم شود.
+	برای ترم‌هایی که به‌اشتباه (به‌علت باگ قدیمی) ارسال‌شده علامت خورده‌اند.
+	"""
+	with get_connection() as conn:
+		conn.execute("""
+			DELETE FROM sms_notifications
+			WHERE student_id = ? AND term_id = ?
+		""", (student_id, term_id))
+		conn.commit()

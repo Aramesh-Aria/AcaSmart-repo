@@ -63,6 +63,8 @@ old_db.py
 # Analysis artifacts (generated reports)
 artifacts/
 /backups
+/docs
+context.md
 # ==== Windows-only large binaries ====
 Setup_files/VC_redist.x64.exe
 *.exe
