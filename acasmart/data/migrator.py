@@ -149,12 +149,94 @@ def _migrate_v4_term_lesson_duration(conn):
         )
 
 
+def _time_mins(t):
+    """تبدیل "HH:mm" (ارقام فارسی/انگلیسی) به دقیقه؛ None اگر نامعتبر."""
+    try:
+        t = str(t).strip().translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789"))
+        hh, mm = t.split(":")
+        return int(hh) * 60 + int(mm)
+    except Exception:
+        return None
+
+
+def _migrate_v5_dedup_active_terms(conn):
+    """v5: merge duplicate active terms (one-hour-lesson splits), then enforce one-active-term.
+
+    Each (student_id, class_id) with more than one active term is a one-hour lesson that was
+    split into two 30-minute-slot terms. They are merged into a single survivor term (the
+    earliest start_time): session-limits and tuition fees are SUMMED (two halves → the full
+    enrollment, e.g. 6+6 sessions / 4.2M+4.2M → 12 / 8.4M), payments are repointed (summed),
+    attendance and sessions are repointed (same-day attendance collapses via the UNIQUE
+    constraint), the merged term's lesson_duration is set to the full span (e.g. 60), and the
+    emptied duplicate term is deleted. Then a partial unique index makes a second active term
+    for the same student+class physically impossible. Every merge is logged.
+    """
+    groups = conn.execute("""
+        SELECT student_id, class_id FROM student_terms
+        WHERE end_date IS NULL
+        GROUP BY student_id, class_id HAVING COUNT(*) > 1
+    """).fetchall()
+
+    with transactional(conn):
+        for sid, cid in groups:
+            terms = conn.execute("""
+                SELECT id, start_time, COALESCE(sessions_limit, 0), COALESCE(tuition_fee, 0)
+                FROM student_terms
+                WHERE student_id = ? AND class_id = ? AND end_date IS NULL
+                ORDER BY start_time ASC, id ASC
+            """, (sid, cid)).fetchall()
+
+            survivor = terms[0][0]
+            others = [t[0] for t in terms[1:]]
+            # Session limit is KEPT at the survivor's value (a one-hour lesson is one lesson,
+            # counted once — not doubled). Fees still SUM (two 4.2M halves → the full 8.4M).
+            kept_limit = terms[0][2]
+            total_fee = sum(t[3] for t in terms)
+            starts = [m for m in (_time_mins(t[1]) for t in terms) if m is not None]
+            duration = (max(starts) + 30 - min(starts)) if starts else 30 * len(terms)
+
+            for o in others:
+                # attendance/sessions: repoint, then drop rows that collided on the UNIQUE key
+                conn.execute("UPDATE OR IGNORE attendance SET term_id = ? WHERE term_id = ?", (survivor, o))
+                conn.execute("DELETE FROM attendance WHERE term_id = ?", (o,))
+                conn.execute("UPDATE OR IGNORE sessions SET term_id = ? WHERE term_id = ?", (survivor, o))
+                conn.execute("DELETE FROM sessions WHERE term_id = ?", (o,))
+                # payments: plain repoint (summed onto survivor — no UNIQUE on term_id)
+                conn.execute("UPDATE payments SET term_id = ? WHERE term_id = ?", (survivor, o))
+                conn.execute("DELETE FROM student_terms WHERE id = ?", (o,))
+
+            conn.execute("""
+                UPDATE student_terms
+                SET sessions_limit = ?, tuition_fee = ?, lesson_duration = ?,
+                    updated_at = datetime('now','localtime')
+                WHERE id = ?
+            """, (kept_limit, total_fee, duration, survivor))
+            logger.info(
+                "🔗 merged active terms %s into %s (student=%s class=%s): limit=%s fee=%s duration=%smin",
+                others, survivor, sid, cid, kept_limit, total_fee, duration,
+            )
+
+        conn.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_term
+            ON student_terms(student_id, class_id) WHERE end_date IS NULL
+        """)
+        remaining = conn.execute("""
+            SELECT COUNT(*) FROM (
+                SELECT 1 FROM student_terms WHERE end_date IS NULL
+                GROUP BY student_id, class_id HAVING COUNT(*) > 1
+            )
+        """).fetchone()[0]
+        if remaining:
+            raise RuntimeError(f"{remaining} duplicate active-term group(s) remain; aborting migration")
+
+
 # Ordered list of hardening migrations. Each: (target_version, name, fn(conn)).
 # Versions must be contiguous and strictly greater than BASELINE_VERSION.
 MIGRATIONS = [
     (2, "payments_integrity", _migrate_v2_payments_integrity),
     (3, "attendance_status", _migrate_v3_attendance_status),
     (4, "term_lesson_duration", _migrate_v4_term_lesson_duration),
+    (5, "dedup_active_terms", _migrate_v5_dedup_active_terms),
 ]
 
 

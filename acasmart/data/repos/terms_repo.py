@@ -1,4 +1,5 @@
 import logging
+import sqlite3
 from acasmart.data.db import get_connection
 
 logger = logging.getLogger(__name__)
@@ -69,15 +70,19 @@ def insert_student_term_if_not_exists(
 			currency_unit = get_setting("currency_unit", "toman")
 
 		# درج ترم جدید با مقادیر سفارشی
-		c.execute("""
-			INSERT INTO student_terms
-				(student_id, class_id, start_date, start_time, end_date,
-				 sessions_limit, tuition_fee, currency_unit, profile_id, lesson_duration)
-			VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)
-		""", (student_id, class_id, start_date, start_time,
-		      sessions_limit, tuition_fee, currency_unit, profile_id, eff_duration))
-		conn.commit()
-		return c.lastrowid
+		try:
+			c.execute("""
+				INSERT INTO student_terms
+					(student_id, class_id, start_date, start_time, end_date,
+					 sessions_limit, tuition_fee, currency_unit, profile_id, lesson_duration)
+				VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)
+			""", (student_id, class_id, start_date, start_time,
+			      sessions_limit, tuition_fee, currency_unit, profile_id, eff_duration))
+			conn.commit()
+			return c.lastrowid
+		except sqlite3.IntegrityError:
+			# نقضِ ایندکسِ «یک ترمِ فعال»: این هنرجو از قبل ترمِ فعال در این کلاس دارد
+			return None
 
 
 def delete_student_term_by_id(term_id):
