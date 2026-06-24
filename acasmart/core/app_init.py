@@ -1,5 +1,5 @@
 from acasmart.data.db import get_connection
-from acasmart.data.schema import create_tables
+from acasmart.data.migrator import run_migrations
 from acasmart.data.repos.settings_repo import ensure_bool_setting
 import os
 import sqlite3
@@ -29,8 +29,8 @@ def initialize_database():
 
         print(f"✅ Database template copied → {DB_PATH}")
 
-    # ۲) ساخت جداول (در صورت نیاز)
-    create_tables()
+    # ۲) ساخت جداول و اجرای مهاجرت‌های نسخه‌بندی‌شده (با بکاپ و بازگردانی در صورت خطا)
+    run_migrations()
 
     # ۳) حالا که جداول تضمین شدند، سراغ تنظیمات برو
     ensure_bool_setting("sms_enabled", default=True) 
