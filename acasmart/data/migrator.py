@@ -134,11 +134,27 @@ def _migrate_v3_attendance_status(conn):
             )
 
 
+def _migrate_v4_term_lesson_duration(conn):
+    """v4: lesson duration is a Term property (ADR-0004).
+
+    Additive column (default 30 minutes). Drives interval-aware conflict detection
+    and pricing; a 60 marks a one-hour lesson. Existing terms default to 30.
+    """
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(student_terms)").fetchall()]
+    if "lesson_duration" in cols:
+        return
+    with transactional(conn):
+        conn.execute(
+            "ALTER TABLE student_terms ADD COLUMN lesson_duration INTEGER NOT NULL DEFAULT 30"
+        )
+
+
 # Ordered list of hardening migrations. Each: (target_version, name, fn(conn)).
 # Versions must be contiguous and strictly greater than BASELINE_VERSION.
 MIGRATIONS = [
     (2, "payments_integrity", _migrate_v2_payments_integrity),
     (3, "attendance_status", _migrate_v3_attendance_status),
+    (4, "term_lesson_duration", _migrate_v4_term_lesson_duration),
 ]
 
 

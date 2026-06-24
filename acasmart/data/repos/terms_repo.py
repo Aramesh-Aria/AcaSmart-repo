@@ -6,15 +6,17 @@ logger = logging.getLogger(__name__)
 
 def insert_student_term_if_not_exists(
 	student_id, class_id, start_date, start_time,
-	sessions_limit=None, tuition_fee=None, currency_unit=None, profile_id=None
+	sessions_limit=None, tuition_fee=None, currency_unit=None, profile_id=None,
+	lesson_duration=None
 ):
 	from acasmart.data.repos.settings_repo import get_setting  # local to avoid cycles
 	from acasmart.data.repos.sessions_repo import has_teacher_weekly_time_conflict  # avoid cycles
+	eff_duration = int(lesson_duration) if lesson_duration else 30
 	with get_connection() as conn:
 		c = conn.cursor()
 
-		# جلوگیری از تداخل استاد در همین روز/ساعت
-		if has_teacher_weekly_time_conflict(class_id, start_time):
+		# جلوگیری از تداخل استاد در همین روز/ساعت (بازه‌ای، با مدت جلسهٔ این ترم)
+		if has_teacher_weekly_time_conflict(class_id, start_time, new_duration=eff_duration):
 			return None
 
 		# اگر ترم فعالِ دقیقا با همین start_date/start_time هست، همان را برگردان
@@ -70,10 +72,10 @@ def insert_student_term_if_not_exists(
 		c.execute("""
 			INSERT INTO student_terms
 				(student_id, class_id, start_date, start_time, end_date,
-				 sessions_limit, tuition_fee, currency_unit, profile_id)
-			VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?)
+				 sessions_limit, tuition_fee, currency_unit, profile_id, lesson_duration)
+			VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)
 		""", (student_id, class_id, start_date, start_time,
-		      sessions_limit, tuition_fee, currency_unit, profile_id))
+		      sessions_limit, tuition_fee, currency_unit, profile_id, eff_duration))
 		conn.commit()
 		return c.lastrowid
 

@@ -153,28 +153,58 @@ def fetch_students_sessions_for_class_on_date(class_id, selected_date):
 		return c.fetchall()
 
 
-def has_weekly_time_conflict(student_id, class_day, session_time, exclude_session_id=None):
+def _time_to_minutes(t):
+	"""تبدیل "HH:mm" (با ارقام فارسی یا انگلیسی) به دقیقه از نیمه‌شب؛ None اگر نامعتبر."""
+	if t is None:
+		return None
+	t = str(t).strip().translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789"))
+	try:
+		hh, mm = t.split(":")
+		return int(hh) * 60 + int(mm)
+	except (ValueError, AttributeError):
+		return None
+
+
+def _intervals_overlap(start1, dur1, start2, dur2):
+	"""آیا دو بازهٔ [start, start+dur) هم‌پوشانی دارند؟"""
+	if start1 is None or start2 is None:
+		return False
+	return start1 < (start2 + dur2) and start2 < (start1 + dur1)
+
+
+def has_weekly_time_conflict(student_id, class_day, session_time, exclude_session_id=None, new_duration=30):
+	"""تداخل زمانی هنرجو در یک روز هفته، بر مبنای هم‌پوشانیِ بازه‌ای (با درنظرگرفتن مدت جلسه)،
+	نه تطبیق دقیقِ رشتهٔ ساعت. مدت هر جلسهٔ موجود از lesson_duration ترم (یا duration جلسه) گرفته می‌شود."""
+	new_start = _time_to_minutes(session_time)
+	if new_start is None:
+		return False
 	with get_connection() as conn:
 		c = conn.cursor()
 		query = """
-			SELECT s.id
+			SELECT s.time, COALESCE(st.lesson_duration, s.duration, 30) AS dur
 			FROM sessions s
 			JOIN classes c ON s.class_id = c.id
+			LEFT JOIN student_terms st ON st.id = s.term_id
 			WHERE s.student_id = ?
 			  AND c.day = ?
-			  AND s.time = ?
 		"""
-		params = [student_id, class_day, session_time]
-
+		params = [student_id, class_day]
 		if exclude_session_id:
 			query += " AND s.id != ?"
 			params.append(exclude_session_id)
 
 		c.execute(query, params)
-		return c.fetchone() is not None
+		for s_time, dur in c.fetchall():
+			if _intervals_overlap(new_start, new_duration, _time_to_minutes(s_time), int(dur or 30)):
+				return True
+	return False
 
 
-def has_teacher_weekly_time_conflict(class_id, session_time, exclude_session_id=None):
+def has_teacher_weekly_time_conflict(class_id, session_time, exclude_session_id=None, new_duration=30):
+	"""تداخل زمانی استاد در یک روز هفته، بر مبنای هم‌پوشانیِ بازه‌ای (با درنظرگرفتن مدت جلسه)."""
+	new_start = _time_to_minutes(session_time)
+	if new_start is None:
+		return False
 	with get_connection() as conn:
 		c = conn.cursor()
 		# روز هفته و استادِ کلاسِ جدید
@@ -185,21 +215,23 @@ def has_teacher_weekly_time_conflict(class_id, session_time, exclude_session_id=
 		teacher_id, weekday = row
 
 		query = """
-			SELECT s.id
+			SELECT s.time, COALESCE(st.lesson_duration, s.duration, 30) AS dur
 			FROM sessions s
 			JOIN classes c2 ON c2.id = s.class_id
+			LEFT JOIN student_terms st ON st.id = s.term_id
 			WHERE c2.teacher_id = ?
 			  AND c2.day = ?
-			  AND s.time = ?
 		"""
-		params = [teacher_id, weekday, session_time]
-
+		params = [teacher_id, weekday]
 		if exclude_session_id:
 			query += " AND s.id != ?"
 			params.append(exclude_session_id)
 
 		c.execute(query, params)
-		return c.fetchone() is not None
+		for s_time, dur in c.fetchall():
+			if _intervals_overlap(new_start, new_duration, _time_to_minutes(s_time), int(dur or 30)):
+				return True
+	return False
 
 
 def get_session_by_id(session_id):
