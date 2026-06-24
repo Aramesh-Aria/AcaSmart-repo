@@ -108,15 +108,16 @@ def get_attendance_report_rows():
 			 class_id, class_name, instrument, teacher_name) in terms:
 
 			c.execute("""
-				SELECT date, is_present
+				SELECT date, status
 				FROM attendance
 				WHERE term_id = ?
 				ORDER BY date ASC
 			""", (term_id,))
 			attendance_rows = c.fetchall()
 
+			_label = {"present": "حاضر", "absent": "غایب", "canceled": "لغو"}
 			attendance_dict = {
-				row[0]: "حاضر" if row[1] == 1 else "غایب"
+				row[0]: _label.get(row[1], "غایب")
 				for row in attendance_rows
 			}
 
@@ -209,13 +210,13 @@ def get_student_term_summary_rows(student_name='', teacher_name='', class_name='
 
 		# شمارش جلسات
 		cursor.execute("""
-			SELECT COUNT(*),
-				   SUM(CASE WHEN is_present = 1 THEN 1 ELSE 0 END)
+			SELECT SUM(CASE WHEN status != 'canceled' THEN 1 ELSE 0 END),
+				   SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END)
 			FROM attendance
 			WHERE term_id = ?
 		""", (term_id,))
 		session_row = cursor.fetchone()
-		total_sessions = session_row[0] or 0
+		total_sessions = session_row[0] or 0   # مصرف‌شده = حاضر + غایب (بدون لغوشده)
 		present_sessions = session_row[1] or 0
 		absent_sessions = total_sessions - present_sessions
 

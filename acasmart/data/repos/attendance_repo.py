@@ -17,7 +17,7 @@ def count_attendance(student_id, class_id):
 		c = conn.cursor()
 		c.execute("""
 			SELECT COUNT(*) FROM attendance
-			WHERE student_id=? AND class_id=? AND date >= (
+			WHERE student_id=? AND class_id=? AND status != 'canceled' AND date >= (
 				SELECT start_date FROM student_terms WHERE id=?
 			)
 		""", (student_id, class_id, term_id))
@@ -25,34 +25,43 @@ def count_attendance(student_id, class_id):
 
 
 def count_attendance_by_term(student_id, class_id, term_id):
+	"""تعداد جلسات مصرف‌شدهٔ ترم (حاضر + غایب). جلسهٔ لغوشده شمرده نمی‌شود."""
 	with get_connection() as conn:
 		c = conn.cursor()
 		c.execute("""
 			SELECT COUNT(*) FROM attendance
-			WHERE student_id = ? AND class_id = ? AND term_id = ?
+			WHERE student_id = ? AND class_id = ? AND term_id = ? AND status != 'canceled'
 		""", (student_id, class_id, term_id))
 		return c.fetchone()[0]
 
 
-def insert_attendance_with_date(student_id, class_id, term_id, date, is_present):
+def insert_attendance_with_date(student_id, class_id, term_id, date, status, cancel_reason=None):
 	"""
-	ثبت حضور/غیاب برای تاریخ مشخص. اگر با این ثبت سقف پر شود،
+	ثبت وضعیت جلسه برای تاریخ مشخص. status یکی از 'present' / 'absent' / 'canceled'.
+	جلسهٔ لغوشده در سقف ترم شمرده نمی‌شود. اگر با این ثبت سقف پر شود،
 	check_and_set_term_end_by_id همان روز را end_date می‌گذارد.
 	مقدار True/False برمی‌گرداند که آیا end_date ست شد یا نه.
 	"""
 	from acasmart.data.repos.terms_repo import check_and_set_term_end_by_id
+	if status not in {"present", "absent", "canceled"}:
+		raise ValueError("invalid attendance status")
 	if not term_id:
 		term_id = get_term_id_by_student_class_and_date(student_id, class_id, date)
 	if not term_id:
 		return False  # ترمی پیدا نشد؛ چیزی ثبت نشد
 
+	is_present = 1 if status == "present" else 0
+	if status != "canceled":
+		cancel_reason = None  # دلیل فقط برای جلسهٔ لغوشده معنا دارد
+
 	with get_connection() as conn:
 		conn.execute(
 			"""
-			INSERT OR REPLACE INTO attendance (student_id, class_id, term_id, date, is_present)
-			VALUES (?, ?, ?, ?, ?)
+			INSERT OR REPLACE INTO attendance
+				(student_id, class_id, term_id, date, is_present, status, cancel_reason)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
 			""",
-			(student_id, class_id, term_id, date, is_present)
+			(student_id, class_id, term_id, date, is_present, status, cancel_reason)
 		)
 		conn.commit()
 
@@ -96,6 +105,27 @@ def fetch_attendance_by_date(student_id, class_id, date_str, term_id=None):
 		return bool(row[0])
 
 
+def fetch_attendance_status_by_date(student_id, class_id, date_str, term_id=None):
+	"""
+	وضعیت ثبت‌شدهٔ جلسه را برمی‌گرداند: None (ثبت‌نشده) / 'present' / 'absent' / 'canceled'.
+	اگر term_id داده نشود، از آخرین ترم فعال استفاده می‌کند.
+	"""
+	from acasmart.data.repos.terms_repo import get_term_id_by_student_and_class
+	if term_id is None:
+		term_id = get_term_id_by_student_and_class(student_id, class_id)
+	if not term_id:
+		return None
+
+	with get_connection() as conn:
+		c = conn.cursor()
+		c.execute("""
+			SELECT status FROM attendance
+			WHERE student_id = ? AND class_id = ? AND term_id = ? AND date = ?
+		""", (student_id, class_id, term_id, date_str))
+		row = c.fetchone()
+		return row[0] if row else None
+
+
 def get_term_id_by_student_class_and_date(student_id, class_id, selected_date):
 	with get_connection() as conn:
 		c = conn.cursor()
@@ -115,6 +145,6 @@ def get_term_id_by_student_class_and_date(student_id, class_id, selected_date):
 def count_present_attendance_for_term(term_id: int) -> int:
 	with get_connection() as conn:
 		c = conn.cursor()
-		c.execute("SELECT COUNT(*) FROM attendance WHERE term_id = ? AND is_present = 1", (term_id,))
+		c.execute("SELECT COUNT(*) FROM attendance WHERE term_id = ? AND status = 'present'", (term_id,))
 		row = c.fetchone()
 		return int(row[0]) if row else 0

@@ -111,10 +111,34 @@ def _migrate_v2_payments_integrity(conn):
         conn.execute("PRAGMA foreign_keys=ON")
 
 
+def _migrate_v3_attendance_status(conn):
+    """v3: three-state attendance — add status + cancel_reason (additive), backfill from is_present.
+
+    A scheduled lesson resolves to 'present', 'absent', or 'canceled' (ADR-0006).
+    Canceled consumes no session. Columns are added with ALTER (additive, low-risk);
+    is_present is kept for now. The status CHECK is deferred to the model-B rebuild,
+    so validity is enforced in the repository layer.
+    """
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(attendance)").fetchall()]
+    added_status = "status" not in cols
+    with transactional(conn):
+        if added_status:
+            conn.execute("ALTER TABLE attendance ADD COLUMN status TEXT NOT NULL DEFAULT 'present'")
+        if "cancel_reason" not in cols:
+            conn.execute("ALTER TABLE attendance ADD COLUMN cancel_reason TEXT")
+        if added_status:
+            # Backfill once, only when the column was just created (avoids clobbering
+            # any 'canceled' rows on a re-run).
+            conn.execute(
+                "UPDATE attendance SET status = CASE WHEN is_present = 1 THEN 'present' ELSE 'absent' END"
+            )
+
+
 # Ordered list of hardening migrations. Each: (target_version, name, fn(conn)).
 # Versions must be contiguous and strictly greater than BASELINE_VERSION.
 MIGRATIONS = [
     (2, "payments_integrity", _migrate_v2_payments_integrity),
+    (3, "attendance_status", _migrate_v3_attendance_status),
 ]
 
 

@@ -140,7 +140,7 @@ def recalc_term_end_by_id(term_id: int):
 		c.execute("""
 			SELECT MAX(date)
 			FROM attendance
-			WHERE term_id = ?
+			WHERE term_id = ? AND status != 'canceled'
 		""", (term_id,))
 		row = c.fetchone()
 		if not row or not row[0]:
@@ -220,8 +220,8 @@ def check_and_set_term_end_by_id(term_id, student_id, class_id, session_date):
 			except:
 				term_limit = int(get_setting("term_session_count", 12))
 
-		# شمارش کل ثبت‌ها (حاضر + غایب)
-		c.execute("SELECT COUNT(*) FROM attendance WHERE term_id = ?", (term_id,))
+		# شمارش جلسات مصرف‌شده (حاضر + غایب)؛ جلسهٔ لغوشده حساب نمی‌شود
+		c.execute("SELECT COUNT(*) FROM attendance WHERE term_id = ? AND status != 'canceled'", (term_id,))
 		total = c.fetchone()[0] or 0
 
 		if current_end is None and total >= term_limit:
@@ -273,10 +273,11 @@ def get_finished_terms_with_future_sessions():
 		return c.fetchall()
 
 def count_attendance_for_term(term_id):
+    """تعداد جلسات مصرف‌شدهٔ ترم (حاضر + غایب). جلسهٔ لغوشده شمرده نمی‌شود."""
     with get_connection() as conn:
         c = conn.cursor()
         c.execute("""
             SELECT COUNT(*) FROM attendance
-            WHERE term_id = ?
+            WHERE term_id = ? AND status != 'canceled'
         """, (term_id,))
         return c.fetchone()[0]

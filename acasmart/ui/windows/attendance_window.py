@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from acasmart.data.repos.attendance_repo import (
     count_attendance,
-    fetch_attendance_by_date,
+    fetch_attendance_status_by_date,
     insert_attendance_with_date,
     count_attendance_by_term,
     delete_attendance,
@@ -28,7 +28,7 @@ from acasmart.data.repos.students_repo import get_student_contact
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
-    QMessageBox, QCheckBox, QDialog
+    QMessageBox, QCheckBox, QDialog, QInputDialog
 )
 from PySide6.QtCore import Qt
 import functools
@@ -196,8 +196,8 @@ class AttendanceManager(BaseSecondaryWindow):
             # شمارش کل ثبت‌ها برای همان ترم (حاضر + غایب)
             done_total = count_attendance_by_term(sid, self.selected_class_id, term_id)
 
-            # رکورد امروز (None/True/False)
-            record = fetch_attendance_by_date(sid, self.selected_class_id, selected_date, term_id)
+            # وضعیت امروز: None (ثبت‌نشده) / 'present' / 'absent' / 'canceled'
+            record_status = fetch_attendance_status_by_date(sid, self.selected_class_id, selected_date, term_id)
 
             row = self.table.rowCount()
             self.table.insertRow(row)
@@ -232,6 +232,10 @@ class AttendanceManager(BaseSecondaryWindow):
                     display_name += "  ❌"
                     tooltip += "\nارسال پیامک ناموفق/در انتظار"
 
+            if record_status == "canceled":
+                display_name += "  🚫 لغو"
+                tooltip += "\nجلسهٔ لغوشده (در سقف ترم شمرده نمی‌شود)."
+
             name_item.setText(display_name)
             name_item.setToolTip(tooltip)
             self.table.setItem(row, 1, name_item)
@@ -245,8 +249,10 @@ class AttendanceManager(BaseSecondaryWindow):
             present_chk = QCheckBox()
             absent_chk = QCheckBox()
 
-            # اگر ترم پر شده و امروز هنوز چیزی ثبت نشده، اجازه ثبت نده
-            if done_total >= term_limit and record is None:
+            is_canceled = (record_status == "canceled")
+
+            # جلسهٔ لغوشده قابل علامت‌گذاری نیست؛ همچنین اگر ترم پر شده و امروز چیزی ثبت نشده
+            if is_canceled or (done_total >= term_limit and record_status is None):
                 present_chk.setEnabled(False)
                 absent_chk.setEnabled(False)
 
@@ -257,9 +263,9 @@ class AttendanceManager(BaseSecondaryWindow):
                 functools.partial(self._on_absent_changed, present_chk)
             )
 
-            if record is True:
+            if record_status == "present":
                 present_chk.setChecked(True)
-            elif record is False:
+            elif record_status == "absent":
                 absent_chk.setChecked(True)
 
             self.table.setCellWidget(row, 3, present_chk)
@@ -271,7 +277,7 @@ class AttendanceManager(BaseSecondaryWindow):
             btn_delete.setProperty("variant", "danger")
             btn_delete.setToolTip("حذف حضور/غیاب ثبت‌شده در این تاریخ")
             # اگر رکوردی برای این روز ثبت نشده، دکمه را غیرفعال کن
-            btn_delete.setEnabled(record is not None)
+            btn_delete.setEnabled(record_status is not None)
 
             btn_delete.clicked.connect(
                 functools.partial(
@@ -302,6 +308,19 @@ class AttendanceManager(BaseSecondaryWindow):
                 )
                 ThemeManager.repolish(btn_resend)
                 op_layout.addWidget(btn_resend)
+
+            # دکمه «لغو جلسه»: ثبت جلسهٔ لغوشده با دلیل (بدون مصرف جلسه از ترم)
+            if not is_canceled:
+                btn_cancel = QPushButton("🚫 لغو")
+                btn_cancel.setProperty("variant", "danger")
+                btn_cancel.setToolTip("ثبت این جلسه به‌عنوان «لغو شده» (بدون مصرف جلسه از ترم)")
+                btn_cancel.clicked.connect(
+                    functools.partial(
+                        self.cancel_session_row, sid, self.selected_class_id, term_id, selected_date
+                    )
+                )
+                ThemeManager.repolish(btn_cancel)
+                op_layout.addWidget(btn_cancel)
 
             self.table.setCellWidget(row, 6, op_wrap)
 
@@ -409,11 +428,11 @@ class AttendanceManager(BaseSecondaryWindow):
                 # فقط اگر یکی از چک‌باکس‌ها زده شده باشد ثبت کن
                 if present or absent:
                     any_saved = True   # ✅ الان می‌دونیم حداقل یک ردیف ذخیره شد
-                    is_present = 1 if present else 0
+                    status = "present" if present else "absent"
 
                     # --- ثبت واقعی رکورد امروز ---
                     ended = insert_attendance_with_date(
-                        sid, self.selected_class_id, term_id, selected_date, is_present
+                        sid, self.selected_class_id, term_id, selected_date, status
                     )
 
                     # شمارش بعد از ثبت (کل: حاضر+غایب)
@@ -464,6 +483,19 @@ class AttendanceManager(BaseSecondaryWindow):
             self.load_classes()
 
     # ------------------- DELETE ROW -------------------
+
+    def cancel_session_row(self, student_id: int, class_id: int, term_id: int, date_value: str):
+        """ثبت «لغو جلسه» با دلیل برای این تاریخ؛ جلسهٔ لغوشده در سقف ترم شمرده نمی‌شود."""
+        reason, ok = QInputDialog.getText(self, "لغو جلسه", "دلیل لغو جلسه را وارد کنید:")
+        if not ok:
+            return
+        reason = (reason or "").strip() or None
+        try:
+            insert_attendance_with_date(student_id, class_id, term_id, date_value, "canceled", reason)
+        except Exception as e:
+            QMessageBox.warning(self, "خطا", f"ثبت لغو جلسه با خطا مواجه شد:\n{e}")
+            return
+        self.load_attendance()
 
     def delete_attendance_row(self, student_id: int, class_id: int, term_id: int, date_value: str):
         """حذف حضور/غیابِ همان روز و بازخوانی جدول؛ سپس بازمحاسبهٔ پایان ترم."""
