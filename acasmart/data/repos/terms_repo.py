@@ -11,16 +11,14 @@ def insert_student_term_if_not_exists(
 	lesson_duration=None
 ):
 	from acasmart.data.repos.settings_repo import get_setting  # local to avoid cycles
-	from acasmart.data.repos.sessions_repo import has_teacher_weekly_time_conflict  # avoid cycles
+	from acasmart.data.repos.sessions_repo import (
+		has_teacher_schedule_conflict, has_student_schedule_conflict,
+	)  # avoid cycles
 	eff_duration = int(lesson_duration) if lesson_duration else 30
 	with get_connection() as conn:
 		c = conn.cursor()
 
-		# جلوگیری از تداخل استاد در همین روز/ساعت (بازه‌ای، با مدت جلسهٔ این ترم)
-		if has_teacher_weekly_time_conflict(class_id, start_time, new_duration=eff_duration):
-			return None
-
-		# اگر ترم فعالِ دقیقا با همین start_date/start_time هست، همان را برگردان
+		# اگر ترم فعالِ دقیقا با همین start_date/start_time هست، همان را برگردان (idempotent)
 		c.execute("""
 			SELECT id
 			FROM student_terms
@@ -45,10 +43,10 @@ def insert_student_term_if_not_exists(
 				conn.commit()
 			return term_id
 
-		# اگر همان روز/ساعت جلسه‌ای برای این کلاس ثبت شده، بلاک
-		c.execute("SELECT COUNT(*) FROM sessions WHERE class_id=? AND date=? AND time=?",
-				  (class_id, start_date, start_time))
-		if c.fetchone()[0] > 0:
+		# Model-B: تداخلِ برنامهٔ هفتگی، محاسبه‌شده از ترم‌ها (نه جلسات) — استاد و سپس هنرجو
+		if has_teacher_schedule_conflict(class_id, start_time, new_duration=eff_duration):
+			return None
+		if has_student_schedule_conflict(student_id, class_id, start_time, new_duration=eff_duration):
 			return None
 
 		# عدم شروع قبل از پایان ترم قبلی

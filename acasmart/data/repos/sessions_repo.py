@@ -26,6 +26,22 @@ def ensure_term_config(term_id: int):
 		set_term_config(term_id, sessions, fee, unit, profile_id=None)
 
 
+def enroll_student(class_id, student_id, start_date, start_time,
+				   sessions_limit=None, tuition_fee=None,
+				   currency_unit=None, profile_id=None, lesson_duration=None):
+	"""Model-B enrollment: create (or return) the student's term for this class — no session row.
+
+	The weekly lessons are computed from the term's schedule; there is nothing else to persist.
+	Returns the term_id, or None if blocked (schedule conflict, or an active term already exists).
+	"""
+	from acasmart.data.repos.terms_repo import insert_student_term_if_not_exists
+	return insert_student_term_if_not_exists(
+		student_id, class_id, start_date, start_time,
+		sessions_limit=sessions_limit, tuition_fee=tuition_fee,
+		currency_unit=currency_unit, profile_id=profile_id, lesson_duration=lesson_duration,
+	)
+
+
 def add_session(class_id, student_id, date, time,
 				term_sessions_limit=None, term_tuition_fee=None,
 				term_currency_unit=None, term_profile_id=None):
