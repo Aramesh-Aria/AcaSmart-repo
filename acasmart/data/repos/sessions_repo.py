@@ -26,6 +26,32 @@ def ensure_term_config(term_id: int):
 		set_term_config(term_id, sessions, fee, unit, profile_id=None)
 
 
+def fetch_enrollments_for_class(class_id, include_completed=False):
+	"""Model-B: students enrolled in a class with their weekly schedule and progress.
+
+	Returns rows: (term_id, student_id, student_name, start_date, start_time,
+	lesson_duration, sessions_limit, held_count, end_date). held_count excludes canceled.
+	By default only active enrollments (end_date IS NULL).
+	"""
+	with get_connection() as conn:
+		c = conn.cursor()
+		query = """
+			SELECT st.id, st.student_id, s.name, st.start_date, st.start_time,
+			       COALESCE(st.lesson_duration, 30), COALESCE(st.sessions_limit, 0),
+			       (SELECT COUNT(*) FROM attendance a WHERE a.term_id = st.id AND a.status != 'canceled'),
+			       st.end_date
+			FROM student_terms st
+			JOIN students s ON s.id = st.student_id
+			WHERE st.class_id = ?
+		"""
+		params = [class_id]
+		if not include_completed:
+			query += " AND st.end_date IS NULL"
+		query += " ORDER BY st.start_time, s.name COLLATE NOCASE"
+		c.execute(query, params)
+		return c.fetchall()
+
+
 def enroll_student(class_id, student_id, start_date, start_time,
 				   sessions_limit=None, tuition_fee=None,
 				   currency_unit=None, profile_id=None, lesson_duration=None):
