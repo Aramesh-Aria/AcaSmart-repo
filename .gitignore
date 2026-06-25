@@ -65,6 +65,7 @@ artifacts/
 /backups
 /docs
 context.md
+claude.md
 # ==== Windows-only large binaries ====
 Setup_files/VC_redist.x64.exe
 *.exe
