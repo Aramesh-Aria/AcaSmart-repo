@@ -135,6 +135,50 @@ def fetch_students_with_active_terms_for_class(class_id, selected_date):
 		return c.fetchall()
 
 
+def fetch_scheduled_students_for_class_on_date(class_id, selected_date, include_completed=False):
+	"""Model-B: students whose weekly schedule lands a lesson in this class on selected_date.
+
+	Computed from student_terms (no sessions table). A term's student appears when the date is
+	a weekly occurrence (start_date + 7·n) and the term still has room (held < limit), OR when an
+	attendance record already exists for that date (so recorded/makeup dates stay editable).
+	With include_completed=True, completed terms are included too (for editing past dates).
+	Returns rows shaped like fetch_students_sessions_for_class_on_date: (sid, name, teacher, start_time, term_id).
+	"""
+	from acasmart.core.schedule import is_weekly_occurrence
+	with get_connection() as conn:
+		c = conn.cursor()
+		c.execute("""
+			SELECT st.id, st.student_id, s.name, t.name, st.start_time, st.start_date,
+			       st.end_date, COALESCE(st.sessions_limit, 0)
+			FROM student_terms st
+			JOIN students s ON s.id = st.student_id
+			JOIN classes c2 ON st.class_id = c2.id
+			JOIN teachers t ON c2.teacher_id = t.id
+			WHERE st.class_id = ? AND st.start_date <= ?
+		""", (class_id, selected_date))
+		rows = c.fetchall()
+
+		result = []
+		for term_id, sid, sname, tname, start_time, start_date, end_date, limit in rows:
+			if end_date is not None and not include_completed:
+				continue
+			c.execute("""
+				SELECT
+					SUM(CASE WHEN status != 'canceled' THEN 1 ELSE 0 END),
+					SUM(CASE WHEN date = ? THEN 1 ELSE 0 END)
+				FROM attendance WHERE term_id = ?
+			""", (selected_date, term_id))
+			hrow = c.fetchone()
+			held = hrow[0] or 0
+			has_record = (hrow[1] or 0) > 0
+			is_occ = is_weekly_occurrence(start_date, selected_date) and held < int(limit or 0)
+			if has_record or is_occ:
+				result.append((sid, sname, tname, start_time, term_id))
+
+		result.sort(key=lambda r: (str(r[3]), str(r[1])))
+		return result
+
+
 def fetch_term_students_for_class_on_date(class_id, selected_date, include_completed=False):
 	"""هنرجویانِ یک کلاس در یک تاریخ، بر مبنای ترم (نه جلسه) — برای دیدن/ویرایشِ ترم‌های تکمیل‌شده.
 
@@ -199,6 +243,64 @@ def _intervals_overlap(start1, dur1, start2, dur2):
 	if start1 is None or start2 is None:
 		return False
 	return start1 < (start2 + dur2) and start2 < (start1 + dur1)
+
+
+def has_student_schedule_conflict(student_id, class_id, start_time, new_duration=30, exclude_term_id=None):
+	"""Model-B: does the student already have an active term whose weekly slot overlaps this one?
+
+	Computed from student_terms (no sessions): same weekday (class.day) AND interval overlap on
+	start_time/lesson_duration. exclude_term_id skips a term being edited.
+	"""
+	new_start = _time_to_minutes(start_time)
+	if new_start is None:
+		return False
+	with get_connection() as conn:
+		c = conn.cursor()
+		row = c.execute("SELECT day FROM classes WHERE id = ?", (class_id,)).fetchone()
+		if not row:
+			return False
+		class_day = row[0]
+		query = """
+			SELECT cl.day, st.start_time, COALESCE(st.lesson_duration, 30)
+			FROM student_terms st JOIN classes cl ON cl.id = st.class_id
+			WHERE st.student_id = ? AND st.end_date IS NULL
+		"""
+		params = [student_id]
+		if exclude_term_id:
+			query += " AND st.id != ?"
+			params.append(exclude_term_id)
+		c.execute(query, params)
+		for day, stime, dur in c.fetchall():
+			if day == class_day and _intervals_overlap(new_start, new_duration, _time_to_minutes(stime), int(dur or 30)):
+				return True
+	return False
+
+
+def has_teacher_schedule_conflict(class_id, start_time, new_duration=30, exclude_term_id=None):
+	"""Model-B: does the class's teacher already have an active term whose weekly slot overlaps this one?"""
+	new_start = _time_to_minutes(start_time)
+	if new_start is None:
+		return False
+	with get_connection() as conn:
+		c = conn.cursor()
+		row = c.execute("SELECT teacher_id, day FROM classes WHERE id = ?", (class_id,)).fetchone()
+		if not row:
+			return False
+		teacher_id, class_day = row
+		query = """
+			SELECT cl.day, st.start_time, COALESCE(st.lesson_duration, 30)
+			FROM student_terms st JOIN classes cl ON cl.id = st.class_id
+			WHERE cl.teacher_id = ? AND st.end_date IS NULL
+		"""
+		params = [teacher_id]
+		if exclude_term_id:
+			query += " AND st.id != ?"
+			params.append(exclude_term_id)
+		c.execute(query, params)
+		for day, stime, dur in c.fetchall():
+			if day == class_day and _intervals_overlap(new_start, new_duration, _time_to_minutes(stime), int(dur or 30)):
+				return True
+	return False
 
 
 def has_weekly_time_conflict(student_id, class_day, session_time, exclude_session_id=None, new_duration=30):

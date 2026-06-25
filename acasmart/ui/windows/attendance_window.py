@@ -13,8 +13,7 @@ from acasmart.data.repos.terms_repo import get_term_dates, recalc_term_end_by_id
 from acasmart.data.repos.sessions_repo import (
     delete_future_sessions,
     delete_sessions_for_expired_terms,
-    fetch_students_sessions_for_class_on_date,
-    fetch_term_students_for_class_on_date,
+    fetch_scheduled_students_for_class_on_date,
 )
 from acasmart.data.repos.classes_repo import fetch_classes_on_weekday
 from acasmart.data.repos.notifications_repo import (
@@ -199,13 +198,12 @@ class AttendanceManager(BaseSecondaryWindow):
         danger = tokens["error"]
         primary = tokens["primary"]
 
-        # اگر «نمایش ترم‌های تکمیل‌شده» روشن است، فهرست را بر مبنای ترم بساز (شاملِ تکمیل‌شده‌ها)؛
-        # در غیر این صورت همان رفتارِ قبلی (بر مبنای جلسات) را نگه‌دار.
+        # Model-B: فهرستِ هنرجویانِ این کلاس در این تاریخ از روی برنامهٔ هفتگیِ ترم‌ها محاسبه می‌شود
+        # (نه از جدولِ sessions). با تیکِ «نمایش ترم‌های تکمیل‌شده» ترم‌های پایان‌یافته هم می‌آیند.
         show_completed = getattr(self, "chk_show_completed", None) is not None and self.chk_show_completed.isChecked()
-        if show_completed:
-            rows = fetch_term_students_for_class_on_date(self.selected_class_id, selected_date, include_completed=True)
-        else:
-            rows = fetch_students_sessions_for_class_on_date(self.selected_class_id, selected_date)
+        rows = fetch_scheduled_students_for_class_on_date(
+            self.selected_class_id, selected_date, include_completed=show_completed
+        )
         for sid, name, teacher, session_time, term_id in rows:
             cfg = get_term_config(term_id)
             term_limit = int(cfg.get("sessions_limit") or 12)
