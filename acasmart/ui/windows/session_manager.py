@@ -4,10 +4,11 @@ from acasmart.data.repos.classes_repo import get_day_and_time_for_class, get_cla
 from acasmart.data.repos.notifications_repo import get_unnotified_expired_terms, mark_terms_as_notified
 from acasmart.data.repos.payments_repo import delete_term_if_no_history
 from acasmart.data.repos.profiles_repo import list_pricing_profiles
-from acasmart.data.repos.sessions_repo import enroll_student, fetch_enrollments_for_class, get_session_count_per_student
+from acasmart.data.repos.sessions_repo import enroll_student, fetch_enrollments_for_class
 from acasmart.data.repos.settings_repo import get_setting
 from acasmart.data.repos.students_repo import fetch_students_with_teachers
-from acasmart.data.repos.terms_repo import get_last_term_end_date
+from acasmart.data.repos.terms_repo import get_last_term_end_date, get_term_id_by_student_and_class, get_active_term_count_per_student
+from acasmart.core.schedule import first_on_or_after
 from PySide6.QtWidgets import (
     QWidget, QLabel, QPushButton, QListWidget, QListWidgetItem,
     QVBoxLayout, QTimeEdit, QMessageBox, QDialog,
@@ -269,7 +270,8 @@ class SessionManager(BaseSecondaryWindow):
 
     def refresh_session_counts(self):
         try:
-            self.session_counts_by_student = get_session_count_per_student() or {}
+            # Model-B: شمارشِ ترم‌های فعالِ هر هنرجو (نه جلسات) برای نمایش در پنجرهٔ انتخاب
+            self.session_counts_by_student = get_active_term_count_per_student() or {}
         except Exception:
             self.session_counts_by_student = {}
 
@@ -285,16 +287,9 @@ class SessionManager(BaseSecondaryWindow):
             message += f"\n• {student_name} | کدملی: {national_code} | {class_name} ({day}) — {session_date} ساعت {session_time}"
             to_mark.append((term_id, student_id, class_id, session_date, session_time))
 
-        # ⛳️ اول نمایش بده
+        # ⛳️ نمایش پیام پایانِ ترم‌ها
         QMessageBox.information(self, "پایان ترم‌ها", message)
 
-        # ✅ بعد علامت‌گذاری کن که پیام نمایش داده شده
-        # mark_terms_as_notified(to_mark)
-
-        # #  حذف جلسات مربوط به این ترم
-        # for term_id, *_ in to_mark:
-        #     delete_sessions_for_term(term_id)
-    
     def open_student_picker(self):
         """باز کردن popup انتخاب هنرجو؛ بعد از تأیید، هنرجو در ویجت نمایش داده می‌شود."""
         dlg = StudentPickerPopup(self, students_data=self.students_data, session_counts=self.session_counts_by_student)
@@ -412,6 +407,17 @@ class SessionManager(BaseSecondaryWindow):
             except:
                 pass  # اگر فرمت زمان مشکل داشت، ادامه بده
 
+        # Model-B: هر هنرجو در هر کلاس فقط یک ترم فعال دارد — از ثبت‌نام تکراری جلوگیری کن
+        if get_term_id_by_student_and_class(self.selected_student_id, self.selected_class_id):
+            QMessageBox.warning(self, "ثبت‌نام تکراری",
+                "این هنرجو از قبل در این کلاس ترم فعال دارد. "
+                "برای تغییر، ابتدا ثبت‌نام فعلی را (با دوبار کلیک در فهرست پایین) حذف کنید.")
+            return
+
+        # Model-B: تاریخ شروع را به روزِ هفتگیِ کلاس بچسبان تا جلسات هفتگی روی روزِ کلاس بیفتند
+        if class_day:
+            date = first_on_or_after(self.selected_shamsi_date, class_day)
+
         # Model-B ثبت‌نام: ساخت ترم (بدون رکوردِ جلسه؛ جلسات هفتگی از روی برنامه محاسبه می‌شوند).
         # تداخل‌های هنرجو/استاد و قاعدهٔ «یک ترم فعال» داخل enroll_student بررسی می‌شوند.
         start_time = self.time_session.time().toString("HH:mm")
@@ -451,25 +457,29 @@ class SessionManager(BaseSecondaryWindow):
         self.last_selected_date = self.selected_shamsi_date
 
     def load_sessions(self):
-        """Model-B: نمایش ثبت‌نام‌های فعالِ این کلاس (ترم‌ها) به‌جای رکوردهای جلسه."""
+        """Model-B: نمایش ثبت‌نام‌های فعالِ این کلاس (ترم‌ها) با نام هنرجو، ساعت و مدت جلسه."""
         self.list_sessions.setSortingEnabled(False)
         self.list_sessions.clear()
         if not self.selected_class_id:
             return
-        rows = fetch_enrollments_for_class(self.selected_class_id)
+        try:
+            rows = fetch_enrollments_for_class(self.selected_class_id)
+        except Exception as e:
+            QMessageBox.warning(self, "خطا", f"خطا در بارگذاری ثبت‌نام‌های این کلاس:\n{e}")
+            return
         for (term_id, student_id, name, start_date, start_time, dur, limit, held, end_date) in rows:
             dur_label = "یک‌ساعته" if int(dur or 30) >= 60 else "۳۰ دقیقه"
             text = (f"{start_time} — {name} — {fa_digits(held)}/{fa_digits(limit)} جلسه "
                     f"({dur_label}، شروع {start_date})")
             item = QListWidgetItem(text)
-            item.setData(1, term_id)
-            item.setData(2, student_id)
+            item.setData(Qt.UserRole, term_id)
+            item.setData(Qt.UserRole + 1, student_id)
             self.list_sessions.addItem(item)
 
     def delete_session_from_class(self, item):
         """Model-B: حذف ثبت‌نام (ترم) — فقط اگر سابقه (پرداخت/حضور) نداشته باشد."""
-        term_id = item.data(1)
-        student_id = item.data(2)
+        term_id = item.data(Qt.UserRole)
+        student_id = item.data(Qt.UserRole + 1)
         if term_id is None or student_id is None:
             return
 

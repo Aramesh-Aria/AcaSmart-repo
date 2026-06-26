@@ -11,8 +11,6 @@ from acasmart.data.repos.attendance_repo import (
 from acasmart.data.repos.settings_repo import get_setting_bool
 from acasmart.data.repos.terms_repo import get_term_dates, recalc_term_end_by_id
 from acasmart.data.repos.sessions_repo import (
-    delete_future_sessions,
-    delete_sessions_for_expired_terms,
     fetch_scheduled_students_for_class_on_date,
 )
 from acasmart.data.repos.classes_repo import fetch_classes_on_weekday
@@ -50,11 +48,7 @@ class AttendanceManager(BaseSecondaryWindow):
         self.last_selected_date = jdatetime.date.today().isoformat()  # "1403-02-31"
 
         self.notifier = SmsNotifier()
-        # پاک‌سازی خودکار جلسات برای ترم‌های منقضی
-        try:
-            delete_sessions_for_expired_terms()
-        except sqlite3.Error as e:
-            print(f"Error clearing expired sessions: {e}")
+        # Model-B: دیگر رکوردِ جلسه‌ای ساخته نمی‌شود؛ پاک‌سازیِ جلساتِ منقضی لازم نیست.
 
 
         layout = self.content_layout()
@@ -463,15 +457,7 @@ class AttendanceManager(BaseSecondaryWindow):
                             name, _ = get_student_contact(sid)
                             failed_sms.append(name)
 
-                    # اگر با همین ثبت، ترم بسته شد → جلسات آینده را حذف کن
-                    if ended:
-                        try:
-                            # ترجیحاً با end_date جدید پاک کن
-                            _start, _end = get_term_dates(term_id)
-                            cutoff = _end or selected_date
-                            delete_future_sessions(sid, self.selected_class_id, cutoff)
-                        except sqlite3.Error as e:
-                            QMessageBox.warning(self, "خطا", f"حذف جلسات باقی‌مانده با خطا مواجه شد: {e}")
+                    # Model-B: ترم که کامل شد، جلسات آینده محاسبه‌ای‌اند و چیزی برای حذف نیست.
 
             except sqlite3.IntegrityError as e:
                 QMessageBox.warning(self, "خطا", f"خطا در ذخیره‌سازی: {e}")

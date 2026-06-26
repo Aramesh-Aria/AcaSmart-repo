@@ -11,7 +11,7 @@ from PySide6.QtGui import QShortcut, QKeySequence
 
 from acasmart.data.repos.classes_repo import get_class_by_id
 from acasmart.data.repos.students_repo import fetch_classes_for_student
-from acasmart.data.repos.sessions_repo import get_session_count_per_class
+from acasmart.data.repos.terms_repo import get_active_term_count_per_class
 from acasmart.ui.widgets.theme_manager import ThemeManager
 
 
@@ -76,7 +76,7 @@ class ClassPickerPopup(QDialog):
         if not self.student_id:
             return
         classes = fetch_classes_for_student(self.student_id)
-        session_counts = get_session_count_per_class() or {}
+        session_counts = get_active_term_count_per_class() or {}
         classes.sort(key=lambda x: WEEK_ORDER.index(x[3]) if x[3] in WEEK_ORDER else 7)
         self._classes_data = classes
 
@@ -100,7 +100,7 @@ class ClassPickerPopup(QDialog):
             elif start_time:
                 time_part = f"شروع {start_time}"
             room_part = f" | اتاق: {room}" if room else ""
-            detail_text = f"<span>{day_str} {time_part}{room_part} | {count} جلسه ثبت شده</span>"
+            detail_text = f"<span>{day_str} {time_part}{room_part} | {count} ترم فعال</span>"
 
             label = QLabel(f"{main_text}<br>{detail_text}")
             label.setTextFormat(Qt.RichText)

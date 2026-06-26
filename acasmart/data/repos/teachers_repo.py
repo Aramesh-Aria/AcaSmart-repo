@@ -45,11 +45,12 @@ def is_teacher_assigned_to_students(teacher_id):
 		conn.close()
 		return False
 	placeholders = ",".join("?" * len(class_ids))
-	query = f"SELECT COUNT(*) FROM sessions WHERE class_id IN ({placeholders})"
+	# Model-B: استاد در صورتی «درگیر» است که کلاس‌هایش ثبت‌نام (ترم) داشته باشند
+	query = f"SELECT COUNT(*) FROM student_terms WHERE class_id IN ({placeholders})"
 	c.execute(query, class_ids)
-	session_count = c.fetchone()[0]
+	term_count = c.fetchone()[0]
 	conn.close()
-	return session_count > 0
+	return term_count > 0
 
 
 def update_teacher_by_id(teacher_id, name, national_code, teaching_card_number, gender, phone, birth_date, card_number=None, iban=None):

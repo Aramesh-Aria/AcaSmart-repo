@@ -275,14 +275,7 @@ def delete_term_if_no_history(student_id, class_id, term_id):
 		conn.close()
 		return False
 
-	# حذف ترم و تمام جلسات آن ترم
-	c.execute(
-		"""
-		DELETE FROM sessions WHERE student_id = ? AND class_id = ? AND term_id = ?
-		""",
-		(student_id, class_id, term_id)
-	)
-
+	# Model-B: حذف ترم؛ حضور و غیاب از طریق FK (ON DELETE CASCADE) حذف می‌شود.
 	c.execute(
 		"""
 		DELETE FROM student_terms WHERE student_id = ? AND class_id = ? AND id = ?

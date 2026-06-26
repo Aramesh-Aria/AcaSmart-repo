@@ -35,16 +35,17 @@ def fetch_classes():
 
 
 def delete_class_by_id(class_id):
+	# Model-B: حذف کلاس؛ ترم‌ها و وابسته‌ها از طریق FK (ON DELETE CASCADE) حذف می‌شوند.
 	with get_connection() as conn:
-		conn.execute("DELETE FROM sessions WHERE class_id=?", (class_id,))
 		conn.execute("DELETE FROM classes WHERE id=?", (class_id,))
 		conn.commit()
 
 
 def is_class_has_sessions(class_id):
+	"""Model-B: آیا این کلاس ثبت‌نام (ترم) دارد؟ (مبنای جلوگیری از حذفِ کلاسِ دارای سابقه)"""
 	with get_connection() as conn:
 		c = conn.cursor()
-		c.execute("SELECT COUNT(*) FROM sessions WHERE class_id=?", (class_id,))
+		c.execute("SELECT COUNT(*) FROM student_terms WHERE class_id=?", (class_id,))
 		return c.fetchone()[0] > 0
 
 

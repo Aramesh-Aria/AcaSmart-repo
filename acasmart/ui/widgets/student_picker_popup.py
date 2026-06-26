@@ -33,7 +33,7 @@ class StudentPickerPopup(QDialog):
         self.layout().addWidget(lbl)
 
         self.input_search = QLineEdit()
-        self.input_search.setPlaceholderText("نام هنرجو یا کد ملی...")
+        self.input_search.setPlaceholderText("نام هنرجو، نام استاد یا کد ملی...")
         self.input_search.textChanged.connect(self._search)
         self.layout().addWidget(self.input_search)
 
@@ -66,13 +66,17 @@ class StudentPickerPopup(QDialog):
         self.list_results.clear()
         filtered = []
         for sid, national_code, name, teacher in self.students_data:
-            if contains_fa(name, q_name) or (q_code and q_code in nd(national_code)):
+            if (
+                contains_fa(name, q_name)
+                or contains_fa(teacher, q_name)
+                or (q_code and q_code in nd(national_code))
+            ):
                 filtered.append((sid, national_code, name, teacher))
         filtered = sort_records_fa(filtered, name_index=2, tiebreak_index=1)
         for sid, national_code, name, teacher in filtered:
             count = self.session_counts.get(sid, 0)
             count_fa = fa_digits(count)
-            item = QListWidgetItem(f"{name} - کد ملی: {national_code} ( {count_fa} جلسه ثبت شده )")
+            item = QListWidgetItem(f"{name} (استاد: {teacher}) — {count_fa} ترم فعال")
             item.setData(Qt.UserRole, (sid, national_code, name, teacher))
             self.list_results.addItem(item)
 

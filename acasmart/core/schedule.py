@@ -40,3 +40,30 @@ def occurrence_dates(start_shamsi: str, count: int):
 def add_weeks(start_shamsi: str, weeks: int) -> str:
     """Shamsi date `weeks` weeks after start_shamsi."""
     return _to_shamsi(_to_greg(start_shamsi) + datetime.timedelta(days=7 * weeks))
+
+
+# Persian weekday names keyed by Gregorian weekday() (Monday=0) — matches the
+# attendance window's mapping so class.day strings line up.
+_WEEKDAY_FA = {0: "دوشنبه", 1: "سه‌شنبه", 2: "چهارشنبه", 3: "پنجشنبه", 4: "جمعه", 5: "شنبه", 6: "یکشنبه"}
+
+
+def weekday_fa(shamsi_date: str) -> str:
+    """Persian weekday name for a Shamsi date."""
+    return _WEEKDAY_FA[_to_greg(shamsi_date).weekday()]
+
+
+def first_on_or_after(shamsi_date: str, weekday_name: str) -> str:
+    """First Shamsi date >= shamsi_date whose Persian weekday equals weekday_name.
+
+    Used to snap an enrollment's start_date onto the class's weekly day, so weekly
+    occurrences land on the class day. Returns shamsi_date unchanged if weekday_name
+    is unknown.
+    """
+    if weekday_name not in _WEEKDAY_FA.values():
+        return shamsi_date
+    g = _to_greg(shamsi_date)
+    for i in range(7):
+        d = g + datetime.timedelta(days=i)
+        if _WEEKDAY_FA[d.weekday()] == weekday_name:
+            return _to_shamsi(d)
+    return shamsi_date

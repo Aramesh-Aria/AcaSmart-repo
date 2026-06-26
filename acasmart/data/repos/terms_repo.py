@@ -115,6 +115,32 @@ def get_last_term_end_date(student_id, class_id):
 		return row[0] if row else None
 
 
+def get_active_term_count_per_student():
+	"""{student_id: تعدادِ ترم‌های فعال} — برای نمایش کنارِ نام در پنجرهٔ انتخاب هنرجو (Model-B)."""
+	with get_connection() as conn:
+		c = conn.cursor()
+		c.execute("""
+			SELECT student_id, COUNT(*)
+			FROM student_terms
+			WHERE end_date IS NULL
+			GROUP BY student_id
+		""")
+		return {row[0]: row[1] for row in c.fetchall()}
+
+
+def get_active_term_count_per_class():
+	"""{class_id: تعدادِ ترم‌های فعال} — برای نمایش کنارِ کلاس در پنجرهٔ انتخاب کلاس (Model-B)."""
+	with get_connection() as conn:
+		c = conn.cursor()
+		c.execute("""
+			SELECT class_id, COUNT(*)
+			FROM student_terms
+			WHERE end_date IS NULL
+			GROUP BY class_id
+		""")
+		return {row[0]: row[1] for row in c.fetchall()}
+
+
 def get_term_id_by_student_and_class(student_id, class_id):
 	with get_connection() as conn:
 		c = conn.cursor()
@@ -262,29 +288,6 @@ def get_all_expired_terms():
 		""")
 		return c.fetchall()
 
-
-def get_finished_terms_with_future_sessions():
-	with get_connection() as conn:
-		c = conn.cursor()
-		c.execute("""
-			SELECT
-				t.id AS term_id,
-				t.student_id,
-				s.name AS student_name,
-				t.class_id,
-				c2.name AS class_name,
-				t.end_date,
-				SUM(CASE WHEN sess.date > t.end_date THEN 1 ELSE 0 END) AS future_count
-			FROM student_terms t
-			JOIN students s ON s.id = t.student_id
-			JOIN classes  c2 ON c2.id = t.class_id
-			LEFT JOIN sessions sess ON sess.term_id = t.id
-			WHERE t.end_date IS NOT NULL
-			GROUP BY t.id
-			HAVING SUM(CASE WHEN sess.date > t.end_date THEN 1 ELSE 0 END) > 0
-			ORDER BY t.end_date DESC
-		""")
-		return c.fetchall()
 
 def count_attendance_for_term(term_id):
     """تعداد جلسات مصرف‌شدهٔ ترم (حاضر + غایب). جلسهٔ لغوشده شمرده نمی‌شود."""

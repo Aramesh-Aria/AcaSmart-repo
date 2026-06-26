@@ -122,14 +122,16 @@ def fetch_classes_for_student(student_id):
         return c.fetchall()
 
 def fetch_students_with_teachers():
+    # Model-B: teacher(s) are derived from the student's enrollments (student_terms),
+    # not from session rows (which enrollment no longer creates).
     with get_connection() as conn:
         c = conn.cursor()
         c.execute("""
             SELECT students.id, students.national_code, students.name,
                    COALESCE(GROUP_CONCAT(DISTINCT teachers.name), '—')
             FROM students
-            LEFT JOIN sessions ON students.id = sessions.student_id
-            LEFT JOIN classes ON sessions.class_id = classes.id
+            LEFT JOIN student_terms ON students.id = student_terms.student_id
+            LEFT JOIN classes ON student_terms.class_id = classes.id
             LEFT JOIN teachers ON classes.teacher_id = teachers.id
             GROUP BY students.id
             ORDER BY students.name COLLATE NOCASE
