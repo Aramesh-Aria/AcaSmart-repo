@@ -81,33 +81,9 @@ def create_tables():
 			);
 		""")
 
-		# Sessions table
-		c.execute("""
-			CREATE TABLE IF NOT EXISTS sessions (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				class_id INTEGER NOT NULL,
-				student_id INTEGER NOT NULL,
-				term_id INTEGER,
-				date TEXT NOT NULL,
-				time TEXT NOT NULL,
-				duration INTEGER DEFAULT 30,
-				created_at TEXT DEFAULT (datetime('now','localtime')),
-				updated_at TEXT DEFAULT (datetime('now','localtime')),
-				FOREIGN KEY(class_id)
-					REFERENCES classes(id)
-					ON DELETE CASCADE
-					ON UPDATE CASCADE,
-				FOREIGN KEY(student_id)
-					REFERENCES students(id)
-					ON DELETE CASCADE
-					ON UPDATE CASCADE,
-				FOREIGN KEY(term_id)
-					REFERENCES student_terms(id)
-					ON DELETE CASCADE
-					ON UPDATE CASCADE,
-				UNIQUE(class_id, student_id, date, time)
-			);
-		""")
+		# Model-B (ADR-0002): the `sessions` table is intentionally not created here.
+		# Lessons are computed from each term's weekly schedule; migration v6 drops any
+		# legacy sessions table on existing databases.
 
 		# student_terms table
 		c.execute("""
@@ -252,10 +228,6 @@ def create_tables():
 			print("✅ ستون session_time به جدول notified_terms اضافه شد.")
 
 		# Indexes for faster lookups
-		# For faster connection between students and classes
-		c.execute("CREATE INDEX IF NOT EXISTS idx_sessions_student_id ON sessions(student_id);")
-		c.execute("CREATE INDEX IF NOT EXISTS idx_sessions_class_id ON sessions(class_id);")
-
 		# For linking the class with the instructor
 		c.execute("CREATE INDEX IF NOT EXISTS idx_classes_teacher_id ON classes(teacher_id);")
 
@@ -272,7 +244,6 @@ def create_tables():
 		c.execute("CREATE INDEX IF NOT EXISTS idx_payments_term_id   ON payments(term_id);")
 		c.execute("CREATE INDEX IF NOT EXISTS idx_terms_student_class ON student_terms(student_id, class_id);")
 		# Composite indexes (idempotent)
-		c.execute("CREATE INDEX IF NOT EXISTS idx_sessions_class_date_time ON sessions(class_id, date, time);")
 		c.execute("CREATE INDEX IF NOT EXISTS idx_attendance_term_date     ON attendance(term_id, date);")
 		c.execute("CREATE INDEX IF NOT EXISTS idx_payments_term_date       ON payments(term_id, payment_date);")
 		# فقط وقتی دیتابیس تازه ساخته شده و جدول خالیه، مقادیر پیش‌فرض رو وارد کن

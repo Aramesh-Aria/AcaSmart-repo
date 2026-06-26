@@ -178,6 +178,7 @@ def _migrate_v5_dedup_active_terms(conn):
     """).fetchall()
 
     with transactional(conn):
+        sessions_present = _table_exists(conn, "sessions")
         for sid, cid in groups:
             terms = conn.execute("""
                 SELECT id, start_time, COALESCE(sessions_limit, 0), COALESCE(tuition_fee, 0)
@@ -199,8 +200,9 @@ def _migrate_v5_dedup_active_terms(conn):
                 # attendance/sessions: repoint, then drop rows that collided on the UNIQUE key
                 conn.execute("UPDATE OR IGNORE attendance SET term_id = ? WHERE term_id = ?", (survivor, o))
                 conn.execute("DELETE FROM attendance WHERE term_id = ?", (o,))
-                conn.execute("UPDATE OR IGNORE sessions SET term_id = ? WHERE term_id = ?", (survivor, o))
-                conn.execute("DELETE FROM sessions WHERE term_id = ?", (o,))
+                if sessions_present:  # legacy table may already be gone on fresh installs
+                    conn.execute("UPDATE OR IGNORE sessions SET term_id = ? WHERE term_id = ?", (survivor, o))
+                    conn.execute("DELETE FROM sessions WHERE term_id = ?", (o,))
                 # payments: plain repoint (summed onto survivor — no UNIQUE on term_id)
                 conn.execute("UPDATE payments SET term_id = ? WHERE term_id = ?", (survivor, o))
                 conn.execute("DELETE FROM student_terms WHERE id = ?", (o,))
@@ -230,6 +232,18 @@ def _migrate_v5_dedup_active_terms(conn):
             raise RuntimeError(f"{remaining} duplicate active-term group(s) remain; aborting migration")
 
 
+def _migrate_v6_drop_sessions(conn):
+    """v6 (Model-B, ADR-0002): drop the legacy `sessions` table.
+
+    Lessons are now computed from each term's weekly schedule, so the eager session rows
+    are obsolete. By this point all live code reads/writes student_terms + attendance only;
+    the table is gone for good (this is the irreversible step — it runs after the automatic
+    pre-migration backup).
+    """
+    with transactional(conn):
+        conn.execute("DROP TABLE IF EXISTS sessions")
+
+
 # Ordered list of hardening migrations. Each: (target_version, name, fn(conn)).
 # Versions must be contiguous and strictly greater than BASELINE_VERSION.
 MIGRATIONS = [
@@ -237,6 +251,7 @@ MIGRATIONS = [
     (3, "attendance_status", _migrate_v3_attendance_status),
     (4, "term_lesson_duration", _migrate_v4_term_lesson_duration),
     (5, "dedup_active_terms", _migrate_v5_dedup_active_terms),
+    (6, "drop_sessions", _migrate_v6_drop_sessions),
 ]
 
 
@@ -259,6 +274,12 @@ def _user_version(conn) -> int:
 def _set_user_version(conn, version: int) -> None:
     # PRAGMA does not accept bound parameters; version is an int we control.
     conn.execute(f"PRAGMA user_version = {int(version)}")
+
+
+def _table_exists(conn, name: str) -> bool:
+    return conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?", (name,)
+    ).fetchone() is not None
 
 
 def _backup_db(from_version: int) -> "Path | None":
