@@ -1,0 +1,10 @@
+# Duplicate active terms (one-hour-lesson splits) are merged by summing
+
+Before enforcing one active Term per Student per Class, the existing duplicate active terms — one-hour lessons that an earlier version split into two 30-minute-slot terms — are merged into a single term (migration v5). The merged term **keeps the survivor's session limit** (6, not 12): a one-hour lesson is one lesson and counts once, consistent with selling lessons rather than 30-minute units (ADR-0004 / grilling). But **fees and payments do sum** (4.2M + 4.2M → 8.4M), because a one-hour lesson is priced as two 30-minute halves — so the merged term reads as settled (8.4M fee, 8.4M paid) rather than overpaid. Attendance and sessions are repointed onto the survivor, with same-day attendance collapsing via the existing UNIQUE constraint; the merged term's `lesson_duration` is set to the full span (60 minutes). The emptied duplicate is deleted, then a partial unique index `UNIQUE(student_id, class_id) WHERE end_date IS NULL` makes a second active term physically impossible.
+
+Summing (rather than treating the paired payments as double-entries and dropping one) is correct here because the academy's pricing is **8.4M per 12 meetings** — a one-hour lesson genuinely consists of two paid 30-minute halves, so the two 4.2M payments are two real halves of one 8.4M enrollment, leaving the merged term settled (8.4M paid against an 8.4M fee), not overpaid. Summing both halves also recovers the correct total for students on a custom pricing profile, without hard-coding the default. The migration verified that total recorded payments are unchanged across the merge (no money created or lost).
+
+## Consequences
+
+- Same-day attendance on the two halves collapses to one record per date, so a merged term shows the number of *distinct* attended dates against its kept limit (6).
+- This is a one-time, irreversible data migration; it runs after a full database backup (ADR-0008) and aborts/restores if any duplicate active group would remain.

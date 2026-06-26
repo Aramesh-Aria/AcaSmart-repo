@@ -1,0 +1,7 @@
+# Versioned, backed-up migrations; hardening before the model-B rewrite
+
+Schema changes are applied through ordered, idempotent migration steps tracked by SQLite's built-in `PRAGMA user_version`. Before running any pending migration, the application copies the database file to a timestamped backup; each step runs inside a transaction; and if any step fails, the backup is restored and startup aborts with a clear message rather than leaving a half-migrated database. Data-shape cleanups (e.g. merging pre-existing duplicate active terms so the new partial unique index can be created) run as explicit steps that report what they changed, never silently.
+
+The work is split into two deliberately separate migration efforts. **Hardening now**: additive, low-risk steps that only reject bad writes or add columns — attendance `status`, payment `CHECK`, the active-term unique index plus duplicate-term cleanup, two-way `end_date`, and the renewal-SMS success fix plus resend action. **Model-B later**: the structural rewrite to lazy, schedule-as-truth sessions (ADR-0002), shipped on its own, after the hardening has proven stable, and tested against a copy of the live database before it runs for real.
+
+This exists because a prior unversioned migration that rebuilt tables and merged data with no backup "broke everything" and had to be reverted. Separating cheap hardening from the risky structural change limits the blast radius of any single migration.

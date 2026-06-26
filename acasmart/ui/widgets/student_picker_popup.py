@@ -75,7 +75,7 @@ class StudentPickerPopup(QDialog):
         filtered = sort_records_fa(filtered, name_index=2, tiebreak_index=1)
         for sid, national_code, name, teacher in filtered:
             count = self.session_counts.get(sid, 0)
-            count_fa = fa_digits(count)
+            count_fa = fa_digits(count) or "۰"  # fa_digits(0) returns '' — show ۰ explicitly
             item = QListWidgetItem(f"{name} (استاد: {teacher}) — {count_fa} ترم فعال")
             item.setData(Qt.UserRole, (sid, national_code, name, teacher))
             self.list_results.addItem(item)

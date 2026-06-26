@@ -58,33 +58,33 @@
 
 ### داشبورد اصلی
 
-![Dashboard](src/images/dashboard_preview.png)
+![Dashboard](media/images/dashboard_preview.png)
 
 ### مدیریت هنرجویان
 
-![Students](src/images/std_manager_preview.png)
+![Students](media/images/std_manager_preview.png)
 
 ### مدیریت اساتید
 
-![Teachers](src/images/tea_manager_preview.png)
+![Teachers](media/images/tea_manager_preview.png)
 
 ### مدیریت کلاس‌ها
 
-![Classes](src/images/class_preview.png)
+![Classes](media/images/class_preview.png)
 
 ### ثبت حضور و غیاب
 
-![Attendance](src/images/attendance_preview.png)
+![Attendance](media/images/attendance_preview.png)
 
 ### گزارش مالی و پرداخت‌ها
 
-![Finance](src/images/finance_preview.png)
+![Finance](media/images/finance_preview.png)
 
 #
 
-[🎥 پیش‌نمایش ویدیویی محیط برنامه](src/video/project-demo2.mp4)
+[🎥 پیش‌نمایش ویدیویی محیط برنامه](media/video/project-demo2.mp4)
 
-📸 برای مشاهده‌ی تصاویر بیشتر از محیط برنامه: [screenshots/](src/screenshots/)
+📸 برای مشاهده‌ی تصاویر بیشتر از محیط برنامه: [screenshots/](media/screenshots/)
 [images/](src/images/)
 
 ---

@@ -1,4 +1,4 @@
-# ==== Build / Distribution ====
+# ============================ Build / Distribution ============================
 dist/
 build/
 stage/
@@ -6,8 +6,10 @@ stage/
 *.pkg
 *.app/
 dist_*.app/
-notes.txt
-# ==== Python ====
+*.exe
+*.dll
+
+# ================================= Python =====================================
 __pycache__/
 *.py[cod]
 *.pyd
@@ -16,27 +18,26 @@ __pycache__/
 .eggs/
 pip-wheel-metadata/
 *.whl
+.wheels/
 
-# ==== Virtual Envs ====
+# =========================== Virtual environments =============================
+# Covers .venv, venv, env and suffixed variants (.venv-macos-arm64, .venv-win-amd64, …)
 .venv/
+.venv*/
 venv/
-env/
-.venv*/         # پوشش .venv-macos-arm64 ، .venv-macos-x86 و...
 venv*/
+env/
 env*/
-.venv_x86/
-.venv-macos-arm64/
-.venv-macos-x86/
-.venv-win-amd64/
-.venv-win7-amd64/
-# ==== Logs & Tools Caches ====
+
+# ========================= Logs / caches / analysis ===========================
 *.log
 .pytest_cache/
 .mypy_cache/
 .coverage*
 htmlcov/
+artifacts/
 
-# ==== OS / IDE ====
+# =============================== OS / IDE =====================================
 .DS_Store
 .AppleDouble
 .LSOverride
@@ -45,32 +46,21 @@ Thumbs.db
 .idea/
 *.code-workspace
 
-# ==== Secrets / Local config ====
+# ========================= Secrets / local config ============================
 .env
 
-# ==== Project-specific ====
-.wheels/
-# DB محلی runtime را نریز داخل گیت:
+# ===================== Local runtime data (lives in the OS ====================
+# app-data dir, e.g. ~/Library/Application Support/AcaSmart — never the repo).
+# resources/acasmart_template.db IS tracked; do not add it here.
 acasmart.db
-# توجه: acasmart_template.db را IGNORE نکن تا داخل ریپو بماند
-acasmart_backup.db
-acasmart_backup_1.db
-acasmart_backup_test.db
-acasmart_backup_akhari.db
-README_DEV.md
-گزارش_اساتید_14041225.xlsx
-old_db.py
-# Analysis artifacts (generated reports)
-artifacts/
-/backups
-/docs
-context.md
-claude.md
-# ==== Windows-only large binaries ====
-Setup_files/VC_redist.x64.exe
-*.exe
-*.dll
+acasmart*backup*.db
+/backups/
 
-GEMINI.md
+# ===================== Local scratch / throwaway notes ========================
+# NOTE: curated docs (CONTEXT.md, CLAUDE.md, docs/**) are intentionally TRACKED.
+# These are one-off, machine-local, or AI-scratch files only.
+notes.txt
 plan.md
-.DS_Store
+GEMINI.md
+old_db.py
+گزارش_اساتید_*.xlsx
