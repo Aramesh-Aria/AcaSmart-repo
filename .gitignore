@@ -42,10 +42,9 @@ artifacts/
 .AppleDouble
 .LSOverride
 Thumbs.db
-.vscode/
 .idea/
 *.code-workspace
-
+/.vscode
 # ========================= Secrets / local config ============================
 .env
 
