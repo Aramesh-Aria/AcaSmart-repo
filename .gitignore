@@ -36,6 +36,7 @@ env*/
 .coverage*
 htmlcov/
 artifacts/
+/.claude
 
 # =============================== OS / IDE =====================================
 .DS_Store
